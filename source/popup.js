@@ -20,6 +20,29 @@ function applyTheme(theme) {
   const dot = document.getElementById('status-dot');
   const statusText = document.getElementById('status-text');
 
+  // Setup button event listeners
+  const optionsButton = document.getElementById('options-button');
+  const starButton = document.getElementById('star-button');
+  const rateButton = document.getElementById('rate-button');
+
+  if (optionsButton) {
+    optionsButton.addEventListener('click', () => {
+      chrome.runtime.openOptionsPage();
+    });
+  }
+
+  if (starButton) {
+    starButton.addEventListener('click', () => {
+      chrome.tabs.create({ url: 'https://github.com/fthux/GitZipPro' });
+    });
+  }
+
+  if (rateButton) {
+    rateButton.addEventListener('click', () => {
+      chrome.tabs.create({ url: 'https://github.com/fthux/GitZipPro' });
+    });
+  }
+
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab || !tab.url) return;
