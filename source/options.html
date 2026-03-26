@@ -463,6 +463,184 @@
     }
     .custom-rule-item button:hover { background: rgba(217, 48, 37, 0.1); }
 
+    /* History Page Styles */
+    .history-empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-scnd);
+    }
+
+    .history-empty-state h3 {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: var(--text-main);
+    }
+
+    .history-empty-state p {
+      font-size: 13px;
+      max-width: 400px;
+      margin: 0 auto 24px;
+      line-height: 1.5;
+    }
+
+    .history-date-group {
+      margin-bottom: 32px;
+    }
+
+    .history-date-header {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-main);
+      margin-bottom: 16px;
+      padding-left: 4px;
+    }
+
+    .history-record {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .history-record:hover {
+      border-color: var(--primary-color);
+    }
+
+    .history-record-header {
+      display: flex;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid transparent;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .history-record.expanded .history-record-header {
+      border-bottom-color: var(--border-color);
+    }
+
+    .history-record-checkbox {
+      margin-right: 12px;
+      flex-shrink: 0;
+    }
+
+    .history-record-content {
+      flex: 1;
+    }
+
+    .history-record-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .history-record-repo {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .history-record-branch {
+      font-size: 11px;
+      color: var(--text-scnd);
+      background: rgba(0, 0, 0, 0.05);
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-family: monospace;
+    }
+
+    html[data-theme="dark"] .history-record-branch {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .history-record-meta {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--text-scnd);
+    }
+
+    .history-record-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .history-record-expand {
+      margin-left: 12px;
+      color: var(--text-scnd);
+      transition: transform 0.2s;
+    }
+
+    .history-record.expanded .history-record-expand {
+      transform: rotate(180deg);
+    }
+
+    .history-record-details {
+      padding: 16px 20px;
+      border-top: none;
+      display: none;
+    }
+
+    .history-record.expanded .history-record-details {
+      display: block;
+    }
+
+    .history-file-list {
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--text-scnd);
+      max-height: 200px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.02);
+      border-radius: 4px;
+      padding: 8px 12px;
+      margin-top: 8px;
+    }
+
+    html[data-theme="dark"] .history-file-list {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .history-file-item {
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    html[data-theme="dark"] .history-file-item {
+      border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .history-file-item:last-child {
+      border-bottom: none;
+    }
+
+    .history-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 24px;
+    }
+
+    .history-selection-info {
+      display: flex;
+      align-items: center;
+      font-size: 13px;
+      color: var(--text-main);
+      font-weight: 500;
+      margin-bottom: 16px;
+    }
+
+    .history-selection-info span {
+      font-weight: 600;
+      color: var(--primary-color);
+      margin: 0 4px;
+    }
+
   </style>
 </head>
 <body>
@@ -476,6 +654,7 @@
     <div class="menu-group">
       <div class="menu-item active" data-target="general">General</div>
       <div class="menu-item" data-target="download">Download</div>
+      <div class="menu-item" data-target="history">History</div>
     </div>
   </div>
 
@@ -665,6 +844,30 @@
           </div>
         </div>
 
+      </div>
+
+      <!-- History Page -->
+      <div id="history" class="page">
+        <h1 class="page-title">Download History</h1>
+        
+        <div class="history-controls" style="display: none;">
+          <div class="history-selection-info">
+            <span id="history-checked-count">0</span> selected
+          </div>
+          
+          <div class="history-actions">
+            <button id="history-delete-selected" disabled>Delete selected</button>
+            <button id="history-clear-all">Clear all history</button>
+          </div>
+        </div>
+
+        <div id="history-content">
+          <!-- History records will be inserted here by JavaScript -->
+          <div class="history-empty-state">
+            <h3>No download history yet</h3>
+            <p>Your download history will appear here after you download files from GitHub repositories.</p>
+          </div>
+        </div>
       </div>
 
     </div>

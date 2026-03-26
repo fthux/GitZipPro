@@ -24,8 +24,8 @@
   // ─── Config ───────────────────────────────────────────────────────────────
 
   const DEFAULT_WORKER_URL = 'https://gitzip-pro-worker.fthux.com';
-  const CONCURRENCY_LIMIT  = 5;   // max parallel fetch requests
-  const MAX_FILE_COUNT     = 500; // safety cap
+  const CONCURRENCY_LIMIT = 5;   // max parallel fetch requests
+  const MAX_FILE_COUNT = 500; // safety cap
 
   // ─── URL Parser ───────────────────────────────────────────────────────────
 
@@ -57,18 +57,18 @@
     if (parts.length < 2) return null;
 
     const owner = parts[0];
-    const repo  = parts[1];
-    const seg3  = parts[2]; // 'tree', 'blob', or undefined
+    const repo = parts[1];
+    const seg3 = parts[2]; // 'tree', 'blob', or undefined
 
     if (!seg3 || seg3 === 'tree') {
       const branch = parts[3] || 'HEAD';
-      const path   = parts.slice(4).join('/');
+      const path = parts.slice(4).join('/');
       return { owner, repo, branch, path, type: 'dir' };
     }
 
     if (seg3 === 'blob') {
       const branch = parts[3] || 'HEAD';
-      const path   = parts.slice(4).join('/');
+      const path = parts.slice(4).join('/');
       return { owner, repo, branch, path, type: 'file' };
     }
 
@@ -260,55 +260,76 @@
       onProgress && onProgress(0, total, `0 / ${total} files`);
 
       // ── ZIP mode (default) ────────────────────────────────────────────
-        const zip = new JSZip();
-        let completed = 0;
+      const zip = new JSZip();
+      let completed = 0;
 
-        const tasks = fileList.map(item => async () => {
-          const bytes = await item.fetch();
-          zip.file(`${zipRoot}/${item.path}`, bytes);
-          completed++;
-          onProgress && onProgress(completed, total, `${completed} / ${total} files`);
-        });
+      const tasks = fileList.map(item => async () => {
+        const bytes = await item.fetch();
+        zip.file(`${zipRoot}/${item.path}`, bytes);
+        completed++;
+        onProgress && onProgress(completed, total, `${completed} / ${total} files`);
+      });
 
-        await withConcurrency(CONCURRENCY_LIMIT, tasks);
+      await withConcurrency(CONCURRENCY_LIMIT, tasks);
 
-        onProgress && onProgress(total, total, 'Packing ZIP…');
+      onProgress && onProgress(total, total, 'Packing ZIP…');
 
-        const base64 = await zip.generateAsync({
-          type: 'base64',
-          compression: 'DEFLATE',
-          compressionOptions: { level: 6 },
-        });
+      const base64 = await zip.generateAsync({
+        type: 'base64',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 },
+      });
 
-        const template = (namingCustom && namingCustom.trim() !== '') ? namingCustom.trim() : namingPreset;
-        const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        let zipName = template
-          .replace(/{repo}/g, repo)
-          .replace(/{branch}/g, branch)
-          .replace(/{ts}/g, ts);
-        
-        if (!zipName.toLowerCase().endsWith('.zip')) {
-          zipName += '.zip';
-        }
+      const template = (namingCustom && namingCustom.trim() !== '') ? namingCustom.trim() : namingPreset;
+      const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      let zipName = template
+        .replace(/{repo}/g, repo)
+        .replace(/{branch}/g, branch)
+        .replace(/{ts}/g, ts);
 
-        if (notifySound) {
-          playDing();
-        }
+      if (!zipName.toLowerCase().endsWith('.zip')) {
+        zipName += '.zip';
+      }
 
-        await new Promise((resolve, reject) => {
-          chrome.runtime.sendMessage(
-            { type: 'GZP_DOWNLOAD_FILE', filename: zipName, base64, mimeType: 'application/zip', notifyShow, notifyOpen },
-            (resp) => {
-              if (chrome.runtime.lastError) {
-                return reject(new Error(chrome.runtime.lastError.message));
-              }
-              if (!resp || !resp.ok) {
-                return reject(new Error((resp && resp.error) || 'Download failed in background'));
-              }
-              resolve(resp.downloadId);
+      if (notifySound) {
+        playDing();
+      }
+
+      // Create history record with download details
+      const historyRecord = {
+        timestamp: Date.now(),
+        owner: parsed[0].owner,
+        repo: parsed[0].repo,
+        branch: parsed[0].branch,
+        path: parsed[0].path || '',
+        type: parsed[0].type,
+        downloadName: zipName,
+        files: fileList.map(item => item.path),
+        fileCount: fileList.length
+      };
+
+      await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+          {
+            type: 'GZP_DOWNLOAD_FILE',
+            filename: zipName,
+            base64,
+            mimeType: 'application/zip',
+            notifyShow,
+            notifyOpen,
+            historyRecord: historyRecord
+          },
+          (resp) => {
+            if (chrome.runtime.lastError) {
+              return reject(new Error(chrome.runtime.lastError.message));
             }
-          );
-        });
+            if (!resp || !resp.ok) {
+              return reject(new Error((resp && resp.error) || 'Download failed in background'));
+            }
+            resolve(resp.downloadId);
+          }
+        );
+      });
 
       onDone && onDone();
 
@@ -330,13 +351,13 @@
         ['gzpWorkerUrl', 'gzpNamingPreset', 'gzpNamingCustom', 'gzpNotifyShow', 'gzpNotifySound', 'gzpNotifyOpen', 'gzpIgnoreLabels', 'gzpIgnoreCustomVars'],
         (res) => {
           resolve({
-            workerUrl:        res.gzpWorkerUrl    || DEFAULT_WORKER_URL,
-            namingPreset:     res.gzpNamingPreset || '{repo}-{branch}_{ts}',
-            namingCustom:     res.gzpNamingCustom || '',
-            notifyShow:       res.gzpNotifyShow   !== false,
-            notifySound:      res.gzpNotifySound  !== false,
-            notifyOpen:       res.gzpNotifyOpen   === true,
-            ignoreLabels:     res.gzpIgnoreLabels, // undefined is handled during logic fallback
+            workerUrl: res.gzpWorkerUrl || DEFAULT_WORKER_URL,
+            namingPreset: res.gzpNamingPreset || '{repo}-{branch}_{ts}',
+            namingCustom: res.gzpNamingCustom || '',
+            notifyShow: res.gzpNotifyShow !== false,
+            notifySound: res.gzpNotifySound !== false,
+            notifyOpen: res.gzpNotifyOpen === true,
+            ignoreLabels: res.gzpIgnoreLabels, // undefined is handled during logic fallback
             ignoreCustomVars: res.gzpIgnoreCustomVars || []
           });
         }
@@ -378,7 +399,7 @@
    */
   function base64ToUint8Array(b64) {
     const binary = atob(b64);
-    const bytes  = new Uint8Array(binary.length);
+    const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
       bytes[i] = binary.charCodeAt(i);
     }
@@ -428,11 +449,11 @@
   function isIgnored(path, type, rules) {
     if (!rules || rules.length === 0) return false;
     const filename = path.split('/').pop();
-    
+
     for (const rule of rules) {
       let pattern = rule.trim();
       if (!pattern) continue;
-      
+
       const isDirRule = pattern.endsWith('/');
       if (isDirRule) {
         pattern = pattern.slice(0, -1);
