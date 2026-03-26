@@ -7,13 +7,64 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :root {
+      color-scheme: light dark;
+      /* Light theme variables */
+      --bg-color: #f8f9fa;
+      --text-main: #202124;
+      --text-scnd: #5f6368;
+      --border-color: #dadce0;
+      --header-border: #dadce0;
+      --dot-active: #3fb950;
+      --dot-inactive: #6e7681;
+      --dot-shadow: rgba(63, 185, 80, 0.6);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-color: #0d1117;
+        --text-main: #e6edf3;
+        --text-scnd: #8b949e;
+        --border-color: #21262d;
+        --header-border: #21262d;
+        --dot-active: #3fb950;
+        --dot-inactive: #6e7681;
+        --dot-shadow: rgba(63, 185, 80, 0.6);
+      }
+    }
+
+    html[data-theme="light"] {
+      color-scheme: light;
+      --bg-color: #f8f9fa;
+      --text-main: #202124;
+      --text-scnd: #5f6368;
+      --border-color: #dadce0;
+      --header-border: #dadce0;
+      --dot-active: #3fb950;
+      --dot-inactive: #6e7681;
+      --dot-shadow: rgba(63, 185, 80, 0.6);
+    }
+
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --bg-color: #0d1117;
+      --text-main: #e6edf3;
+      --text-scnd: #8b949e;
+      --border-color: #21262d;
+      --header-border: #21262d;
+      --dot-active: #3fb950;
+      --dot-inactive: #6e7681;
+      --dot-shadow: rgba(63, 185, 80, 0.6);
+    }
+
     body {
       width: 280px;
       min-height: 120px;
-      background: #0d1117;
-      color: #e6edf3;
+      background: var(--bg-color);
+      color: var(--text-main);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
       font-size: 13px;
+      transition: background-color 0.2s, color 0.2s;
     }
 
     header {
@@ -21,7 +72,7 @@
       align-items: center;
       gap: 10px;
       padding: 14px 16px 12px;
-      border-bottom: 1px solid #21262d;
+      border-bottom: 1px solid var(--header-border);
     }
 
     header img {
@@ -33,13 +84,13 @@
     .title {
       font-size: 15px;
       font-weight: 700;
-      color: #e6edf3;
+      color: var(--text-main);
       letter-spacing: -0.01em;
     }
 
     .version {
       font-size: 11px;
-      color: #6e7681;
+      color: var(--text-scnd);
       margin-top: 1px;
     }
 
@@ -58,46 +109,22 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: #3fb950;
+      background: var(--dot-active);
       flex-shrink: 0;
-      box-shadow: 0 0 6px rgba(63, 185, 80, 0.6);
+      box-shadow: 0 0 6px var(--dot-shadow);
     }
 
     .dot.inactive {
-      background: #6e7681;
+      background: var(--dot-inactive);
       box-shadow: none;
     }
 
     #status-text {
-      color: #8b949e;
+      color: var(--text-scnd);
       font-size: 12px;
     }
 
-    .hint {
-      color: #6e7681;
-      font-size: 11.5px;
-      line-height: 1.55;
-      border-top: 1px solid #21262d;
-      padding-top: 10px;
-      margin-top: 4px;
-    }
 
-    .hint strong {
-      color: #8b949e;
-    }
-
-    footer {
-      padding: 8px 16px 12px;
-      text-align: center;
-    }
-
-    footer a {
-      color: #388bfd;
-      text-decoration: none;
-      font-size: 11px;
-    }
-
-    footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -114,16 +141,7 @@
       <div class="dot inactive" id="status-dot"></div>
       <span id="status-text">Not on a GitHub repo page</span>
     </div>
-    <p class="hint">
-      Navigate to a <strong>GitHub repository</strong>, then hover over any
-      file or folder to reveal a checkbox. Select items and click the
-      <strong>Download</strong> button that appears at the bottom-right.
-    </p>
   </main>
-
-  <footer>
-    <a href="https://github.com" target="_blank">Open GitHub</a>
-  </footer>
 
   <script src="popup.js"></script>
 </body>

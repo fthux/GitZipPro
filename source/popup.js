@@ -3,7 +3,20 @@
  * Updates the popup status indicator based on the active tab's URL.
  */
 
+function applyTheme(theme) {
+  if (theme === 'system') {
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+}
+
 (async () => {
+  // Apply theme first
+  const result = await chrome.storage.sync.get(['gzpTheme']);
+  const theme = result.gzpTheme || 'system';
+  applyTheme(theme);
+
   const dot = document.getElementById('status-dot');
   const statusText = document.getElementById('status-text');
 
