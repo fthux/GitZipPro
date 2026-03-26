@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GitZip Pro — Settings</title>
+  <style>
+    :root {
+      color-scheme: light;
+      /* Chrome Material Light */
+      --bg-color: #f8f9fa;
+      --card-bg: #ffffff;
+      --text-main: #202124;
+      --text-scnd: #5f6368;
+      --border-color: #dadce0;
+      --primary-color: #1a73e8;
+      --hover-bg: #f8f9fa;
+      --menu-active: rgb(138, 180, 248);
+      --menu-active-text: #1f1f1f;
+      --menu-hover: #f1f3f4;
+      --btn-bg: #ffffff;
+      --btn-border: #dadce0;
+      --btn-hover: #f1f3f4;
+      --btn-text: #1a73e8;
+      /* Toggle Colors */
+      --toggle-track-on: #a8c7fa;
+      --toggle-thumb-on: #0b57d0;
+      --toggle-track-off: #dadce0;
+      --toggle-thumb-off: #ffffff;
+      /* Select Icon */
+      --select-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%235f6368'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --bg-color: #202124;
+        --card-bg: #292a2d;
+        --text-main: #e8eaed;
+        --text-scnd: #9aa0a6;
+        --border-color: #3c4043;
+        --primary-color: #8ab4f8;
+        --hover-bg: #3c4043;
+        --menu-active: rgb(138, 180, 248);
+        --menu-active-text: #1f1f1f;
+        --menu-hover: #292a2d;
+        --btn-bg: #292a2d;
+        --btn-border: #5f6368;
+        --btn-hover: #3c4043;
+        --btn-text: #8ab4f8;
+        --toggle-track-on: #8ab4f8;
+        --toggle-thumb-on: #8ab4f8;
+        --toggle-track-off: #5f6368;
+        --toggle-thumb-off: #dadce0;
+        --select-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239aa0a6'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+      }
+    }
+
+    html[data-theme="light"] {
+      color-scheme: light;
+      --bg-color: #f8f9fa;
+      --card-bg: #ffffff;
+      --text-main: #202124;
+      --text-scnd: #5f6368;
+      --border-color: #dadce0;
+      --primary-color: #1a73e8;
+      --hover-bg: #f8f9fa;
+      --menu-active: rgb(138, 180, 248);
+      --menu-active-text: #1f1f1f;
+      --menu-hover: #f1f3f4;
+      --btn-bg: #ffffff;
+      --btn-border: #dadce0;
+      --btn-hover: #f1f3f4;
+      --btn-text: #1a73e8;
+      --toggle-track-on: #a8c7fa;
+      --toggle-thumb-on: #0b57d0;
+      --toggle-track-off: #dadce0;
+      --toggle-thumb-off: #ffffff;
+      --select-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%235f6368'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    }
+
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --bg-color: #202124;
+      --card-bg: #292a2d;
+      --text-main: #e8eaed;
+      --text-scnd: #9aa0a6;
+      --border-color: #3c4043;
+      --primary-color: #8ab4f8;
+      --hover-bg: #3c4043;
+      --menu-active: rgb(138, 180, 248);
+      --menu-active-text: #1f1f1f;
+      --menu-hover: #292a2d;
+      --btn-bg: #292a2d;
+      --btn-border: #5f6368;
+      --btn-hover: #3c4043;
+      --btn-text: #8ab4f8;
+      --toggle-track-on: #8ab4f8;
+      --toggle-thumb-on: #8ab4f8;
+      --toggle-track-off: #5f6368;
+      --toggle-thumb-off: #dadce0;
+      --select-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239aa0a6'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: Roboto, Arial, sans-serif;
+      font-size: 13px;
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Fixed Sidebar */
+    .sidebar {
+      width: 250px;
+      min-width: 250px;
+      padding: 16px 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 24px;
+      margin-bottom: 24px;
+      height: 48px;
+    }
+
+    .sidebar-header img {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+    }
+
+    .sidebar-header .title {
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+
+    .menu-group {
+      flex: 1;
+    }
+
+    .menu-item {
+      height: 40px;
+      display: flex;
+      align-items: center;
+      padding-left: 24px;
+      margin-right: 18px; /* matching chrome 18px */
+      border-radius: 0 20px 20px 0;
+      color: var(--text-main);
+      cursor: pointer;
+      font-weight: 600; /* Increased from 500 */
+      font-size: 14px;
+      user-select: none;
+      transition: background-color 0.15s, color 0.15s;
+    }
+
+    .menu-item:hover {
+      background-color: var(--menu-hover);
+    }
+
+    .menu-item.active {
+      background-color: var(--menu-active);
+      color: var(--menu-active-text);
+      font-weight: 700; /* Extra bold for active */
+    }
+
+    /* Main Scrolling Area */
+    .main-wrapper {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 48px;
+    }
+
+    .main-content {
+      width: 100%;
+      max-width: 680px;
+      margin: 0; /* Align left */
+    }
+
+    .page {
+      display: none;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 400;
+      color: var(--text-main);
+      margin-bottom: 24px;
+      margin-top: 16px;
+    }
+    
+    .section-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-main);
+      margin-bottom: 8px;
+      margin-top: 24px;
+      padding-left: 4px;
+    }
+
+    /* Option elements inside Select */
+    option {
+      background-color: var(--card-bg);
+      color: var(--text-main);
+    }
+
+    /* Chrome Cards */
+    .card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+    
+    html[data-theme="dark"] .card {
+      box-shadow: none;
+      border: 1px solid var(--border-color);
+    }
+    @media (prefers-color-scheme: dark) {
+      .card { box-shadow: none; border: 1px solid var(--border-color); }
+    }
+
+    /* Rows */
+    .setting-row {
+      display: flex;
+      align-items: center;
+      min-height: 64px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .setting-row:last-child {
+      border-bottom: none;
+    }
+
+    .setting-info {
+      flex: 1;
+      padding-right: 24px;
+    }
+
+    .setting-title {
+      font-size: 13px;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+
+    .setting-desc {
+      font-size: 13px;
+      color: var(--text-scnd);
+      line-height: 1.5;
+    }
+    
+    .setting-desc ul {
+      margin-top: 8px;
+      padding-left: 20px;
+      opacity: 0.9;
+    }
+    .setting-desc li { margin-bottom: 4px; }
+
+    .setting-control {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    /* Form Elements */
+    select, input[type="text"] {
+      appearance: none;
+      background: rgba(0,0,0,0.04);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      color: var(--text-main);
+      font-size: 13px;
+      padding: 8px 32px 8px 12px;
+      outline: none;
+      box-shadow: none;
+      transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+      min-width: 200px;
+      font-family: inherit;
+    }
+
+    html[data-theme="light"] select,
+    html[data-theme="light"] input[type="text"] {
+      background: rgba(0,0,0,0.04);
+      border-color: var(--border-color);
+    }
+
+    html[data-theme="dark"] select,
+    html[data-theme="dark"] input[type="text"] {
+      background: rgba(255,255,255,0.04);
+      border-color: var(--border-color);
+    }
+
+    /* Override prefers-color-scheme when theme is explicitly set */
+    html[data-theme="light"] select,
+    html[data-theme="light"] input[type="text"],
+    html[data-theme="dark"] select,
+    html[data-theme="dark"] input[type="text"] {
+      background: var(--card-bg);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      select, input[type="text"] { 
+        background: rgba(255,255,255,0.04); 
+        border-color: var(--border-color);
+      }
+    }
+
+    select {
+      background-image: var(--select-icon);
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      background-size: 20px;
+      cursor: pointer;
+      background-color: var(--card-bg);
+    }
+
+    html[data-theme="light"] select {
+      color-scheme: light;
+    }
+
+    html[data-theme="dark"] select {
+      color-scheme: dark;
+    }
+
+    select:focus, input[type="text"]:focus {
+      background: var(--card-bg) !important;
+      box-shadow: 0 0 0 2px var(--primary-color) inset;
+      border-color: transparent;
+    }
+    
+    html[data-theme="light"] select:focus,
+    html[data-theme="light"] input[type="text"]:focus,
+    html[data-theme="dark"] select:focus, 
+    html[data-theme="dark"] input[type="text"]:focus {
+      box-shadow: 0 0 0 2px var(--primary-color) inset;
+      border-color: transparent;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      select:focus, input[type="text"]:focus {
+        box-shadow: 0 0 0 2px var(--primary-color) inset;
+        border-color: transparent;
+      }
+    }
+
+    .input-group {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    
+    .input-group input[type="text"] {
+      padding-right: 12px;
+    }
+
+    /* Buttons */
+    button {
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      border: 1px solid var(--btn-border);
+      border-radius: 4px;
+      padding: 6px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background-color 0.15s;
+    }
+
+    button:hover {
+      background: var(--btn-hover);
+    }
+
+    /* Chrome Toggle Switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 34px;
+      height: 14px;
+      cursor: pointer;
+      margin-right: 20px; /* space for the thumb overlap */
+    }
+    
+    .switch input { 
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .slider {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--toggle-track-off);
+      border-radius: 7px;
+      transition: .2s;
+    }
+    
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: -5px;
+      bottom: -3px;
+      background-color: var(--toggle-thumb-off);
+      transition: .2s;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+    
+    input:checked + .slider {
+      background-color: var(--toggle-track-on);
+    }
+    
+    input:checked + .slider:before {
+      transform: translateX(20px);
+      background-color: var(--toggle-thumb-on);
+    }
+
+    /* Auto Ignore Tags & UI */
+    .gzp-ignore-tag {
+      display: flex; flex-direction: column; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; transition: all 0.2s; background: var(--card-bg); user-select: none;
+    }
+    .gzp-ignore-tag:hover {
+      background: var(--bg-hover);
+    }
+    .gzp-ignore-tag.active {
+      border-color: var(--primary-color); background: rgba(26, 115, 232, 0.05); box-shadow: 0 0 0 1px var(--primary-color);
+    }
+    .gzp-ignore-tag .tag-header {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-weight: 500; font-size: 14px;
+    }
+    .gzp-ignore-tag .tag-icon { font-size: 16px; }
+    .gzp-ignore-tag .tag-rules {
+      font-size: 11px; color: var(--text-scnd); font-family: monospace; white-space: normal; line-height: 1.3; margin-top: 4px;
+    }
+    .custom-rule-item {
+      display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--hover-bg); font-family: monospace; font-size: 13px; color: var(--text-main);
+    }
+    .custom-rule-item button {
+      background: none; border: none; color: #d93025; cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;
+    }
+    .custom-rule-item button:hover { background: rgba(217, 48, 37, 0.1); }
+
+  </style>
+</head>
+<body>
+  
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <img src="icons/icon48.png" alt="Icon" />
+      <span class="title">GitZip Pro</span>
+    </div>
+    
+    <div class="menu-group">
+      <div class="menu-item active" data-target="general">General</div>
+      <div class="menu-item" data-target="download">Download</div>
+    </div>
+  </div>
+
+  <div class="main-wrapper">
+    <div class="main-content">
+      
+      <!-- General Page -->
+      <div id="general" class="page active">
+        <h1 class="page-title">General</h1>
+        
+        <div class="card">
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-title">Theme</div>
+              <div class="setting-desc">Choose the preferred color theme for the extension interface.</div>
+            </div>
+            <div class="setting-control">
+              <select id="themeSelect">
+                <option value="system">System</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-title">Download Button Position</div>
+              <div class="setting-desc">Choose where the download button appears on GitHub repository pages.</div>
+            </div>
+            <div class="setting-control">
+              <select id="buttonPositionSelect">
+                <option value="bottom-right">Bottom Right</option>
+                <option value="top-left">Top Left</option>
+                <option value="top-right">Top Right</option>
+                <option value="bottom-left">Bottom Left</option>
+                <option value="top-center">Top Center</option>
+                <option value="bottom-center">Bottom Center</option>
+                <option value="left-center">Left Center </option>
+                <option value="right-center">Right Center</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Download Page -->
+      <div id="download" class="page">
+        <h1 class="page-title">Download</h1>
+        
+
+
+
+        <h2 class="section-title">File Storage</h2>
+        <div class="card">
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-title">ZIP Naming Rule</div>
+              <div class="setting-desc">Define the filename format for the downloaded ZIP archive. You can choose a preset or type a custom name.<br><br>
+                Available variables:
+                <ul>
+                  <li><code>{repo}</code> : Repository name</li>
+                  <li><code>{branch}</code> : Branch name</li>
+                  <li><code>{ts}</code> : Download timestamp</li>
+                </ul>
+              </div>
+            </div>
+            <div class="setting-control" style="flex-direction: column; align-items: stretch; gap: 8px; width: 280px;">
+              <select id="namingPreset">
+                <option value="{repo}">{repo}.zip</option>
+                <option value="{repo}_{ts}">{repo}_{ts}.zip</option>
+                <option value="{repo}-{branch}">{repo}-{branch}.zip</option>
+                <option value="{repo}-{branch}_{ts}" selected>{repo}-{branch}_{ts}.zip</option>
+              </select>
+              <input type="text" id="namingCustom" placeholder="Or type custom format..." style="width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-hover); color: var(--text-main); font-family: monospace; font-size: 13px;" />
+            </div>
+          </div>
+        </div>
+
+        <h2 class="section-title">Auto-Ignore Files</h2>
+        <div class="card">
+          <!-- Presets Group -->
+          <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 12px;">
+            <div class="setting-info" style="margin-bottom: 4px;">
+              <div class="setting-title">Quick Presets</div>
+              <div class="setting-desc">Instantly load predefined filter combinations for different scenarios.</div>
+            </div>
+            <div class="setting-control presets-wrapper" style="display: flex; justify-content: flex-start; gap: 16px; flex-wrap: wrap; width: 100%;">
+              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; color: var(--text-main); user-select: none;">
+                <input type="checkbox" class="gzp-preset-chk" value="full_repo" /> Full Repository
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; color: var(--text-main); user-select: none;">
+                <input type="checkbox" class="gzp-preset-chk" value="code_only" /> Code Only
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; color: var(--text-main); user-select: none;">
+                <input type="checkbox" class="gzp-preset-chk" value="docs_only" /> Documentation Only
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; color: var(--text-main); user-select: none;">
+                <input type="checkbox" class="gzp-preset-chk" value="design_assets" /> Design Assets
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; color: var(--text-main); user-select: none;">
+                <input type="checkbox" class="gzp-preset-chk" value="minimal" /> Minimal
+              </label>
+            </div>
+          </div>
+
+          <!-- Predefined Groups (Common, Media & Others) -->
+          <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 12px;">
+            <div class="setting-info" style="margin-bottom: 4px;">
+              <div class="setting-title">Common (Code & System)</div>
+              <div class="setting-desc">Commonly ignored files and folders for developers.</div>
+            </div>
+            <div class="ignore-tags-grid" id="ignoreCommonGroup" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; width: 100%;">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 12px; margin-top: 12px;">
+            <div class="setting-info" style="margin-bottom: 4px;">
+              <div class="setting-title">Media & Others</div>
+              <div class="setting-desc">Large asset files or documentation to optionally ignore.</div>
+            </div>
+            <div class="ignore-tags-grid" id="ignoreMediaGroup" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; width: 100%;">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <hr style="border: none; border-top: 1px solid var(--border-color); margin: 16px 0;" />
+
+          <!-- Custom Rules -->
+          <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 12px;">
+            <div class="setting-info" style="margin-bottom: 4px;">
+              <div class="setting-title">Custom Rules</div>
+              <div class="setting-desc">Add your own wildcard patterns. E.g., <code>*.log</code> for files, <code>temp_data/</code> for folders.</div>
+            </div>
+            
+            <div style="display: flex; gap: 8px; width: 100%;">
+              <input type="text" id="customRuleInput" placeholder="Pattern (e.g. *.spec.js)" style="flex: 1; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-hover); color: var(--text-main); font-family: monospace; font-size: 13px;" />
+              <button id="addCustomRuleBtn" style="padding: 6px 12px; background: var(--accent-color); color: #fff; border: none; border-radius: 4px; cursor: pointer;">Add Rule</button>
+            </div>
+
+            <div id="customRulesList" style="width: 100%; display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
+              <!-- Inserted via JS -->
+            </div>
+          </div>
+        </div>
+
+        <h2 class="section-title">Notifications</h2>
+        <div class="card">
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-title">Show Notification</div>
+              <div class="setting-desc">Display a browser popup when the download completes.</div>
+            </div>
+            <div class="setting-control">
+              <label class="switch">
+                <input type="checkbox" id="notifyShow" checked>
+                <span class="slider round"></span>
+              </label>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-title">Play Sound</div>
+              <div class="setting-desc">Play a short "ding" chime when the download completes.</div>
+            </div>
+            <div class="setting-control">
+              <label class="switch">
+                <input type="checkbox" id="notifySound" checked>
+                <span class="slider round"></span>
+              </label>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-title">Open Folder</div>
+              <div class="setting-desc">Automatically open the OS save folder when the download completes.</div>
+            </div>
+            <div class="setting-control">
+              <label class="switch">
+                <input type="checkbox" id="notifyOpen">
+                <span class="slider round"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <span id="versionDisplay" style="display:none;"></span>
+  <script src="options.js"></script>
+</body>
+</html>
