@@ -8,26 +8,29 @@
 /* First cell needs relative positioning so the wrapper sits inline */
 .gzp-cell {
   position: relative !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
 }
 
 /* ─── Checkbox wrapper ─────────────────────────────────────────────── */
 .gzp-cb-wrapper {
-  display: inline-flex !important;
+  position: absolute !important;
+  left: 4px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  z-index: 9999 !important;
+  display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   width: 20px !important;
   height: 20px !important;
-  margin: 0 4px 0 0 !important;
   padding: 0 !important;
   flex-shrink: 0 !important;
+  box-sizing: border-box !important;
 
-  /* Hidden by default */
-  opacity: 0 !important;
-  visibility: hidden !important;
+  /* Visible by default - fix for checkbox not showing */
+  opacity: 1 !important;
+  visibility: visible !important;
   transition: opacity 0.15s ease, visibility 0.15s ease !important;
+  pointer-events: auto !important;
 }
 
 .gzp-cb-wrapper--visible {
@@ -35,7 +38,7 @@
   visibility: visible !important;
 }
 
-/* When row is hovered or checkbox is checked, show wrapper */
+/* When row is hovered or checkbox is checked, keep wrapper visible */
 .gzp-row:hover .gzp-cb-wrapper,
 .gzp-row--selected .gzp-cb-wrapper {
   opacity: 1 !important;
@@ -92,6 +95,12 @@
 /* Selected row highlight */
 .gzp-row--selected {
   background-color: rgba(35, 134, 54, 0.1) !important;
+}
+
+/* Give first cell left padding to make space for checkbox */
+.gzp-cell {
+  padding-left: 28px !important;
+  box-sizing: border-box !important;
 }
 
 /* ─── Download Button ──────────────────────────────────────────────── */

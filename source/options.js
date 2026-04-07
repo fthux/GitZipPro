@@ -268,13 +268,36 @@ const HISTORY_STORAGE_KEY = 'gzpDownloadHistory';
 let downloadHistory = [];
 let historyPageInitialized = false;
 
-// Format date for display (YYYY-MM-DD format)
+// Format date for display with relative labels
 function formatHistoryDate(timestamp) {
-  const date = new Date(timestamp);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  const recordDate = new Date(timestamp);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  // Normalize dates to midnight for comparison
+  const normalize = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const normRecord = normalize(recordDate);
+  const normToday = normalize(today);
+  const normYesterday = normalize(yesterday);
+  
+  // Format weekday, month day, year (e.g., "Friday, March 27, 2026")
+  const formatFullDate = (d) => {
+    return d.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+  
+  if (normRecord.getTime() === normToday.getTime()) {
+    return `Today - ${formatFullDate(recordDate)}`;
+  } else if (normRecord.getTime() === normYesterday.getTime()) {
+    return `Yesterday - ${formatFullDate(recordDate)}`;
+  } else {
+    return formatFullDate(recordDate);
+  }
 }
 
 // Format time for display
@@ -365,7 +388,7 @@ function renderHistory() {
   // Show/hide control buttons based on whether there are any records
   const historyControls = document.querySelector('.history-controls');
   if (historyControls) {
-    historyControls.style.display = downloadHistory.length > 0 ? 'block' : 'none';
+    historyControls.style.display = downloadHistory.length > 0 ? 'flex' : 'none';
   }
 
   // Show empty state if no history
@@ -403,6 +426,7 @@ function renderHistory() {
 
     records.forEach(record => {
       const filesCount = record.fileCount || (Array.isArray(record.files) ? record.files.length : 0);
+      const ignoredCount = record.ignoredCount || 0;
       const repoName = record.repo || 'Unknown repository';
       const branchName = record.branch || 'main';
       const ownerName = record.owner || 'unknown';
@@ -417,7 +441,7 @@ function renderHistory() {
             </div>
             <div class="history-record-content">
               <div class="history-record-title">
-                <span class="history-record-repo">${repoName}</span>
+                <span class="history-record-repo">${ownerName}/${repoName}</span>
                 <span class="history-record-branch">${branchName}</span>
               </div>
               <div class="history-record-meta">
@@ -432,6 +456,7 @@ function renderHistory() {
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                   <span>${filesCount} ${filesCount === 1 ? 'file' : 'files'}</span>
+                  ${ignoredCount > 0 ? `<span style="margin-left: 6px; color: var(--text-scnd); font-size: 11px;">(${ignoredCount} filtered out)</span>` : ''}
                 </div>
               </div>
             </div>
@@ -451,6 +476,20 @@ function renderHistory() {
               <div class="history-file-list">
                 ${record.files && record.files.slice(0, 20).map(file => `<div class="history-file-item">${file}</div>`).join('') || ''}
                 ${filesCount > 20 ? `<div class="history-file-item">... and ${filesCount - 20} more</div>` : ''}
+              </div>
+            ` : ''}
+            ${ignoredCount > 0 ? `
+              <div style="margin-top: 8px;">
+                <strong>Filtered out:</strong> ${ignoredCount} ${ignoredCount === 1 ? 'file was' : 'files were'} excluded based on your auto‑ignore settings.
+                ${record.ignoredFiles && record.ignoredFiles.length > 0 ? `
+                  <div style="margin-top: 4px; font-size: 12px;">
+                    <strong>Filtered files:</strong>
+                    <div class="history-file-list" style="margin-top: 4px;">
+                      ${record.ignoredFiles.slice(0, 10).map(file => `<div class="history-file-item">${file}</div>`).join('')}
+                      ${record.ignoredFiles.length > 10 ? `<div class="history-file-item">... and ${record.ignoredFiles.length - 10} more</div>` : ''}
+                    </div>
+                  </div>
+                ` : ''}
               </div>
             ` : ''}
           </div>

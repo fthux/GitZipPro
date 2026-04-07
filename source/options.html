@@ -619,11 +619,13 @@
       border-bottom: none;
     }
 
-    .history-actions {
+    .history-controls {
       display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      margin-top: 24px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-color);
     }
 
     .history-selection-info {
@@ -632,13 +634,17 @@
       font-size: 13px;
       color: var(--text-main);
       font-weight: 500;
-      margin-bottom: 16px;
     }
 
     .history-selection-info span {
       font-weight: 600;
       color: var(--primary-color);
       margin: 0 4px;
+    }
+
+    .history-actions {
+      display: flex;
+      gap: 8px;
     }
 
   </style>

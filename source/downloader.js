@@ -163,8 +163,9 @@
   /**
    * Recursively collects all files under a directory.
    * Populates `fileList` with { path: string, fetch: () => Promise<Uint8Array> }.
+   * Tracks ignored files in stats.ignoredCount and stats.ignoredFiles.
    */
-  async function collectFiles(workerUrl, owner, repo, branch, dirPath, fileList, signal, depth = 0, ignoreRules = []) {
+  async function collectFiles(workerUrl, owner, repo, branch, dirPath, fileList, signal, depth = 0, ignoreRules = [], stats = { ignoredCount: 0, ignoredFiles: [] }) {
     if (depth > 20) throw new Error(`Max depth exceeded at: ${dirPath}`);
     if (fileList.length >= MAX_FILE_COUNT) return;
 
@@ -174,6 +175,8 @@
       if (fileList.length >= MAX_FILE_COUNT) break;
 
       if (isIgnored(entry.path, entry.type, ignoreRules)) {
+        stats.ignoredCount++;
+        stats.ignoredFiles.push(entry.path);
         continue;
       }
 
@@ -185,7 +188,7 @@
         });
       } else if (entry.type === 'dir') {
         // Recurse synchronously to keep depth-first ordering
-        await collectFiles(workerUrl, owner, repo, branch, entry.path, fileList, signal, depth + 1, ignoreRules);
+        await collectFiles(workerUrl, owner, repo, branch, entry.path, fileList, signal, depth + 1, ignoreRules, stats);
       }
     }
   }
@@ -238,9 +241,15 @@
       onProgress && onProgress(0, 0, 'Scanning…');
 
       const fileList = []; // { path: string, fetch: fn }
+      let totalIgnored = 0;
+      let totalIgnoredFiles = [];
 
       for (const item of parsed) {
-        if (isIgnored(item.path, item.type, compiledIgnoreRules)) continue;
+        if (isIgnored(item.path, item.type, compiledIgnoreRules)) {
+          totalIgnored++;
+          totalIgnoredFiles.push(item.path);
+          continue;
+        }
 
         if (item.type === 'file') {
           fileList.push({
@@ -248,7 +257,10 @@
             fetch: () => fetchFile(workerUrl, item.owner, item.repo, item.branch, item.path, signal),
           });
         } else {
-          await collectFiles(workerUrl, item.owner, item.repo, item.branch, item.path, fileList, signal, 0, compiledIgnoreRules);
+          const stats = { ignoredCount: 0, ignoredFiles: [] };
+          await collectFiles(workerUrl, item.owner, item.repo, item.branch, item.path, fileList, signal, 0, compiledIgnoreRules, stats);
+          totalIgnored += stats.ignoredCount;
+          totalIgnoredFiles.push(...stats.ignoredFiles);
         }
       }
 
@@ -305,7 +317,9 @@
         type: parsed[0].type,
         downloadName: zipName,
         files: fileList.map(item => item.path),
-        fileCount: fileList.length
+        fileCount: fileList.length,
+        ignoredCount: totalIgnored,
+        ignoredFiles: totalIgnoredFiles
       };
 
       await new Promise((resolve, reject) => {
