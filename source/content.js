@@ -421,7 +421,21 @@
   }
 
   function attachRowBehavior(row) {
+    console.error("hello1");
     if (row.hasAttribute(ROW_MARK)) return;
+    console.error("hello2");
+
+    // ✅ 跳过返回上一级的父文件夹导航行
+    // 官方标准检测: 查找aria-label为"Parent directory"的链接
+    // 精确匹配 只有这个才是真正的父目录行
+    const isParentDirectoryRow = row.querySelector('a[aria-label="Parent directory"]') !== null;
+
+    if (isParentDirectoryRow) {
+      // 只有真正的父目录行才跳过
+      row.setAttribute(ROW_MARK, '1');
+      return;
+    }
+
     row.setAttribute(ROW_MARK, '1');
 
     row.classList.add('gzp-row');
@@ -600,9 +614,11 @@
   }
 
   function attachAllRows() {
+    console.warn("hello1");
     // 防止重复执行附加操作
     if (isAttachingRows) return;
     isAttachingRows = true;
+    console.warn("hello2");
 
     try {
       if (!isRepoFilePage()) return;
@@ -921,9 +937,15 @@
   // 监听页面可见性变化
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      // 页面重新可见时，检查 URL 是否变化，重新注入
+      // 页面重新可见时，清除行标记 允许重新注入
+      const markedRows = document.querySelectorAll(`[${ROW_MARK}]`);
+      markedRows.forEach(row => {
+        row.removeAttribute(ROW_MARK);
+      });
+
       setTimeout(() => {
         attachAllRows();
+        logDebug('Page became visible, re-attached rows');
       }, 300);
     }
   });
