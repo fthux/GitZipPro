@@ -140,7 +140,7 @@ chrome.storage.sync.get(
     if (res.gzpIgnoreLabels) {
       activeLabels = new Set(res.gzpIgnoreLabels);
     } else {
-      activeLabels = new Set(PRESET_COMBOS.code_only);
+      activeLabels = new Set(PRESET_COMBOS.full_repo);
     }
 
     if (res.gzpIgnoreCustomVars) {

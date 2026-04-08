@@ -664,10 +664,35 @@
     </div>
     
     <div class="menu-group">
-      <div class="menu-item active" data-target="general">General</div>
-      <div class="menu-item" data-target="download">Download</div>
-      <div class="menu-item" data-target="history">History</div>
-      <div class="menu-item" data-target="token">Token</div>
+      <div class="menu-item active" data-target="general">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        General
+      </div>
+      <div class="menu-item" data-target="download">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download
+      </div>
+      <div class="menu-item" data-target="history">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        History
+      </div>
+      <div class="menu-item" data-target="token">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        Token
+      </div>
     </div>
   </div>
 
@@ -758,20 +783,28 @@
             <div class="setting-info">
               <div class="setting-title">ZIP Naming Rule</div>
               <div class="setting-desc">Define the filename format for the downloaded ZIP archive. You can choose a preset or type a custom name.<br><br>
-                Available variables:
-                <ul>
-                  <li><code>{repo}</code> : Repository name</li>
-                  <li><code>{branch}</code> : Branch name</li>
-                  <li><code>{ts}</code> : Download timestamp</li>
-                </ul>
+                 Available variables:
+                 <ul>
+                   <li><code>{repo}</code> : Repository name</li>
+                   <li><code>{branch}</code> : Branch name</li>
+                   <li><code>{owner}</code> : Repository owner username</li>
+                   <li><code>{path}</code> : Selected path/folder name</li>
+                   <li><code>{date}</code> : Current date (YYYY-MM-DD)</li>
+                   <li><code>{datetime}</code> : Full timestamp (YYYYMMDD-HHMMSS)</li>
+                   <li><code>{ts}</code> : Short date (YYYYMMDD)</li>
+                 </ul>
               </div>
             </div>
             <div class="setting-control" style="flex-direction: column; align-items: stretch; gap: 8px; width: 280px;">
               <select id="namingPreset">
                 <option value="{repo}">{repo}.zip</option>
-                <option value="{repo}_{ts}">{repo}_{ts}.zip</option>
                 <option value="{repo}-{branch}">{repo}-{branch}.zip</option>
-                <option value="{repo}-{branch}_{ts}" selected>{repo}-{branch}_{ts}.zip</option>
+                <option value="{repo}_{ts}">{repo}_{ts}.zip</option>
+                <option value="{owner}-{repo}">{owner}-{repo}.zip</option>
+                <option value="{repo}_{path}">{repo}_{path}.zip</option>
+                <option value="{repo}_{path}_{ts}">{repo}_{path}_{ts}.zip</option>
+                <option value="{repo}_{datetime}">{repo}_{datetime}.zip</option>
+                <option value="{repo}-{branch}-{path}_{ts}" selected>{repo}-{branch}-{path}_{ts}.zip</option>
               </select>
               <input type="text" id="namingCustom" placeholder="Or type custom format..." style="width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-hover); color: var(--text-main); font-family: monospace; font-size: 13px;" />
             </div>

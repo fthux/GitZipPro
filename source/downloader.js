@@ -105,12 +105,12 @@
     const headers = {
       'Accept': 'application/vnd.github.v3+json'
     };
-    
+
     // 如果使用自定义token模式且有token，则添加认证头
     if (githubToken && tokenAccessMode === 'custom') {
       headers['Authorization'] = `token ${githubToken}`;
     }
-    
+
     return headers;
   }
 
@@ -120,7 +120,7 @@
   async function githubFetch(apiPath, signal, githubToken = '', tokenAccessMode = 'anonymous', attempt = 0) {
     const fullUrl = `${GITHUB_API_BASE}${apiPath}`;
     const headers = buildHeaders(githubToken, tokenAccessMode);
-    
+
     let resp;
     try {
       resp = await fetch(fullUrl, { headers, signal });
@@ -314,10 +314,21 @@
       });
 
       const template = (namingCustom && namingCustom.trim() !== '') ? namingCustom.trim() : namingPreset;
-      const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const now = new Date();
+      const ts = now.toISOString().slice(0, 10).replace(/-/g, '');
+      const date = now.toISOString().slice(0, 10);
+      const datetime = `${ts}-${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
+
+      // 处理路径名称: 如果是根目录则为空 否则取最后一级文件夹名
+      const pathName = parsed[0].path ? parsed[0].path.split('/').pop() : '';
+
       let zipName = template
+        .replace(/{owner}/g, owner)
         .replace(/{repo}/g, repo)
         .replace(/{branch}/g, branch)
+        .replace(/{path}/g, pathName)
+        .replace(/{date}/g, date)
+        .replace(/{datetime}/g, datetime)
         .replace(/{ts}/g, ts);
 
       if (!zipName.toLowerCase().endsWith('.zip')) {
