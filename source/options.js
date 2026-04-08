@@ -294,10 +294,10 @@ toggleTokenVisibility.addEventListener('click', () => {
 tokenAccessMode.addEventListener('change', () => {
   const mode = tokenAccessMode.value;
   tokenInputSection.style.display = mode === 'custom' ? 'block' : 'none';
-  
+
   // Save mode to storage
   chrome.storage.sync.set({ [TOKEN_MODE_KEY]: mode });
-  
+
   // If switching to anonymous, clear token input
   if (mode === 'anonymous') {
     githubToken.value = '';
@@ -308,22 +308,22 @@ tokenAccessMode.addEventListener('change', () => {
 // Save token
 saveTokenBtn.addEventListener('click', async () => {
   const token = githubToken.value.trim();
-  
+
   if (!token) {
     updateTokenStatus('Please enter a token.', 'error');
     return;
   }
-  
+
   // Validate token format (basic check)
   if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
     updateTokenStatus('Token format appears invalid. GitHub tokens usually start with "ghp_" or "github_pat_".', 'warning');
   }
-  
+
   // Save token to storage
   try {
     await chrome.storage.sync.set({ [TOKEN_STORAGE_KEY]: token });
     updateTokenStatus('Token saved successfully!', 'success');
-    
+
     // Refresh rate limit status
     await checkRateLimit();
   } catch (error) {
@@ -349,10 +349,10 @@ refreshRateLimitBtn.addEventListener('click', async () => {
 // Update token status display
 function updateTokenStatus(message, type = 'info') {
   tokenStatusText.textContent = message;
-  
+
   // Reset color
   tokenStatusText.style.color = '';
-  
+
   // Set color based on type
   switch (type) {
     case 'success':
@@ -374,55 +374,55 @@ function updateTokenStatus(message, type = 'info') {
 async function checkRateLimit() {
   try {
     rateLimitStatus.textContent = 'Checking rate limit...';
-    
+
     // Get token from storage
     const result = await chrome.storage.sync.get([TOKEN_STORAGE_KEY, TOKEN_MODE_KEY]);
     const token = result[TOKEN_STORAGE_KEY];
     const mode = result[TOKEN_MODE_KEY] || 'anonymous';
-    
+
     const headers = {
       'Accept': 'application/vnd.github.v3+json'
     };
-    
+
     // Add token if available and mode is custom
     if (token && mode === 'custom') {
       headers['Authorization'] = `token ${token}`;
     }
-    
+
     // Fetch rate limit info
     const response = await fetch('https://api.github.com/rate_limit', { headers });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-    
+
     const data = await response.json();
     const rate = data.rate || data.resources?.core;
-    
+
     if (rate) {
       const remaining = rate.remaining;
       const limit = rate.limit;
       const resetTime = new Date(rate.reset * 1000);
       const resetIn = Math.max(0, Math.round((resetTime.getTime() - Date.now()) / 1000 / 60)); // minutes
-      
+
       let statusText = `Remaining: ${remaining}/${limit} requests`;
-      
+
       if (resetIn > 0) {
         statusText += ` (resets in ${resetIn} minutes)`;
       } else {
         statusText += ' (reset soon)';
       }
-      
+
       // Add mode info
       statusText += `\nMode: ${mode === 'custom' ? 'Authenticated' : 'Anonymous'}`;
-      
+
       // Add warning if low
       if (remaining < 10) {
         statusText += '\n⚠️ Rate limit almost exhausted!';
       } else if (remaining < limit * 0.2) {
         statusText += '\n⚠️ Rate limit getting low.';
       }
-      
+
       rateLimitStatus.textContent = statusText;
     } else {
       rateLimitStatus.textContent = 'Rate limit data not available.';
@@ -437,33 +437,33 @@ async function checkRateLimit() {
 async function loadTokenSettings() {
   try {
     const result = await chrome.storage.sync.get([TOKEN_STORAGE_KEY, TOKEN_MODE_KEY]);
-    
+
     // Load access mode
     const mode = result[TOKEN_MODE_KEY] || 'anonymous';
     tokenAccessMode.value = mode;
-    
+
     // Show/hide token input section
     tokenInputSection.style.display = mode === 'custom' ? 'block' : 'none';
-    
+
     // Load token (masked for display)
     if (result[TOKEN_STORAGE_KEY]) {
       const token = result[TOKEN_STORAGE_KEY];
       // Show first 4 and last 4 characters, mask the rest
-      const maskedToken = token.length > 8 
+      const maskedToken = token.length > 8
         ? token.substring(0, 4) + '•'.repeat(Math.min(token.length - 8, 12)) + token.substring(token.length - 4)
         : '••••••••';
       githubToken.value = maskedToken;
       githubToken.type = 'password';
       tokenIsVisible = false;
       toggleTokenVisibility.textContent = 'Show';
-      
+
       updateTokenStatus('Token configured (masked for security).', 'success');
     } else {
-      updateTokenStatus(mode === 'custom' 
+      updateTokenStatus(mode === 'custom'
         ? 'Token not configured. Enter your token and click "Save Token" to validate.'
         : 'Anonymous access enabled. Rate limit: 60 requests/hour.', 'info');
     }
-    
+
     // Check rate limit
     await checkRateLimit();
   } catch (error) {
@@ -484,13 +484,13 @@ function formatHistoryDate(timestamp) {
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-  
+
   // Normalize dates to midnight for comparison
   const normalize = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const normRecord = normalize(recordDate);
   const normToday = normalize(today);
   const normYesterday = normalize(yesterday);
-  
+
   // Format weekday, month day, year (e.g., "Friday, March 27, 2026")
   const formatFullDate = (d) => {
     return d.toLocaleDateString('en-US', {
@@ -500,7 +500,7 @@ function formatHistoryDate(timestamp) {
       day: 'numeric'
     });
   };
-  
+
   if (normRecord.getTime() === normToday.getTime()) {
     return `Today - ${formatFullDate(recordDate)}`;
   } else if (normRecord.getTime() === normYesterday.getTime()) {
@@ -768,13 +768,7 @@ async function initHistoryPage() {
   historyDeleteSelected.addEventListener('click', deleteSelectedRecords);
   historyClearAll.addEventListener('click', clearAllHistory);
 
-  // Listen for messages from background script about new downloads
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === 'GZP_DOWNLOAD_COMPLETE' && message.record) {
-      addHistoryRecord(message.record);
-      renderHistory(); // Re-render to show new record
-    }
-  });
+
 }
 
 // Initialize history page when DOM is loaded
@@ -801,7 +795,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (activeMenuItem && activeMenuItem.getAttribute('data-target') === 'history') {
     initHistoryPage();
     historyPageInitialized = true;
-    
+
     // Process any pending records
     if (window.pendingHistoryRecords && window.pendingHistoryRecords.length > 0) {
       window.pendingHistoryRecords.forEach(record => {

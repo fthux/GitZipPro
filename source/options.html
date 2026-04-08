@@ -284,7 +284,7 @@
     }
 
     /* Form Elements */
-    select, input[type="text"] {
+    select, input[type="text"], input[type="password"] {
       appearance: none;
       background: rgba(0,0,0,0.04);
       border: 1px solid var(--border-color);
@@ -300,13 +300,15 @@
     }
 
     html[data-theme="light"] select,
-    html[data-theme="light"] input[type="text"] {
+    html[data-theme="light"] input[type="text"],
+    html[data-theme="light"] input[type="password"] {
       background: rgba(0,0,0,0.04);
       border-color: var(--border-color);
     }
 
     html[data-theme="dark"] select,
-    html[data-theme="dark"] input[type="text"] {
+    html[data-theme="dark"] input[type="text"],
+    html[data-theme="dark"] input[type="password"] {
       background: rgba(255,255,255,0.04);
       border-color: var(--border-color);
     }
@@ -314,13 +316,15 @@
     /* Override prefers-color-scheme when theme is explicitly set */
     html[data-theme="light"] select,
     html[data-theme="light"] input[type="text"],
+    html[data-theme="light"] input[type="password"],
     html[data-theme="dark"] select,
-    html[data-theme="dark"] input[type="text"] {
+    html[data-theme="dark"] input[type="text"],
+    html[data-theme="dark"] input[type="password"] {
       background: var(--card-bg);
     }
 
     @media (prefers-color-scheme: dark) {
-      select, input[type="text"] { 
+      select, input[type="text"], input[type="password"] { 
         background: rgba(255,255,255,0.04); 
         border-color: var(--border-color);
       }
@@ -343,7 +347,7 @@
       color-scheme: dark;
     }
 
-    select:focus, input[type="text"]:focus {
+    select:focus, input[type="text"]:focus, input[type="password"]:focus {
       background: var(--card-bg) !important;
       box-shadow: 0 0 0 2px var(--primary-color) inset;
       border-color: transparent;
@@ -351,14 +355,16 @@
     
     html[data-theme="light"] select:focus,
     html[data-theme="light"] input[type="text"]:focus,
+    html[data-theme="light"] input[type="password"]:focus,
     html[data-theme="dark"] select:focus, 
-    html[data-theme="dark"] input[type="text"]:focus {
+    html[data-theme="dark"] input[type="text"]:focus,
+    html[data-theme="dark"] input[type="password"]:focus {
       box-shadow: 0 0 0 2px var(--primary-color) inset;
       border-color: transparent;
     }
     
     @media (prefers-color-scheme: dark) {
-      select:focus, input[type="text"]:focus {
+      select:focus, input[type="text"]:focus, input[type="password"]:focus {
         box-shadow: 0 0 0 2px var(--primary-color) inset;
         border-color: transparent;
       }
