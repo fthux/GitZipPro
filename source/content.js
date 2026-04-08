@@ -25,6 +25,10 @@
   let isNavigating = false;  // 防止重复清除
   let buttonPosition = 'bottom-right';  // Default position
   let isAttachingRows = false;  // 防止重复附加行
+  
+  // Context menu state
+  let lastRightClickedRow = null;
+  let lastRightClickedHref = null;
 
   // ─── GitHub repo page detection ───────────────────────────────────────────
 
@@ -132,9 +136,25 @@
     const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
 
     try {
-      const response = await fetch(apiUrl, {
-        headers: { 'Accept': 'application/vnd.github.v3+json' }
+      // 获取保存的token设置
+      const tokenResult = await new Promise((resolve) => {
+        chrome.storage.sync.get(['gzpGitHubToken', 'gzpTokenAccessMode'], resolve);
       });
+      
+      const token = tokenResult.gzpGitHubToken;
+      const mode = tokenResult.gzpTokenAccessMode || 'anonymous';
+      
+      // 准备请求头
+      const headers = {
+        'Accept': 'application/vnd.github.v3+json'
+      };
+      
+      // 如果使用自定义token模式且有token，则添加认证头
+      if (token && mode === 'custom') {
+        headers['Authorization'] = `token ${token}`;
+      }
+
+      const response = await fetch(apiUrl, { headers });
 
       if (!response.ok) {
         fileSizeCache.set(filePath, '');
@@ -453,6 +473,78 @@
         const changeEvent = new Event('change', { bubbles: false });
         cb.dispatchEvent(changeEvent);
       }
+    });
+
+    // 添加上下文菜单支持
+    setupRowContextMenu(row);
+  }
+
+  // ─── Context Menu Functions ──────────────────────────────────────────────
+
+  function setupRowContextMenu(row) {
+    row.addEventListener('contextmenu', (e) => {
+      // 获取该行的 href
+      const href = getPathFromRow(row);
+      if (!href) return;
+      
+      // 存储点击的项目用于上下文菜单
+      lastRightClickedRow = row;
+      lastRightClickedHref = href;
+      
+      // 获取项目的显示名称
+      const link = row.querySelector('a[href*="/tree/"], a[href*="/blob/"]');
+      const itemName = link ? link.textContent.trim() : href.split('/').pop();
+      
+      // 检测是文件还是文件夹
+      let itemType = 'unknown';
+      if (href.includes('/blob/')) {
+        itemType = 'file';
+      } else if (href.includes('/tree/')) {
+        itemType = 'folder';
+      } else {
+        // 如果是仓库根目录（没有tree/blob），则视为文件夹
+        const parts = href.split('/').filter(Boolean);
+        if (parts.length >= 2 && parts[0] === 'github.com') {
+          // https://github.com/owner/repo 格式
+          itemType = 'folder';
+        }
+      }
+      
+      // 发送消息给 background script 更新上下文菜单
+      chrome.runtime.sendMessage({
+        type: 'GZP_UPDATE_CONTEXT_MENU',
+        href: href,
+        itemName: itemName,
+        itemType: itemType
+      });
+      
+      // 不要阻止默认行为 - 让浏览器显示上下文菜单
+    });
+  }
+
+  function handleContextMenuDownload(href) {
+    if (!href || !window.GZPDownloader) {
+      console.error('GitZip Pro: Cannot download context menu item');
+      return;
+    }
+    
+    // 创建一个 Map 包含单个项目
+    const downloadMap = new Map();
+    // 使用虚拟元素作为键，因为 GZPDownloader 期望 Map<Element, string>
+    const dummyElement = document.createElement('div');
+    downloadMap.set(dummyElement, href);
+    
+    // 开始下载
+    window.GZPDownloader.start(downloadMap, {
+      onProgress: (current, total, label) => {
+        console.log(`Downloading via context menu: ${label}`);
+      },
+      onDone: () => {
+        console.log('Context menu download completed');
+      },
+      onError: (err) => {
+        console.error('Context menu download error:', err);
+      },
     });
   }
 
@@ -824,6 +916,18 @@
 
     // 关键：拦截所有链接点击
     interceptLinkClicks();
+
+    // 添加上下文菜单消息监听器
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.type === 'GZP_DOWNLOAD_CONTEXT_ITEM') {
+        // 下载上下文菜单中选中的项目
+        const href = message.href;
+        handleContextMenuDownload(href);
+        sendResponse({ ok: true });
+        return true;
+      }
+      return false;
+    });
 
     logDebug('Initialization complete');
   }

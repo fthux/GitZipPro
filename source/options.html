@@ -661,6 +661,7 @@
       <div class="menu-item active" data-target="general">General</div>
       <div class="menu-item" data-target="download">Download</div>
       <div class="menu-item" data-target="history">History</div>
+      <div class="menu-item" data-target="token">Token</div>
     </div>
   </div>
 
@@ -872,6 +873,88 @@
           <div class="history-empty-state">
             <h3>No download history yet</h3>
             <p>Your download history will appear here after you download files from GitHub repositories.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Token Page -->
+      <div id="token" class="page">
+        <h1 class="page-title">GitHub Token</h1>
+        
+        <h2 class="section-title">Custom Token</h2>
+        <div class="card">
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-title">GitHub API Access</div>
+              <div class="setting-desc">
+                Choose how GitZip Pro accesses GitHub API:
+                <ul>
+                  <li><strong>Anonymous Access:</strong> Uses public API without authentication (rate limited to 60 requests per hour)</li>
+                  <li><strong>Custom Token:</strong> Use your personal GitHub token for higher rate limits and access to private repositories</li>
+                </ul>
+              </div>
+            </div>
+            <div class="setting-control">
+              <select id="tokenAccessMode">
+                <option value="anonymous">Anonymous Access</option>
+                <option value="custom">Custom Token</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="tokenInputSection" style="display: none;">
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-title">GitHub Personal Access Token</div>
+                <div class="setting-desc">
+                  Enter your GitHub Personal Access Token (PAT). 
+                  <br><br>
+                  <strong>How to create a token:</strong>
+                  <ol>
+                    <li>Go to GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)</li>
+                    <li>Click "Generate new token" → "Generate new token (classic)"</li>
+                    <li>Give it a descriptive name (e.g., "GitZip Pro")</li>
+                    <li>Select scopes: <code>repo</code> (for private repos) and <code>read:org</code> (optional)</li>
+                    <li>Click "Generate token" and copy the token</li>
+                  </ol>
+                  <strong>Note:</strong> The token is stored locally in your browser and never sent to any server except GitHub.
+                </div>
+              </div>
+              <div class="setting-control">
+                <div class="input-group">
+                  <input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="width: 300px;" />
+                  <button id="toggleTokenVisibility" type="button">Show</button>
+                </div>
+              </div>
+            </div>
+            
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-title">Token Status</div>
+                <div class="setting-desc" id="tokenStatusText">
+                  Token not configured. Enter your token and click "Save Token" to validate.
+                </div>
+              </div>
+              <div class="setting-control">
+                <button id="saveTokenBtn" style="background: var(--primary-color); color: white; border: none;">Save Token</button>
+                <button id="clearTokenBtn" style="margin-left: 8px;">Clear Token</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <h2 class="section-title">Rate Limits & Usage</h2>
+        <div class="card">
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-title">Current Rate Limit Status</div>
+              <div class="setting-desc" id="rateLimitStatus">
+                Loading rate limit information...
+              </div>
+            </div>
+            <div class="setting-control">
+              <button id="refreshRateLimitBtn">Refresh Status</button>
+            </div>
           </div>
         </div>
       </div>

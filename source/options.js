@@ -22,6 +22,17 @@ const historyCheckedCount = document.getElementById('history-checked-count');
 const historyDeleteSelected = document.getElementById('history-delete-selected');
 const historyClearAll = document.getElementById('history-clear-all');
 
+// Token page elements
+const tokenAccessMode = document.getElementById('tokenAccessMode');
+const tokenInputSection = document.getElementById('tokenInputSection');
+const githubToken = document.getElementById('githubToken');
+const toggleTokenVisibility = document.getElementById('toggleTokenVisibility');
+const tokenStatusText = document.getElementById('tokenStatusText');
+const saveTokenBtn = document.getElementById('saveTokenBtn');
+const clearTokenBtn = document.getElementById('clearTokenBtn');
+const rateLimitStatus = document.getElementById('rateLimitStatus');
+const refreshRateLimitBtn = document.getElementById('refreshRateLimitBtn');
+
 // ─── Version ──────────────────────────────────────────────────────────────────
 
 if (chrome.runtime && chrome.runtime.getManifest) {
@@ -87,7 +98,7 @@ notifyOpen.addEventListener('change', () => chrome.storage.sync.set({ gzpNotifyO
 // ─── Load All Saved Settings ──────────────────────────────────────────────────
 
 chrome.storage.sync.get(
-  ['gzpTheme', 'gzpButtonPosition', 'gzpNamingPreset', 'gzpNamingCustom', 'gzpNotifyShow', 'gzpNotifySound', 'gzpNotifyOpen', 'gzpIgnoreLabels', 'gzpIgnoreCustomVars'],
+  ['gzpTheme', 'gzpButtonPosition', 'gzpNamingPreset', 'gzpNamingCustom', 'gzpNotifyShow', 'gzpNotifySound', 'gzpNotifyOpen', 'gzpIgnoreLabels', 'gzpIgnoreCustomVars', 'gzpGitHubToken', 'gzpTokenAccessMode'],
   (res) => {
     // Theme
     const savedTheme = res.gzpTheme || 'system';
@@ -123,6 +134,9 @@ chrome.storage.sync.get(
     renderIgnoreTags();
     updatePresetButtons();
     renderCustomRules();
+
+    // Token settings
+    loadTokenSettings();
   }
 );
 
@@ -261,6 +275,202 @@ addCustomRuleBtn.addEventListener('click', () => {
 customRuleInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') addCustomRuleBtn.click();
 });
+
+// ─── Token Management ─────────────────────────────────────────────────────────
+
+const TOKEN_STORAGE_KEY = 'gzpGitHubToken';
+const TOKEN_MODE_KEY = 'gzpTokenAccessMode';
+
+let tokenIsVisible = false;
+
+// Toggle token visibility
+toggleTokenVisibility.addEventListener('click', () => {
+  tokenIsVisible = !tokenIsVisible;
+  githubToken.type = tokenIsVisible ? 'text' : 'password';
+  toggleTokenVisibility.textContent = tokenIsVisible ? 'Hide' : 'Show';
+});
+
+// Handle access mode change
+tokenAccessMode.addEventListener('change', () => {
+  const mode = tokenAccessMode.value;
+  tokenInputSection.style.display = mode === 'custom' ? 'block' : 'none';
+  
+  // Save mode to storage
+  chrome.storage.sync.set({ [TOKEN_MODE_KEY]: mode });
+  
+  // If switching to anonymous, clear token input
+  if (mode === 'anonymous') {
+    githubToken.value = '';
+    updateTokenStatus('Anonymous access enabled. Rate limit: 60 requests/hour.', 'info');
+  }
+});
+
+// Save token
+saveTokenBtn.addEventListener('click', async () => {
+  const token = githubToken.value.trim();
+  
+  if (!token) {
+    updateTokenStatus('Please enter a token.', 'error');
+    return;
+  }
+  
+  // Validate token format (basic check)
+  if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
+    updateTokenStatus('Token format appears invalid. GitHub tokens usually start with "ghp_" or "github_pat_".', 'warning');
+  }
+  
+  // Save token to storage
+  try {
+    await chrome.storage.sync.set({ [TOKEN_STORAGE_KEY]: token });
+    updateTokenStatus('Token saved successfully!', 'success');
+    
+    // Refresh rate limit status
+    await checkRateLimit();
+  } catch (error) {
+    updateTokenStatus('Failed to save token: ' + error.message, 'error');
+  }
+});
+
+// Clear token
+clearTokenBtn.addEventListener('click', async () => {
+  if (confirm('Are you sure you want to clear the saved token?')) {
+    githubToken.value = '';
+    await chrome.storage.sync.remove(TOKEN_STORAGE_KEY);
+    updateTokenStatus('Token cleared.', 'info');
+    await checkRateLimit();
+  }
+});
+
+// Refresh rate limit
+refreshRateLimitBtn.addEventListener('click', async () => {
+  await checkRateLimit();
+});
+
+// Update token status display
+function updateTokenStatus(message, type = 'info') {
+  tokenStatusText.textContent = message;
+  
+  // Reset color
+  tokenStatusText.style.color = '';
+  
+  // Set color based on type
+  switch (type) {
+    case 'success':
+      tokenStatusText.style.color = '#0b8043'; // Green
+      break;
+    case 'error':
+      tokenStatusText.style.color = '#d93025'; // Red
+      break;
+    case 'warning':
+      tokenStatusText.style.color = '#f29900'; // Orange
+      break;
+    case 'info':
+      tokenStatusText.style.color = 'var(--text-scnd)';
+      break;
+  }
+}
+
+// Check GitHub rate limit
+async function checkRateLimit() {
+  try {
+    rateLimitStatus.textContent = 'Checking rate limit...';
+    
+    // Get token from storage
+    const result = await chrome.storage.sync.get([TOKEN_STORAGE_KEY, TOKEN_MODE_KEY]);
+    const token = result[TOKEN_STORAGE_KEY];
+    const mode = result[TOKEN_MODE_KEY] || 'anonymous';
+    
+    const headers = {
+      'Accept': 'application/vnd.github.v3+json'
+    };
+    
+    // Add token if available and mode is custom
+    if (token && mode === 'custom') {
+      headers['Authorization'] = `token ${token}`;
+    }
+    
+    // Fetch rate limit info
+    const response = await fetch('https://api.github.com/rate_limit', { headers });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    const rate = data.rate || data.resources?.core;
+    
+    if (rate) {
+      const remaining = rate.remaining;
+      const limit = rate.limit;
+      const resetTime = new Date(rate.reset * 1000);
+      const resetIn = Math.max(0, Math.round((resetTime.getTime() - Date.now()) / 1000 / 60)); // minutes
+      
+      let statusText = `Remaining: ${remaining}/${limit} requests`;
+      
+      if (resetIn > 0) {
+        statusText += ` (resets in ${resetIn} minutes)`;
+      } else {
+        statusText += ' (reset soon)';
+      }
+      
+      // Add mode info
+      statusText += `\nMode: ${mode === 'custom' ? 'Authenticated' : 'Anonymous'}`;
+      
+      // Add warning if low
+      if (remaining < 10) {
+        statusText += '\n⚠️ Rate limit almost exhausted!';
+      } else if (remaining < limit * 0.2) {
+        statusText += '\n⚠️ Rate limit getting low.';
+      }
+      
+      rateLimitStatus.textContent = statusText;
+    } else {
+      rateLimitStatus.textContent = 'Rate limit data not available.';
+    }
+  } catch (error) {
+    console.error('Failed to check rate limit:', error);
+    rateLimitStatus.textContent = `Error: ${error.message}`;
+  }
+}
+
+// Load token settings
+async function loadTokenSettings() {
+  try {
+    const result = await chrome.storage.sync.get([TOKEN_STORAGE_KEY, TOKEN_MODE_KEY]);
+    
+    // Load access mode
+    const mode = result[TOKEN_MODE_KEY] || 'anonymous';
+    tokenAccessMode.value = mode;
+    
+    // Show/hide token input section
+    tokenInputSection.style.display = mode === 'custom' ? 'block' : 'none';
+    
+    // Load token (masked for display)
+    if (result[TOKEN_STORAGE_KEY]) {
+      const token = result[TOKEN_STORAGE_KEY];
+      // Show first 4 and last 4 characters, mask the rest
+      const maskedToken = token.length > 8 
+        ? token.substring(0, 4) + '•'.repeat(Math.min(token.length - 8, 12)) + token.substring(token.length - 4)
+        : '••••••••';
+      githubToken.value = maskedToken;
+      githubToken.type = 'password';
+      tokenIsVisible = false;
+      toggleTokenVisibility.textContent = 'Show';
+      
+      updateTokenStatus('Token configured (masked for security).', 'success');
+    } else {
+      updateTokenStatus(mode === 'custom' 
+        ? 'Token not configured. Enter your token and click "Save Token" to validate.'
+        : 'Anonymous access enabled. Rate limit: 60 requests/hour.', 'info');
+    }
+    
+    // Check rate limit
+    await checkRateLimit();
+  } catch (error) {
+    console.error('Failed to load token settings:', error);
+    updateTokenStatus('Error loading token settings.', 'error');
+  }
+}
 
 // ─── History Page Implementation ──────────────────────────────────────────────
 
@@ -555,8 +765,6 @@ async function initHistoryPage() {
   await loadHistory();
   renderHistory();
 
-  // No more select-all functionality - removed as requested
-
   historyDeleteSelected.addEventListener('click', deleteSelectedRecords);
   historyClearAll.addEventListener('click', clearAllHistory);
 
@@ -564,16 +772,43 @@ async function initHistoryPage() {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'GZP_DOWNLOAD_COMPLETE' && message.record) {
       addHistoryRecord(message.record);
+      renderHistory(); // Re-render to show new record
     }
   });
 }
 
 // Initialize history page when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize message listener for download completion events
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'GZP_DOWNLOAD_COMPLETE' && message.record) {
+      // If history page is already initialized, add the record
+      if (historyPageInitialized) {
+        addHistoryRecord(message.record);
+        renderHistory(); // Re-render to show new record
+      } else {
+        // Store the record temporarily and add it when history page is initialized
+        if (!window.pendingHistoryRecords) {
+          window.pendingHistoryRecords = [];
+        }
+        window.pendingHistoryRecords.push(message.record);
+      }
+    }
+  });
+
   // Check if we're already on the history tab
   const activeMenuItem = document.querySelector('.menu-item.active');
   if (activeMenuItem && activeMenuItem.getAttribute('data-target') === 'history') {
     initHistoryPage();
     historyPageInitialized = true;
+    
+    // Process any pending records
+    if (window.pendingHistoryRecords && window.pendingHistoryRecords.length > 0) {
+      window.pendingHistoryRecords.forEach(record => {
+        addHistoryRecord(record);
+      });
+      window.pendingHistoryRecords = [];
+      renderHistory();
+    }
   }
 });

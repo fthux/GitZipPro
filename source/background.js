@@ -12,35 +12,113 @@
 
 const activeDownloads = new Map();
 
+// Context menu state
+let selectedItemHref = null;
+
+// Create context menu on installation
+chrome.runtime.onInstalled.addListener(() => {
+  // Create parent menu item
+  chrome.contextMenus.create({
+    id: 'gitzip-pro-download',
+    title: 'GitZip Pro Download',
+    contexts: ['page', 'link', 'selection']
+  });
+
+  // Create disabled "Checked Item(s)" submenu
+  chrome.contextMenus.create({
+    id: 'gitzip-pro-checked-items',
+    parentId: 'gitzip-pro-download',
+    title: 'Checked Item(s)',
+    contexts: ['page', 'link', 'selection'],
+    enabled: false
+  });
+
+  // Create separator
+  chrome.contextMenus.create({
+    id: 'gitzip-pro-separator',
+    parentId: 'gitzip-pro-download',
+    type: 'separator',
+    contexts: ['page', 'link', 'selection']
+  });
+
+  // Create dynamic "Selected Folder" submenu (will be updated)
+  chrome.contextMenus.create({
+    id: 'gitzip-pro-selected-item',
+    parentId: 'gitzip-pro-download',
+    title: 'Selected Folder - (none)',
+    contexts: ['page', 'link', 'selection']
+  });
+});
+
+// Update context menu when receiving right-click info from content script
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type !== 'GZP_DOWNLOAD_FILE') return false;
+  // Handle download file messages
+  if (message.type === 'GZP_DOWNLOAD_FILE') {
+    const { filename, base64, mimeType = 'application/octet-stream', notifyShow, notifyOpen, historyRecord } = message;
 
-  const { filename, base64, mimeType = 'application/octet-stream', notifyShow, notifyOpen, historyRecord } = message;
+    (async () => {
+      try {
+        let safeFilename = filename;
+        // chrome.downloads strictly forbids any path segment starting with a dot or tilde
+        safeFilename = safeFilename.replace(/(^|\/)[.~]/g, '$1_');
 
-  (async () => {
-    try {
-      let safeFilename = filename;
-      // chrome.downloads strictly forbids any path segment starting with a dot or tilde
-      safeFilename = safeFilename.replace(/(^|\/)[.~]/g, '$1_');
-
-      const dataUrl = `data:${mimeType};base64,${base64}`;
-      chrome.downloads.download({ url: dataUrl, filename: safeFilename, saveAs: false }, (downloadId) => {
-        if (chrome.runtime.lastError) {
-          sendResponse({ ok: false, error: chrome.runtime.lastError.message });
-        } else {
-          if (notifyShow || notifyOpen) {
-            // Store filename and history record along with notification preferences
-            activeDownloads.set(downloadId, { notifyShow, notifyOpen, filename, historyRecord });
+        const dataUrl = `data:${mimeType};base64,${base64}`;
+        chrome.downloads.download({ url: dataUrl, filename: safeFilename, saveAs: false }, (downloadId) => {
+          if (chrome.runtime.lastError) {
+            sendResponse({ ok: false, error: chrome.runtime.lastError.message });
+          } else {
+            if (notifyShow || notifyOpen) {
+              // Store filename and history record along with notification preferences
+              activeDownloads.set(downloadId, { notifyShow, notifyOpen, filename, historyRecord });
+            }
+            sendResponse({ ok: true, downloadId });
           }
-          sendResponse({ ok: true, downloadId });
-        }
-      });
-    } catch (err) {
-      sendResponse({ ok: false, error: err.message });
-    }
-  })();
+        });
+      } catch (err) {
+        sendResponse({ ok: false, error: err.message });
+      }
+    })();
 
-  return true;
+    return true;
+  }
+
+  // Handle context menu update messages
+  if (message.type === 'GZP_UPDATE_CONTEXT_MENU') {
+    const { href, itemName, itemType } = message;
+    selectedItemHref = href;
+    
+    // Update the context menu title based on item type
+    const displayName = itemName || (href ? href.split('/').pop() : 'unknown');
+    let menuTitle;
+    if (itemType === 'file') {
+      menuTitle = `Selected File - ${displayName}`;
+    } else if (itemType === 'folder') {
+      menuTitle = `Selected Folder - ${displayName}`;
+    } else {
+      // Fallback for unknown type
+      menuTitle = `Selected Item - ${displayName}`;
+    }
+    
+    chrome.contextMenus.update('gitzip-pro-selected-item', {
+      title: menuTitle
+    });
+    
+    sendResponse({ ok: true });
+    return true;
+  }
+
+  return false;
+});
+
+// Handle context menu click
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === 'gitzip-pro-selected-item' && selectedItemHref) {
+    // Send message to content script to download the selected item
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'GZP_DOWNLOAD_CONTEXT_ITEM',
+      href: selectedItemHref
+    });
+  }
 });
 
 chrome.downloads.onChanged.addListener((delta) => {

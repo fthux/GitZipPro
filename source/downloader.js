@@ -3,7 +3,7 @@
  *
  * Handles:
  *  1. Parsing GitHub file/folder URLs into { owner, repo, branch, path, type }
- *  2. Fetching file contents via the Cloudflare Worker proxy
+ *  2. Fetching file contents via GitHub API directly
  *  3. Recursively traversing directories
  *  4. Building a JSZip archive preserving the original tree structure
  *  5. Triggering the browser download
@@ -12,8 +12,8 @@
  *
  * Requires jszip.min.js to be loaded before this script.
  *
- * CF Worker API shape (GitHub Contents API compatible):
- *   GET {WORKER_URL}/repos/{owner}/{repo}/contents/{path}?ref={branch}
+ * GitHub API endpoints used:
+ *   GET https://api.github.com/repos/{owner}/{repo}/contents/{path}?ref={branch}
  *   → File:  { type:"file", name, path, content:<base64>, encoding:"base64" }
  *   → Dir:   [ { type:"file"|"dir", name, path, ... }, ... ]
  */
@@ -23,7 +23,7 @@
 
   // ─── Config ───────────────────────────────────────────────────────────────
 
-  const DEFAULT_WORKER_URL = 'https://gitzip-pro-worker.fthux.com';
+  const GITHUB_API_BASE = 'https://api.github.com';
   const CONCURRENCY_LIMIT = 5;   // max parallel fetch requests
   const MAX_FILE_COUNT = 500; // safety cap
 
@@ -96,44 +96,65 @@
     return results;
   }
 
-  // ─── CF Worker fetch helpers ──────────────────────────────────────────────
+  // ─── GitHub API fetch helpers ─────────────────────────────────────────────
 
   /**
-   * Fetches from the CF Worker with retries on 429 (rate-limit).
+   * Builds request headers for GitHub API
    */
-  async function workerFetch(workerUrl, apiPath, signal, attempt = 0) {
-    const fullUrl = `${workerUrl}${apiPath}`;
+  function buildHeaders(githubToken = '', tokenAccessMode = 'anonymous') {
+    const headers = {
+      'Accept': 'application/vnd.github.v3+json'
+    };
+    
+    // 如果使用自定义token模式且有token，则添加认证头
+    if (githubToken && tokenAccessMode === 'custom') {
+      headers['Authorization'] = `token ${githubToken}`;
+    }
+    
+    return headers;
+  }
+
+  /**
+   * Fetches from GitHub API with retries on 429 (rate-limit) and 403 (rate-limit).
+   */
+  async function githubFetch(apiPath, signal, githubToken = '', tokenAccessMode = 'anonymous', attempt = 0) {
+    const fullUrl = `${GITHUB_API_BASE}${apiPath}`;
+    const headers = buildHeaders(githubToken, tokenAccessMode);
+    
     let resp;
     try {
-      resp = await fetch(fullUrl, { signal });
+      resp = await fetch(fullUrl, { headers, signal });
     } catch (e) {
       if (e.name === 'AbortError') throw e;
       throw new Error(`Network error: ${e.message}`);
     }
 
-    if (resp.status === 429 && attempt < 3) {
-      const wait = (attempt + 1) * 2000;
+    // 处理速率限制 (429 Too Many Requests 或 403 Forbidden with rate limit info)
+    if ((resp.status === 429 || resp.status === 403) && attempt < 3) {
+      // 检查是否有 Retry-After 头
+      const retryAfter = resp.headers.get('Retry-After');
+      const wait = retryAfter ? parseInt(retryAfter) * 1000 : (attempt + 1) * 2000;
       await new Promise(r => setTimeout(r, wait));
-      return workerFetch(workerUrl, apiPath, signal, attempt + 1);
+      return githubFetch(apiPath, signal, githubToken, tokenAccessMode, attempt + 1);
     }
 
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
-      throw new Error(`Worker ${resp.status}: ${text.slice(0, 120)}`);
+      throw new Error(`GitHub API ${resp.status}: ${text.slice(0, 120)}`);
     }
 
     return resp.json();
   }
 
   /**
-   * Fetches a single file from the CF Worker and returns its binary content.
-   * The Worker returns the GitHub Contents API shape with base64 `content`.
+   * Fetches a single file from GitHub API and returns its binary content.
+   * The API returns the GitHub Contents API shape with base64 `content`.
    *
    * @returns {Uint8Array}
    */
-  async function fetchFile(workerUrl, owner, repo, branch, path, signal) {
+  async function fetchFile(owner, repo, branch, path, signal, githubToken = '', tokenAccessMode = 'anonymous') {
     const apiPath = `/repos/${owner}/${repo}/contents/${encodeURIFilePath(path)}?ref=${branch}`;
-    const data = await workerFetch(workerUrl, apiPath, signal);
+    const data = await githubFetch(apiPath, signal, githubToken, tokenAccessMode);
 
     if (data.type !== 'file' || !data.content) {
       throw new Error(`Unexpected response for file: ${path}`);
@@ -145,12 +166,12 @@
   }
 
   /**
-   * Lists the contents of a directory via the CF Worker.
+   * Lists the contents of a directory via GitHub API.
    * @returns {Array<{ type, name, path }>}
    */
-  async function listDir(workerUrl, owner, repo, branch, path, signal) {
+  async function listDir(owner, repo, branch, path, signal, githubToken = '', tokenAccessMode = 'anonymous') {
     const apiPath = `/repos/${owner}/${repo}/contents/${encodeURIFilePath(path)}?ref=${branch}`;
-    const data = await workerFetch(workerUrl, apiPath, signal);
+    const data = await githubFetch(apiPath, signal, githubToken, tokenAccessMode);
 
     if (!Array.isArray(data)) {
       throw new Error(`Expected directory listing for: ${path}`);
@@ -165,11 +186,11 @@
    * Populates `fileList` with { path: string, fetch: () => Promise<Uint8Array> }.
    * Tracks ignored files in stats.ignoredCount and stats.ignoredFiles.
    */
-  async function collectFiles(workerUrl, owner, repo, branch, dirPath, fileList, signal, depth = 0, ignoreRules = [], stats = { ignoredCount: 0, ignoredFiles: [] }) {
+  async function collectFiles(owner, repo, branch, dirPath, fileList, signal, depth = 0, ignoreRules = [], stats = { ignoredCount: 0, ignoredFiles: [] }, githubToken = '', tokenAccessMode = 'anonymous') {
     if (depth > 20) throw new Error(`Max depth exceeded at: ${dirPath}`);
     if (fileList.length >= MAX_FILE_COUNT) return;
 
-    const entries = await listDir(workerUrl, owner, repo, branch, dirPath, signal);
+    const entries = await listDir(owner, repo, branch, dirPath, signal, githubToken, tokenAccessMode);
 
     for (const entry of entries) {
       if (fileList.length >= MAX_FILE_COUNT) break;
@@ -184,11 +205,11 @@
         const entryPath = entry.path;
         fileList.push({
           path: entryPath,
-          fetch: () => fetchFile(workerUrl, owner, repo, branch, entryPath, signal),
+          fetch: () => fetchFile(owner, repo, branch, entryPath, signal, githubToken, tokenAccessMode),
         });
       } else if (entry.type === 'dir') {
         // Recurse synchronously to keep depth-first ordering
-        await collectFiles(workerUrl, owner, repo, branch, entry.path, fileList, signal, depth + 1, ignoreRules, stats);
+        await collectFiles(owner, repo, branch, entry.path, fileList, signal, depth + 1, ignoreRules, stats, githubToken, tokenAccessMode);
       }
     }
   }
@@ -215,9 +236,9 @@
     try {
       settings = await getSettings();
     } catch {
-      settings = { workerUrl: DEFAULT_WORKER_URL, namingPreset: '{repo}-{branch}_{ts}', namingCustom: '', notifyShow: true, notifySound: true, notifyOpen: false, ignoreLabels: ['git', 'sys', 'deps', 'build', 'logs'], ignoreCustomVars: [] };
+      settings = { namingPreset: '{repo}-{branch}_{ts}', namingCustom: '', notifyShow: true, notifySound: true, notifyOpen: false, ignoreLabels: ['git', 'sys', 'deps', 'build', 'logs'], ignoreCustomVars: [], githubToken: '', tokenAccessMode: 'anonymous' };
     }
-    const { workerUrl, namingPreset, namingCustom, notifyShow, notifySound, notifyOpen, ignoreLabels, ignoreCustomVars } = settings;
+    const { namingPreset, namingCustom, notifyShow, notifySound, notifyOpen, ignoreLabels, ignoreCustomVars, githubToken, tokenAccessMode } = settings;
 
     const compiledIgnoreRules = compileIgnoreRules(ignoreLabels || ['git', 'sys', 'deps', 'build', 'logs'], ignoreCustomVars || []);
 
@@ -233,7 +254,7 @@
       return abortCtrl;
     }
 
-    const { repo, branch } = parsed[0];
+    const { owner, repo, branch } = parsed[0];
     const zipRoot = `${repo}-${branch}`;
 
     try {
@@ -254,11 +275,11 @@
         if (item.type === 'file') {
           fileList.push({
             path: item.path,
-            fetch: () => fetchFile(workerUrl, item.owner, item.repo, item.branch, item.path, signal),
+            fetch: () => fetchFile(item.owner, item.repo, item.branch, item.path, signal, githubToken, tokenAccessMode),
           });
         } else {
           const stats = { ignoredCount: 0, ignoredFiles: [] };
-          await collectFiles(workerUrl, item.owner, item.repo, item.branch, item.path, fileList, signal, 0, compiledIgnoreRules, stats);
+          await collectFiles(item.owner, item.repo, item.branch, item.path, fileList, signal, 0, compiledIgnoreRules, stats, githubToken, tokenAccessMode);
           totalIgnored += stats.ignoredCount;
           totalIgnoredFiles.push(...stats.ignoredFiles);
         }
@@ -362,17 +383,18 @@
   function getSettings() {
     return new Promise((resolve) => {
       chrome.storage.sync.get(
-        ['gzpWorkerUrl', 'gzpNamingPreset', 'gzpNamingCustom', 'gzpNotifyShow', 'gzpNotifySound', 'gzpNotifyOpen', 'gzpIgnoreLabels', 'gzpIgnoreCustomVars'],
+        ['gzpNamingPreset', 'gzpNamingCustom', 'gzpNotifyShow', 'gzpNotifySound', 'gzpNotifyOpen', 'gzpIgnoreLabels', 'gzpIgnoreCustomVars', 'gzpGitHubToken', 'gzpTokenAccessMode'],
         (res) => {
           resolve({
-            workerUrl: res.gzpWorkerUrl || DEFAULT_WORKER_URL,
             namingPreset: res.gzpNamingPreset || '{repo}-{branch}_{ts}',
             namingCustom: res.gzpNamingCustom || '',
             notifyShow: res.gzpNotifyShow !== false,
             notifySound: res.gzpNotifySound !== false,
             notifyOpen: res.gzpNotifyOpen === true,
             ignoreLabels: res.gzpIgnoreLabels, // undefined is handled during logic fallback
-            ignoreCustomVars: res.gzpIgnoreCustomVars || []
+            ignoreCustomVars: res.gzpIgnoreCustomVars || [],
+            githubToken: res.gzpGitHubToken || '',
+            tokenAccessMode: res.gzpTokenAccessMode || 'anonymous'
           });
         }
       );
@@ -398,8 +420,6 @@
       console.warn('Audio play failed', err);
     }
   }
-
-
 
   /**
    * Encode a file path for use in a URL, preserving slashes.
