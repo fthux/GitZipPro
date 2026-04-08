@@ -82,6 +82,16 @@ buttonPositionSelect.addEventListener('change', () => {
   chrome.storage.sync.set({ gzpButtonPosition: buttonPositionSelect.value });
 });
 
+// Show File Sizes
+document.getElementById('showFileSizes').addEventListener('change', () => {
+  chrome.storage.sync.set({ gzpShowFileSizes: document.getElementById('showFileSizes').checked });
+});
+
+// Double Click To Select
+document.getElementById('doubleClickSelect').addEventListener('change', () => {
+  chrome.storage.sync.set({ gzpDoubleClickSelect: document.getElementById('doubleClickSelect').checked });
+});
+
 // ZIP Naming Rule
 namingPreset.addEventListener('change', () => {
   chrome.storage.sync.set({ gzpNamingPreset: namingPreset.value });
@@ -98,7 +108,7 @@ notifyOpen.addEventListener('change', () => chrome.storage.sync.set({ gzpNotifyO
 // ─── Load All Saved Settings ──────────────────────────────────────────────────
 
 chrome.storage.sync.get(
-  ['gzpTheme', 'gzpButtonPosition', 'gzpNamingPreset', 'gzpNamingCustom', 'gzpNotifyShow', 'gzpNotifySound', 'gzpNotifyOpen', 'gzpIgnoreLabels', 'gzpIgnoreCustomVars', 'gzpGitHubToken', 'gzpTokenAccessMode'],
+  ['gzpTheme', 'gzpButtonPosition', 'gzpShowFileSizes', 'gzpDoubleClickSelect', 'gzpNamingPreset', 'gzpNamingCustom', 'gzpNotifyShow', 'gzpNotifySound', 'gzpNotifyOpen', 'gzpIgnoreLabels', 'gzpIgnoreCustomVars', 'gzpGitHubToken', 'gzpTokenAccessMode'],
   (res) => {
     // Theme
     const savedTheme = res.gzpTheme || 'system';
@@ -108,6 +118,12 @@ chrome.storage.sync.get(
     // Button Position
     const savedButtonPosition = res.gzpButtonPosition || 'bottom-right';
     buttonPositionSelect.value = savedButtonPosition;
+
+    // Show File Sizes
+    document.getElementById('showFileSizes').checked = res.gzpShowFileSizes !== false;
+
+    // Double Click To Select
+    document.getElementById('doubleClickSelect').checked = res.gzpDoubleClickSelect !== false;
 
     // ZIP Naming Rule
     namingPreset.value = res.gzpNamingPreset || '{repo}-{branch}_{ts}';

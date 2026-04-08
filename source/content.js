@@ -25,7 +25,7 @@
   let isNavigating = false;  // 防止重复清除
   let buttonPosition = 'bottom-right';  // Default position
   let isAttachingRows = false;  // 防止重复附加行
-  
+
   // Context menu state
   let lastRightClickedRow = null;
   let lastRightClickedHref = null;
@@ -121,6 +121,11 @@
       return fileSizeCache.get(filePath);
     }
 
+    // 如果已经关闭文件大小显示 直接返回空 不发起请求
+    if (!showFileSizes) {
+      return '';
+    }
+
     // 解析仓库信息
     const pathParts = location.pathname.replace(/^\//, '').split('/').filter(Boolean);
     const owner = pathParts[0];
@@ -135,26 +140,33 @@
 
     const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
 
-    try {
-      // 获取保存的token设置
-      const tokenResult = await new Promise((resolve) => {
-        chrome.storage.sync.get(['gzpGitHubToken', 'gzpTokenAccessMode'], resolve);
-      });
-      
-      const token = tokenResult.gzpGitHubToken;
-      const mode = tokenResult.gzpTokenAccessMode || 'anonymous';
-      
-      // 准备请求头
-      const headers = {
-        'Accept': 'application/vnd.github.v3+json'
-      };
-      
-      // 如果使用自定义token模式且有token，则添加认证头
-      if (token && mode === 'custom') {
-        headers['Authorization'] = `token ${token}`;
-      }
+    // 获取保存的token设置
+    const tokenResult = await new Promise((resolve) => {
+      chrome.storage.sync.get(['gzpGitHubToken', 'gzpTokenAccessMode'], resolve);
+    });
 
-      const response = await fetch(apiUrl, { headers });
+    const token = tokenResult.gzpGitHubToken;
+    const mode = tokenResult.gzpTokenAccessMode || 'anonymous';
+
+    // 准备请求头
+    const headers = {
+      'Accept': 'application/vnd.github.v3+json'
+    };
+
+    // 如果使用自定义token模式且有token，则添加认证头
+    if (token && mode === 'custom') {
+      headers['Authorization'] = `token ${token}`;
+    }
+
+    // 创建AbortController用于取消请求
+    const abortController = new AbortController();
+    fileSizeAbortControllers.set(filePath, abortController);
+
+    try {
+      const response = await fetch(apiUrl, {
+        headers,
+        signal: abortController.signal
+      });
 
       if (!response.ok) {
         fileSizeCache.set(filePath, '');
@@ -172,9 +184,46 @@
       fileSizeCache.set(filePath, '');
       return '';
     } catch (e) {
-      fileSizeCache.set(filePath, '');
+      // 如果是请求被取消 则不缓存
+      if (e.name !== 'AbortError') {
+        fileSizeCache.set(filePath, '');
+      }
       return '';
+    } finally {
+      fileSizeAbortControllers.delete(filePath);
     }
+  }
+
+  // 清理所有文件大小列和取消所有未完成的请求
+  function clearAllFileSizes() {
+    // 取消所有正在进行的请求
+    fileSizeAbortControllers.forEach((controller) => {
+      controller.abort();
+    });
+    fileSizeAbortControllers.clear();
+
+    // 移除页面上所有文件大小列
+    const sizeCells = document.querySelectorAll('.gzp-file-size-cell');
+    sizeCells.forEach(cell => {
+      if (cell.parentNode) {
+        cell.parentNode.removeChild(cell);
+      }
+    });
+
+    // 清除表格的colspan标记 下次开启时重新处理
+    const tables = document.querySelectorAll('table[data-gzp-colspan-fixed]');
+    tables.forEach(table => {
+      table.removeAttribute('data-gzp-colspan-fixed');
+
+      // 恢复colspan值
+      const colspanCells = table.querySelectorAll('[colspan]');
+      colspanCells.forEach(cell => {
+        const currentColspan = parseInt(cell.getAttribute('colspan'), 10);
+        if (currentColspan >= 4 && currentColspan <= 11) {
+          cell.setAttribute('colspan', (currentColspan - 1).toString());
+        }
+      });
+    });
   }
 
   // 找到文件大小列并显示文件大小
@@ -417,8 +466,10 @@
 
     targetCell.insertBefore(wrapper, targetCell.firstChild);
 
-    // 显示文件大小
-    displayFileSizeInRow(row);
+    // 显示文件大小（仅当设置开启时）
+    if (showFileSizes) {
+      displayFileSizeInRow(row);
+    }
 
     if (selectedItems.has(row)) {
       cb.checked = true;
@@ -461,7 +512,7 @@
       const isDoubleClick = (currentTime - lastClickTime) < 500; // 500ms内视为双击
       lastClickTime = currentTime;
 
-      if (isDoubleClick) {
+      if (isDoubleClick && doubleClickSelect) {
         e.stopPropagation();
         e.preventDefault();
 
@@ -486,15 +537,15 @@
       // 获取该行的 href
       const href = getPathFromRow(row);
       if (!href) return;
-      
+
       // 存储点击的项目用于上下文菜单
       lastRightClickedRow = row;
       lastRightClickedHref = href;
-      
+
       // 获取项目的显示名称
       const link = row.querySelector('a[href*="/tree/"], a[href*="/blob/"]');
       const itemName = link ? link.textContent.trim() : href.split('/').pop();
-      
+
       // 检测是文件还是文件夹
       let itemType = 'unknown';
       if (href.includes('/blob/')) {
@@ -509,7 +560,7 @@
           itemType = 'folder';
         }
       }
-      
+
       // 发送消息给 background script 更新上下文菜单
       chrome.runtime.sendMessage({
         type: 'GZP_UPDATE_CONTEXT_MENU',
@@ -517,7 +568,7 @@
         itemName: itemName,
         itemType: itemType
       });
-      
+
       // 不要阻止默认行为 - 让浏览器显示上下文菜单
     });
   }
@@ -527,13 +578,13 @@
       console.error('GitZip Pro: Cannot download context menu item');
       return;
     }
-    
+
     // 创建一个 Map 包含单个项目
     const downloadMap = new Map();
     // 使用虚拟元素作为键，因为 GZPDownloader 期望 Map<Element, string>
     const dummyElement = document.createElement('div');
     downloadMap.set(dummyElement, href);
-    
+
     // 开始下载
     window.GZPDownloader.start(downloadMap, {
       onProgress: (current, total, label) => {
@@ -879,29 +930,64 @@
 
   // ─── Load settings from storage ──────────────────────────────────────────
 
+  // Settings state
+  let showFileSizes = true;
+  let doubleClickSelect = true;
+
+  // 文件大小请求控制器 用于取消未完成的请求
+  const fileSizeAbortControllers = new Map();
+
   function loadSettings() {
-    chrome.storage.sync.get(['gzpButtonPosition'], (res) => {
-      const savedPosition = res.gzpButtonPosition || 'bottom-right';
-      if (buttonPosition !== savedPosition) {
-        buttonPosition = savedPosition;
-        updateButtonPosition();
-      }
+    return new Promise((resolve) => {
+      chrome.storage.sync.get(['gzpButtonPosition', 'gzpShowFileSizes', 'gzpDoubleClickSelect'], (res) => {
+        const savedPosition = res.gzpButtonPosition || 'bottom-right';
+        if (buttonPosition !== savedPosition) {
+          buttonPosition = savedPosition;
+          updateButtonPosition();
+        }
+
+        showFileSizes = res.gzpShowFileSizes !== false;
+        doubleClickSelect = res.gzpDoubleClickSelect !== false;
+
+        resolve();
+      });
     });
   }
 
   // ─── Init ─────────────────────────────────────────────────────────────────
 
-  function init() {
+  async function init() {
     logDebug('Initializing GitZip Pro');
 
-    // Load saved settings
-    loadSettings();
+    // ✅ 首先加载设置 确保所有设置值正确后才进行后续操作
+    await loadSettings();
 
     // Listen for storage changes (when user updates settings)
     chrome.storage.onChanged.addListener((changes, namespace) => {
-      if (namespace === 'sync' && changes.gzpButtonPosition) {
-        buttonPosition = changes.gzpButtonPosition.newValue || 'bottom-right';
-        updateButtonPosition();
+      if (namespace === 'sync') {
+        if (changes.gzpButtonPosition) {
+          buttonPosition = changes.gzpButtonPosition.newValue || 'bottom-right';
+          updateButtonPosition();
+        }
+
+        if (changes.gzpShowFileSizes) {
+          showFileSizes = changes.gzpShowFileSizes.newValue !== false;
+
+          if (showFileSizes) {
+            // 开启时 重新为所有行显示文件大小
+            const rows = getFileRows();
+            rows.forEach(row => {
+              displayFileSizeInRow(row);
+            });
+          } else {
+            // 关闭时 立即清理所有已显示的文件大小和取消请求
+            clearAllFileSizes();
+          }
+        }
+
+        if (changes.gzpDoubleClickSelect) {
+          doubleClickSelect = changes.gzpDoubleClickSelect.newValue !== false;
+        }
       }
     });
 
@@ -912,6 +998,9 @@
     });
 
     ensureDownloadButton();
+
+    // ✅ 现在attachAllRows是在设置完全加载完成后才执行
+    // 此时showFileSizes已经是正确的值 不会再用默认true值
     attachAllRows();
 
     // 关键：拦截所有链接点击
