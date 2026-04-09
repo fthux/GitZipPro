@@ -86,7 +86,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === 'GZP_UPDATE_CONTEXT_MENU') {
     const { href, itemName, itemType } = message;
     selectedItemHref = href;
-    
+
     // Update the context menu title based on item type
     const displayName = itemName || (href ? href.split('/').pop() : 'unknown');
     let menuTitle;
@@ -98,11 +98,42 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       // Fallback for unknown type
       menuTitle = `Selected Item - ${displayName}`;
     }
-    
+
     chrome.contextMenus.update('gitzip-pro-selected-item', {
       title: menuTitle
     });
-    
+
+    sendResponse({ ok: true });
+    return true;
+  }
+
+  // Handle error notification messages
+  if (message.type === 'GZP_SHOW_ERROR_NOTIFICATION') {
+    const { message: errorMessage } = message;
+
+    try {
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icons/icon48.png',
+        title: 'GitZip Pro - Download Failed',
+        message: errorMessage,
+        priority: 2
+      }, (err) => {
+        if (chrome.runtime.lastError) {
+          // Fallback with data URI icon
+          chrome.notifications.create({
+            type: 'basic',
+            iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+            title: 'GitZip Pro - Download Failed',
+            message: errorMessage,
+            priority: 2
+          });
+        }
+      });
+    } catch (e) {
+      console.warn('[GitZip Pro] Failed to show error notification', e);
+    }
+
     sendResponse({ ok: true });
     return true;
   }

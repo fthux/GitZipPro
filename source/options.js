@@ -155,7 +155,9 @@ chrome.storage.sync.get(
     document.getElementById('doubleClickSelect').checked = res.gzpDoubleClickSelect !== false;
 
     // ZIP Naming Rule
-    namingPreset.value = res.gzpNamingPreset || '{repo}-{branch}-{path}_{ts}';
+    const validPresets = Array.from(namingPreset.options).map(opt => opt.value);
+    const savedPreset = res.gzpNamingPreset;
+    namingPreset.value = validPresets.includes(savedPreset) ? savedPreset : '{repo}-{branch}-{path}_{ts}';
     if (res.gzpNamingCustom !== undefined) {
       namingCustom.value = res.gzpNamingCustom;
     }

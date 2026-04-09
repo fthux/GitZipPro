@@ -236,11 +236,11 @@
     try {
       settings = await getSettings();
     } catch {
-      settings = { namingPreset: '{repo}-{branch}_{ts}', namingCustom: '', notifyShow: true, notifySound: true, notifyOpen: false, ignoreLabels: ['git', 'sys', 'deps', 'build', 'logs'], ignoreCustomVars: [], githubToken: '', tokenAccessMode: 'anonymous' };
+      settings = { namingPreset: '{repo}-{branch}-{path}_{ts}', namingCustom: '', notifyShow: true, notifySound: true, notifyOpen: false, ignoreLabels: [], ignoreCustomVars: [], githubToken: '', tokenAccessMode: 'anonymous' };
     }
     const { namingPreset, namingCustom, notifyShow, notifySound, notifyOpen, ignoreLabels, ignoreCustomVars, githubToken, tokenAccessMode } = settings;
 
-    const compiledIgnoreRules = compileIgnoreRules(ignoreLabels || ['git', 'sys', 'deps', 'build', 'logs'], ignoreCustomVars || []);
+    const compiledIgnoreRules = compileIgnoreRules(ignoreLabels || [], ignoreCustomVars || []);
 
     // ② Parse all selected URLs
     const parsed = [];
@@ -286,7 +286,11 @@
       }
 
       if (fileList.length === 0) {
-        throw new Error('No files found in selection.');
+        if (totalIgnored > 0) {
+          throw new Error(`All selected items were skipped by ignore rules (${totalIgnored} item${totalIgnored > 1 ? 's' : ''} excluded). Check your ignore settings if this is not intended.`);
+        } else {
+          throw new Error('No files found in selection.');
+        }
       }
 
       const total = fileList.length;
@@ -397,7 +401,7 @@
         ['gzpNamingPreset', 'gzpNamingCustom', 'gzpNotifyShow', 'gzpNotifySound', 'gzpNotifyOpen', 'gzpIgnoreLabels', 'gzpIgnoreCustomVars', 'gzpGitHubToken', 'gzpTokenAccessMode'],
         (res) => {
           resolve({
-            namingPreset: res.gzpNamingPreset || '{repo}-{branch}_{ts}',
+            namingPreset: res.gzpNamingPreset || '{repo}-{branch}-{path}_{ts}',
             namingCustom: res.gzpNamingCustom || '',
             notifyShow: res.gzpNotifyShow !== false,
             notifySound: res.gzpNotifySound !== false,

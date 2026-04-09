@@ -730,8 +730,19 @@
           setTimeout(resetBtnToIdle, 2500);
         },
         onError: (err) => {
-          setBtnState(BTN_STATES.ERROR);
-          setTimeout(resetBtnToIdle, 3500);
+          setBtnState(BTN_STATES.ERROR, err.message);
+
+          // 显示系统通知（受设置控制）
+          chrome.storage.sync.get(['gzpNotifyShow'], (res) => {
+            if (res.gzpNotifyShow !== false) {
+              chrome.runtime.sendMessage({
+                type: 'GZP_SHOW_ERROR_NOTIFICATION',
+                message: err.message
+              });
+            }
+          });
+
+          setTimeout(resetBtnToIdle, 6000);
         },
       });
     });
