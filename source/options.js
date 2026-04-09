@@ -44,21 +44,50 @@ if (chrome.runtime && chrome.runtime.getManifest) {
 const menuItems = document.querySelectorAll('.menu-item');
 const pages = document.querySelectorAll('.page');
 
+function activateMenu(target) {
+  const targetItem = document.querySelector(`.menu-item[data-target="${target}"]`);
+  if (!targetItem) return false;
+  
+  menuItems.forEach(m => m.classList.remove('active'));
+  targetItem.classList.add('active');
+
+  pages.forEach(p => p.classList.remove('active'));
+  const targetPage = document.getElementById(target);
+  if (targetPage) targetPage.classList.add('active');
+
+  // Initialize history page if needed
+  if (target === 'history' && !historyPageInitialized) {
+    initHistoryPage();
+    historyPageInitialized = true;
+  }
+  
+  return true;
+}
+
 menuItems.forEach(item => {
   item.addEventListener('click', () => {
-    menuItems.forEach(m => m.classList.remove('active'));
-    item.classList.add('active');
-
-    pages.forEach(p => p.classList.remove('active'));
-    const targetPage = document.getElementById(item.getAttribute('data-target'));
-    if (targetPage) targetPage.classList.add('active');
-
-    // Initialize history page if needed
-    if (item.getAttribute('data-target') === 'history' && !historyPageInitialized) {
-      initHistoryPage();
-      historyPageInitialized = true;
-    }
+    const target = item.getAttribute('data-target');
+    window.location.hash = target;
   });
+});
+
+// Handle hash changes
+window.addEventListener('hashchange', () => {
+  const hash = window.location.hash.slice(1);
+  if (hash) {
+    activateMenu(hash);
+  }
+});
+
+// Initialize menu from hash on page load
+document.addEventListener('DOMContentLoaded', () => {
+  const hash = window.location.hash.slice(1);
+  if (hash && activateMenu(hash)) {
+    // Hash was valid and menu activated
+  } else {
+    // No valid hash, default to first menu
+    activateMenu('general');
+  }
 });
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
