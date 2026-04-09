@@ -24,7 +24,6 @@
   let cleanupTimeout = null;
   let isNavigating = false;  // 防止重复清除
   let buttonPosition = 'bottom-right';  // Default position
-  let isAttachingRows = false;  // 防止重复附加行
 
   // Context menu state
   let lastRightClickedRow = null;
@@ -421,22 +420,26 @@
   }
 
   function attachRowBehavior(row) {
-    console.error("hello1");
-    if (row.hasAttribute(ROW_MARK)) return;
-    console.error("hello2");
+    // 使用类来标记已初始化的行，而不是属性，这样更容易在导航时清除
+    if (row.classList.contains('gzp-row-initialized')) return;
 
     // ✅ 跳过返回上一级的父文件夹导航行
-    // 官方标准检测: 查找aria-label为"Parent directory"的链接
-    // 精确匹配 只有这个才是真正的父目录行
-    const isParentDirectoryRow = row.querySelector('a[aria-label="Parent directory"]') !== null;
+    // 使用更灵活的检测方法，匹配用户脚本中的逻辑
+    const isParentDirectoryRow = row.querySelector('a[aria-label*="Go to parent directory"], a[aria-label="Parent directory"], .js-navigation-open[title=".."]') !== null;
 
     if (isParentDirectoryRow) {
       // 只有真正的父目录行才跳过
-      row.setAttribute(ROW_MARK, '1');
+      row.classList.add('gzp-row-initialized');
       return;
     }
 
-    row.setAttribute(ROW_MARK, '1');
+    // 检查是否已经有选择框（防止重复添加）
+    if (row.querySelector('.gzp-checkbox, input[type="checkbox"]')) {
+      row.classList.add('gzp-row-initialized');
+      return;
+    }
+
+    row.classList.add('gzp-row-initialized');
 
     row.classList.add('gzp-row');
 
@@ -614,23 +617,20 @@
   }
 
   function attachAllRows() {
-    console.warn("hello1");
-    // 防止重复执行附加操作
-    if (isAttachingRows) return;
-    isAttachingRows = true;
-    console.warn("hello2");
-
-    try {
-      if (!isRepoFilePage()) return;
+    // 使用防抖机制，避免重复执行
+    clearTimeout(attachAllRows.timeout);
+    attachAllRows.timeout = setTimeout(() => {
+      if (!isRepoFilePage()) {
+        return;
+      }
       const rows = getFileRows();
-      if (rows.length === 0) return;
+      if (rows.length === 0) {
+        // 如果没有找到行，可能是DOM还没准备好，安排重试
+        setTimeout(attachAllRows, 100);
+        return;
+      }
       rows.forEach(attachRowBehavior);
-    } finally {
-      // 使用setTimeout确保在下一个事件循环中重置标志，避免微任务问题
-      setTimeout(() => {
-        isAttachingRows = false;
-      }, 0);
-    }
+    }, 30); // 使用30ms防抖，类似用户脚本
   }
 
   // ─── Download button ──────────────────────────────────────────────────────
@@ -876,17 +876,35 @@
     // 清除所有选中状态
     clearAllSelections();
 
-    // 清除行标记，允许重新注入
-    const markedRows = document.querySelectorAll(`[${ROW_MARK}]`);
-    markedRows.forEach(row => {
+    // 清除行标记，允许重新注入 - 清除两种标记方式
+    const markedRowsByAttr = document.querySelectorAll(`[${ROW_MARK}]`);
+    markedRowsByAttr.forEach(row => {
       row.removeAttribute(ROW_MARK);
+    });
+    
+    // 清除类标记
+    const markedRowsByClass = document.querySelectorAll('.gzp-row-initialized');
+    markedRowsByClass.forEach(row => {
+      row.classList.remove('gzp-row-initialized');
     });
 
     clearTimeout(cleanupTimeout);
+    // 使用更短的延迟并添加重试机制
     cleanupTimeout = setTimeout(() => {
       attachAllRows();
+      // 添加二次检查，确保所有行都被处理
+      setTimeout(() => {
+        const rows = getFileRows();
+        const markedRowsAfter = document.querySelectorAll('.gzp-row-initialized');
+        if (rows.length > 0 && rows.length !== markedRowsAfter.length) {
+          logDebug(`Rows mismatch: found ${rows.length} rows but only ${markedRowsAfter.length} marked, retrying`);
+          // 清除标记并重试
+          rows.forEach(row => row.classList.remove('gzp-row-initialized'));
+          attachAllRows();
+        }
+      }, 500);
       logDebug('Re-attached rows after navigation');
-    }, 500);
+    }, 300);
   }
 
   // MutationObserver: watches for GitHub's SPA DOM replacements
@@ -896,9 +914,18 @@
       if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
         for (const node of mutation.addedNodes) {
           if (node.nodeType === Node.ELEMENT_NODE) {
+            // 更积极的检测，类似用户脚本
+            if (node.classList && node.classList.contains('js-navigation-container')) {
+              hasRelevantChanges = true;
+              break;
+            }
             if (node.querySelector && (
               node.querySelector('a[href*="/blob/"]') ||
-              node.querySelector('table[aria-label="Files"]')
+              node.querySelector('a[href*="/tree/"]') ||
+              node.querySelector('table[aria-label="Files"]') ||
+              node.querySelector('.js-navigation-container') ||
+              node.querySelector('.react-directory-row-default-container') ||
+              node.querySelector('.js-navigation-item')
             )) {
               hasRelevantChanges = true;
               break;
@@ -911,7 +938,7 @@
 
     if (hasRelevantChanges) {
       clearTimeout(cleanupTimeout);
-      cleanupTimeout = setTimeout(attachAllRows, 250);
+      cleanupTimeout = setTimeout(attachAllRows, 50); // 更短的延迟
     }
   });
 
@@ -919,7 +946,7 @@
   const originalPushState = history.pushState;
   history.pushState = function (...args) {
     originalPushState.apply(this, args);
-    setTimeout(onNavigate, 150);
+    setTimeout(onNavigate, 100);
   };
 
   window.addEventListener('popstate', onNavigate);
@@ -927,6 +954,10 @@
   // Turbo navigation (GitHub's modern SPA framework)
   document.addEventListener('turbo:load', onNavigate);
   document.addEventListener('turbo:render', onNavigate);
+  
+  // GitHub's older pjax navigation system
+  document.addEventListener('pjax:end', onNavigate);
+  document.addEventListener('pjax:success', onNavigate);
 
   // 监听 beforeunload 事件（传统页面刷新/跳转）
   window.addEventListener('beforeunload', () => {
@@ -942,12 +973,27 @@
       markedRows.forEach(row => {
         row.removeAttribute(ROW_MARK);
       });
+      
+      // 同时清除类标记
+      const markedRowsByClass = document.querySelectorAll('.gzp-row-initialized');
+      markedRowsByClass.forEach(row => {
+        row.classList.remove('gzp-row-initialized');
+      });
 
       setTimeout(() => {
         attachAllRows();
         logDebug('Page became visible, re-attached rows');
-      }, 300);
+      }, 100); // 更短的延迟
     }
+  });
+  
+  // 添加额外的页面加载事件监听器，类似用户脚本
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(attachAllRows, 100);
+  });
+  
+  window.addEventListener('load', () => {
+    setTimeout(attachAllRows, 100);
   });
 
   // ─── Load settings from storage ──────────────────────────────────────────
