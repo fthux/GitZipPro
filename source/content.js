@@ -997,6 +997,53 @@
     }
   });
 
+  // ─── Accent Color Handling ─────────────────────────────────────────────
+
+  function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  }
+
+  function lightenColor(hex, amount) {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return hex;
+    return `rgb(${Math.min(255, rgb.r + amount)}, ${Math.min(255, rgb.g + amount)}, ${Math.min(255, rgb.b + amount)})`;
+  }
+
+  function darkenColor(hex, amount) {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return hex;
+    return `rgb(${Math.max(0, rgb.r - amount)}, ${Math.max(0, rgb.g - amount)}, ${Math.max(0, rgb.b - amount)})`;
+  }
+
+  function applyAccentColor(color) {
+    const rgb = hexToRgb(color);
+    const hoverColor = darkenColor(color, 20);
+
+    document.documentElement.style.setProperty('--gzp-primary-color', color);
+    document.documentElement.style.setProperty('--gzp-primary-hover', hoverColor);
+    document.documentElement.style.setProperty('--gzp-primary-light', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`);
+    document.documentElement.style.setProperty('--gzp-primary-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+  }
+
+  // Listen for accent color changes from options page
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === 'GZP_ACCENT_COLOR_CHANGED' && message.color) {
+      applyAccentColor(message.color);
+    }
+  });
+
+  // Load saved accent color on page load
+  chrome.storage.sync.get(['gzpAccentColor'], (res) => {
+    if (res.gzpAccentColor) {
+      applyAccentColor(res.gzpAccentColor);
+    }
+  });
+
   // 添加额外的页面加载事件监听器，类似用户脚本
   document.addEventListener('DOMContentLoaded', () => {
     setTimeout(attachAllRows, 100);

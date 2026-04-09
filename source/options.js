@@ -106,6 +106,94 @@ themeSelect.addEventListener('change', (e) => {
   chrome.storage.sync.set({ gzpTheme: theme });
 });
 
+// ─── Accent Color ─────────────────────────────────────────────────────────────
+
+function hexToRgb(hex) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : null;
+}
+
+function lightenColor(hex, amount) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  return `rgb(${Math.min(255, rgb.r + amount)}, ${Math.min(255, rgb.g + amount)}, ${Math.min(255, rgb.b + amount)})`;
+}
+
+function darkenColor(hex, amount) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  return `rgb(${Math.max(0, rgb.r - amount)}, ${Math.max(0, rgb.g - amount)}, ${Math.max(0, rgb.b - amount)})`;
+}
+
+function applyAccentColor(color) {
+  // Calculate variant colors for different usages
+  const lightVariant = lightenColor(color, 60);
+  const darkVariant = darkenColor(color, 30);
+
+  // Update CSS variables
+  document.documentElement.style.setProperty('--primary-color', color);
+  document.documentElement.style.setProperty('--btn-text', color);
+
+  // Update active menu background
+  const menuActiveRgb = hexToRgb(color);
+  document.documentElement.style.setProperty('--menu-active', `rgba(${menuActiveRgb.r}, ${menuActiveRgb.g}, ${menuActiveRgb.b}, 0.3)`);
+
+  // Update toggle colors
+  document.documentElement.style.setProperty('--toggle-track-on', `rgba(${menuActiveRgb.r}, ${menuActiveRgb.g}, ${menuActiveRgb.b}, 0.5)`);
+  document.documentElement.style.setProperty('--toggle-thumb-on', color);
+
+  // Update color picker display
+  document.getElementById('customColorPicker').value = color;
+  document.getElementById('colorHexDisplay').textContent = color;
+
+  // Update preset selection indicators
+  document.querySelectorAll('.color-preset').forEach(btn => {
+    const btnColor = btn.getAttribute('data-color');
+    if (btnColor.toLowerCase() === color.toLowerCase()) {
+      btn.style.borderColor = color;
+      btn.style.boxShadow = `0 0 0 2px ${color}40`;
+    } else {
+      btn.style.borderColor = 'transparent';
+      btn.style.boxShadow = 'none';
+    }
+  });
+
+  // Broadcast to content scripts
+  chrome.tabs.query({}, (tabs) => {
+    tabs.forEach(tab => {
+      chrome.tabs.sendMessage(tab.id, {
+        type: 'GZP_ACCENT_COLOR_CHANGED',
+        color: color
+      }).catch(() => { });
+    });
+  });
+}
+
+// Preset color buttons
+document.querySelectorAll('.color-preset').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const color = btn.getAttribute('data-color');
+    applyAccentColor(color);
+    chrome.storage.sync.set({ gzpAccentColor: color });
+  });
+});
+
+// Custom color picker
+const customColorPicker = document.getElementById('customColorPicker');
+customColorPicker.addEventListener('input', (e) => {
+  const color = e.target.value;
+  applyAccentColor(color);
+  document.getElementById('colorHexDisplay').textContent = color;
+});
+
+customColorPicker.addEventListener('change', (e) => {
+  chrome.storage.sync.set({ gzpAccentColor: e.target.value });
+});
+
 // Button Position
 buttonPositionSelect.addEventListener('change', () => {
   chrome.storage.sync.set({ gzpButtonPosition: buttonPositionSelect.value });
@@ -137,12 +225,16 @@ notifyOpen.addEventListener('change', () => chrome.storage.sync.set({ gzpNotifyO
 // ─── Load All Saved Settings ──────────────────────────────────────────────────
 
 chrome.storage.sync.get(
-  ['gzpTheme', 'gzpButtonPosition', 'gzpShowFileSizes', 'gzpDoubleClickSelect', 'gzpNamingPreset', 'gzpNamingCustom', 'gzpNotifyShow', 'gzpNotifySound', 'gzpNotifyOpen', 'gzpIgnoreLabels', 'gzpIgnoreCustomVars', 'gzpGitHubToken', 'gzpTokenAccessMode'],
+  ['gzpTheme', 'gzpAccentColor', 'gzpButtonPosition', 'gzpShowFileSizes', 'gzpDoubleClickSelect', 'gzpNamingPreset', 'gzpNamingCustom', 'gzpNotifyShow', 'gzpNotifySound', 'gzpNotifyOpen', 'gzpIgnoreLabels', 'gzpIgnoreCustomVars', 'gzpGitHubToken', 'gzpTokenAccessMode'],
   (res) => {
     // Theme
     const savedTheme = res.gzpTheme || 'system';
     themeSelect.value = savedTheme;
     applyTheme(savedTheme);
+
+    // Accent Color
+    const savedAccentColor = res.gzpAccentColor || '#1a73e8';
+    applyAccentColor(savedAccentColor);
 
     // Button Position
     const savedButtonPosition = res.gzpButtonPosition || 'bottom-right';

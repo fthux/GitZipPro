@@ -346,11 +346,15 @@
       color-scheme: dark;
     }
 
-    select:focus, input[type="text"]:focus, input[type="password"]:focus {
-      background: var(--card-bg) !important;
-      box-shadow: 0 0 0 2px var(--primary-color) inset;
-      border-color: transparent;
-    }
+select:focus, input[type="text"]:focus, input[type="password"]:focus, input[type="checkbox"]:focus {
+  background: var(--card-bg) !important;
+  box-shadow: 0 0 0 2px var(--primary-color) inset;
+  border-color: transparent;
+}
+
+input[type="checkbox"] {
+  accent-color: var(--primary-color);
+}
     
     html[data-theme="light"] select:focus,
     html[data-theme="light"] input[type="text"]:focus,
@@ -710,22 +714,43 @@
       <div id="general" class="page active">
         <h1 class="page-title">General</h1>
 
-        <h2 class="section-title">Appearance</h2>
-        <div class="card">
-          <div class="setting-row">
-            <div class="setting-info">
-              <div class="setting-title">Theme</div>
-              <div class="setting-desc">Choose the preferred color theme for the extension interface.</div>
-            </div>
-            <div class="setting-control">
-              <select id="themeSelect">
-                <option value="system">System</option>
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-              </select>
-            </div>
-          </div>
-        </div>
+         <h2 class="section-title">Appearance</h2>
+         <div class="card">
+           <div class="setting-row">
+             <div class="setting-info">
+               <div class="setting-title">Theme</div>
+               <div class="setting-desc">Choose the preferred color theme for the extension interface.</div>
+             </div>
+             <div class="setting-control">
+               <select id="themeSelect">
+                 <option value="system">System</option>
+                 <option value="light">Light</option>
+                 <option value="dark">Dark</option>
+               </select>
+             </div>
+           </div>
+           
+           <div class="setting-row">
+             <div class="setting-info">
+               <div class="setting-title">Accent Color</div>
+               <div class="setting-desc">Customize the primary theme color used throughout the interface. Choose a preset or pick your own color.</div>
+             </div>
+             <div class="setting-control" style="flex-direction: column; gap: 12px; align-items: flex-end;">
+               <div id="presetColors" style="display: flex; gap: 8px;">
+                 <button class="color-preset" data-color="#1a73e8" style="padding: 0; width: 28px; height: 28px; border-radius: 9999px; border: 3px solid transparent; cursor: pointer; background: #1a73e8; transition: all 0.15s ease; box-sizing: border-box;" title="Blue"></button>
+                 <button class="color-preset" data-color="#34a853" style="padding: 0; width: 28px; height: 28px; border-radius: 9999px; border: 3px solid transparent; cursor: pointer; background: #34a853; transition: all 0.15s ease; box-sizing: border-box;" title="Green"></button>
+                 <button class="color-preset" data-color="#9333ea" style="padding: 0; width: 28px; height: 28px; border-radius: 9999px; border: 3px solid transparent; cursor: pointer; background: #9333ea; transition: all 0.15s ease; box-sizing: border-box;" title="Purple"></button>
+                 <button class="color-preset" data-color="#ea580c" style="padding: 0; width: 28px; height: 28px; border-radius: 9999px; border: 3px solid transparent; cursor: pointer; background: #ea580c; transition: all 0.15s ease; box-sizing: border-box;" title="Orange"></button>
+                 <button class="color-preset" data-color="#dc2626" style="padding: 0; width: 28px; height: 28px; border-radius: 9999px; border: 3px solid transparent; cursor: pointer; background: #dc2626; transition: all 0.15s ease; box-sizing: border-box;" title="Red"></button>
+                 <button class="color-preset" data-color="#06b6d4" style="padding: 0; width: 28px; height: 28px; border-radius: 9999px; border: 3px solid transparent; cursor: pointer; background: #06b6d4; transition: all 0.15s ease; box-sizing: border-box;" title="Cyan"></button>
+               </div>
+               <div style="display: flex; align-items: center; gap: 8px;">
+                 <input type="color" id="customColorPicker" value="#1a73e8" style="width: 32px; height: 32px; border: none; border-radius: 6px; cursor: pointer; padding: 0;" />
+                 <span id="colorHexDisplay" style="font-family: monospace; font-size: 12px; color: var(--text-scnd);">#1a73e8</span>
+               </div>
+             </div>
+           </div>
+         </div>
         
         <h2 class="section-title">Interface Behavior</h2>
         <div class="card">
