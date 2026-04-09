@@ -686,14 +686,22 @@
         </svg>
         History
       </div>
-      <div class="menu-item" data-target="token">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-        </svg>
-        Token
-      </div>
-    </div>
+       <div class="menu-item" data-target="token">
+         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;">
+           <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+           <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+         </svg>
+         Token
+       </div>
+       <div class="menu-item" data-target="about">
+         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;">
+           <circle cx="12" cy="12" r="10"/>
+           <line x1="12" y1="16" x2="12" y2="12"/>
+           <line x1="12" y1="8" x2="12.01" y2="8"/>
+         </svg>
+         About
+       </div>
+     </div>
   </div>
 
   <div class="main-wrapper">
@@ -1022,6 +1030,59 @@
             </div>
             <div class="setting-control">
               <button id="refreshRateLimitBtn">Refresh Status</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- About Page -->
+      <div id="about" class="page">
+        <h1 class="page-title">About GitZip Pro</h1>
+        
+        <div class="card">
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-title">Version</div>
+              <div class="setting-desc" id="currentVersion">Loading...</div>
+            </div>
+            <div class="setting-control">
+              <button id="checkUpdateBtn">Check for Updates</button>
+            </div>
+          </div>
+          <div class="setting-row" id="updateStatusRow" style="display: none;">
+            <div class="setting-info">
+              <div class="setting-desc" id="updateStatusText"></div>
+            </div>
+          </div>
+        </div>
+
+        <h2 class="section-title">Links</h2>
+        <div class="card">
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-title">Report an Issue</div>
+              <div class="setting-desc">Found a bug or have a feature request? Open an issue on GitHub.</div>
+            </div>
+            <div class="setting-control">
+              <button id="reportIssueBtn">Open Issue</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-title">Rate Us</div>
+              <div class="setting-desc">Enjoying GitZip Pro? Leave a review on Chrome Web Store.</div>
+            </div>
+            <div class="setting-control">
+              <button id="rateUsBtn">Rate Extension</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-title">Star on GitHub</div>
+              <div class="setting-desc">Support this project by starring it on GitHub.</div>
+            </div>
+            <div class="setting-control">
+              <button id="starGithubBtn">Star Repository</button>
             </div>
           </div>
         </div>

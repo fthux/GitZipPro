@@ -296,7 +296,6 @@
     }
 
     // 获取文件路径
-    console.log("测试row:", row);
     const fileLink = row.querySelector('a[href*="/blob/"]');
     if (!fileLink) {
       sizeCell.textContent = '';
@@ -881,7 +880,7 @@
     markedRowsByAttr.forEach(row => {
       row.removeAttribute(ROW_MARK);
     });
-    
+
     // 清除类标记
     const markedRowsByClass = document.querySelectorAll('.gzp-row-initialized');
     markedRowsByClass.forEach(row => {
@@ -954,7 +953,7 @@
   // Turbo navigation (GitHub's modern SPA framework)
   document.addEventListener('turbo:load', onNavigate);
   document.addEventListener('turbo:render', onNavigate);
-  
+
   // GitHub's older pjax navigation system
   document.addEventListener('pjax:end', onNavigate);
   document.addEventListener('pjax:success', onNavigate);
@@ -973,7 +972,7 @@
       markedRows.forEach(row => {
         row.removeAttribute(ROW_MARK);
       });
-      
+
       // 同时清除类标记
       const markedRowsByClass = document.querySelectorAll('.gzp-row-initialized');
       markedRowsByClass.forEach(row => {
@@ -986,12 +985,12 @@
       }, 100); // 更短的延迟
     }
   });
-  
+
   // 添加额外的页面加载事件监听器，类似用户脚本
   document.addEventListener('DOMContentLoaded', () => {
     setTimeout(attachAllRows, 100);
   });
-  
+
   window.addEventListener('load', () => {
     setTimeout(attachAllRows, 100);
   });

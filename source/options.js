@@ -47,7 +47,7 @@ const pages = document.querySelectorAll('.page');
 function activateMenu(target) {
   const targetItem = document.querySelector(`.menu-item[data-target="${target}"]`);
   if (!targetItem) return false;
-  
+
   menuItems.forEach(m => m.classList.remove('active'));
   targetItem.classList.add('active');
 
@@ -60,7 +60,7 @@ function activateMenu(target) {
     initHistoryPage();
     historyPageInitialized = true;
   }
-  
+
   return true;
 }
 
@@ -155,7 +155,7 @@ chrome.storage.sync.get(
     document.getElementById('doubleClickSelect').checked = res.gzpDoubleClickSelect !== false;
 
     // ZIP Naming Rule
-    namingPreset.value = res.gzpNamingPreset || '{repo}-{branch}_{ts}';
+    namingPreset.value = res.gzpNamingPreset || '{repo}-{branch}-{path}_{ts}';
     if (res.gzpNamingCustom !== undefined) {
       namingCustom.value = res.gzpNamingCustom;
     }
@@ -850,4 +850,85 @@ document.addEventListener('DOMContentLoaded', () => {
       renderHistory();
     }
   }
+});
+
+// ─── About Page Implementation ─────────────────────────────────────────────────
+
+// About page elements
+const currentVersion = document.getElementById('currentVersion');
+const checkUpdateBtn = document.getElementById('checkUpdateBtn');
+const updateStatusRow = document.getElementById('updateStatusRow');
+const updateStatusText = document.getElementById('updateStatusText');
+const reportIssueBtn = document.getElementById('reportIssueBtn');
+const rateUsBtn = document.getElementById('rateUsBtn');
+const starGithubBtn = document.getElementById('starGithubBtn');
+
+// Constants
+const GITHUB_REPO_URL = 'https://github.com/fthux/GitZipPro';
+const CHROME_EXTENSION_ID = 'abcdefghijklmnopqrstuvwxyz'; // 临时应用ID
+const CHROME_WEBSTORE_URL = `https://chrome.google.com/webstore/detail/${CHROME_EXTENSION_ID}`;
+
+// Set current version on page load
+document.addEventListener('DOMContentLoaded', () => {
+  if (chrome.runtime && chrome.runtime.getManifest) {
+    currentVersion.textContent = 'v' + chrome.runtime.getManifest().version;
+  }
+});
+
+// Check for updates
+checkUpdateBtn.addEventListener('click', async () => {
+  checkUpdateBtn.disabled = true;
+  checkUpdateBtn.textContent = 'Checking...';
+  updateStatusRow.style.display = 'flex';
+  updateStatusText.textContent = 'Checking for updates...';
+
+  try {
+    if (chrome.runtime && chrome.runtime.requestUpdateCheck) {
+      chrome.runtime.requestUpdateCheck((status, details) => {
+        checkUpdateBtn.disabled = false;
+        checkUpdateBtn.textContent = 'Check for Updates';
+
+        if (status === 'update_available') {
+          updateStatusText.textContent = `New version ${details.version} available! Downloading update...`;
+          updateStatusText.style.color = '#0b8043';
+
+          // Chrome will automatically download and install the update
+          chrome.runtime.onUpdateAvailable.addListener(() => {
+            updateStatusText.textContent = 'Update downloaded. The extension will be updated on next browser restart.';
+          });
+        } else if (status === 'no_update') {
+          updateStatusText.textContent = 'You are using the latest version.';
+          updateStatusText.style.color = 'var(--text-scnd)';
+        } else if (status === 'throttled') {
+          updateStatusText.textContent = 'Update check throttled. Please try again later.';
+          updateStatusText.style.color = '#f29900';
+        }
+      });
+    } else {
+      updateStatusText.textContent = 'Update API not available in development mode.';
+      updateStatusText.style.color = 'var(--text-scnd)';
+      checkUpdateBtn.disabled = false;
+      checkUpdateBtn.textContent = 'Check for Updates';
+    }
+  } catch (error) {
+    updateStatusText.textContent = `Error checking updates: ${error.message}`;
+    updateStatusText.style.color = '#d93025';
+    checkUpdateBtn.disabled = false;
+    checkUpdateBtn.textContent = 'Check for Updates';
+  }
+});
+
+// Report issue button
+reportIssueBtn.addEventListener('click', () => {
+  window.open(`${GITHUB_REPO_URL}/issues/new`, '_blank');
+});
+
+// Rate us button
+rateUsBtn.addEventListener('click', () => {
+  window.open(CHROME_WEBSTORE_URL, '_blank');
+});
+
+// Star on GitHub button
+starGithubBtn.addEventListener('click', () => {
+  window.open(GITHUB_REPO_URL, '_blank');
 });
