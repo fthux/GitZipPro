@@ -25,13 +25,20 @@ const historyClearAll = document.getElementById('history-clear-all');
 // Token page elements
 const tokenAccessMode = document.getElementById('tokenAccessMode');
 const tokenInputSection = document.getElementById('tokenInputSection');
+const tokenAuthMethod = document.getElementById('tokenAuthMethod');
+const tokenManualSection = document.getElementById('tokenManualSection');
+const tokenOAuthSection = document.getElementById('tokenOAuthSection');
 const githubToken = document.getElementById('githubToken');
+const githubTokenOAuth = document.getElementById('githubTokenOAuth');
 const toggleTokenVisibility = document.getElementById('toggleTokenVisibility');
+const toggleTokenOAuthVisibility = document.getElementById('toggleTokenOAuthVisibility');
 const tokenStatusText = document.getElementById('tokenStatusText');
 const saveTokenBtn = document.getElementById('saveTokenBtn');
 const clearTokenBtn = document.getElementById('clearTokenBtn');
 const rateLimitStatus = document.getElementById('rateLimitStatus');
 const refreshRateLimitBtn = document.getElementById('refreshRateLimitBtn');
+const authorizePublicBtn = document.getElementById('authorizePublicBtn');
+const authorizePrivateBtn = document.getElementById('authorizePrivateBtn');
 
 // ─── Version ──────────────────────────────────────────────────────────────────
 
@@ -420,13 +427,35 @@ customRuleInput.addEventListener('keypress', (e) => {
 const TOKEN_STORAGE_KEY = 'gzpGitHubToken';
 const TOKEN_MODE_KEY = 'gzpTokenAccessMode';
 
+// Token visibility states
 let tokenIsVisible = false;
+let tokenOAuthIsVisible = false;
 
-// Toggle token visibility
+// Toggle manual token visibility
 toggleTokenVisibility.addEventListener('click', () => {
   tokenIsVisible = !tokenIsVisible;
   githubToken.type = tokenIsVisible ? 'text' : 'password';
   toggleTokenVisibility.textContent = tokenIsVisible ? 'Hide' : 'Show';
+});
+
+// Toggle OAuth token visibility
+toggleTokenOAuthVisibility.addEventListener('click', () => {
+  tokenOAuthIsVisible = !tokenOAuthIsVisible;
+  githubTokenOAuth.type = tokenOAuthIsVisible ? 'text' : 'password';
+  toggleTokenOAuthVisibility.textContent = tokenOAuthIsVisible ? 'Hide' : 'Show';
+});
+
+// Handle token authentication method change
+tokenAuthMethod.addEventListener('change', () => {
+  const method = tokenAuthMethod.value;
+
+  if (method === 'manual') {
+    tokenManualSection.style.display = 'block';
+    tokenOAuthSection.style.display = 'none';
+  } else if (method === 'oauth') {
+    tokenManualSection.style.display = 'none';
+    tokenOAuthSection.style.display = 'block';
+  }
 });
 
 // Handle access mode change
@@ -443,6 +472,145 @@ tokenAccessMode.addEventListener('change', () => {
     updateTokenStatus('Anonymous access enabled. Rate limit: 60 requests/hour.', 'info');
   }
 });
+
+// ============================================================
+// GitHub OAuth PKCE Authorization Implementation
+// ============================================================
+
+const OAUTH_WORKER_ENDPOINT = 'https://gitzip-pro-github-auth.fthux.com';
+
+/**
+ * Generate cryptographically secure random code verifier for PKCE
+ * @returns {string} Base64URL encoded random string
+ */
+function generateCodeVerifier() {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return btoa(String.fromCharCode.apply(null, array))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
+/**
+ * Generate SHA-256 hash and return Base64URL encoded code challenge
+ * @param {string} codeVerifier 
+ * @returns {Promise<string>} code_challenge
+ */
+async function generateCodeChallenge(codeVerifier) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(codeVerifier);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
+/**
+ * Start GitHub OAuth authorization flow
+ * @param {string} scope - 'public_repo' or 'repo'
+ */
+async function startGitHubOAuth(scope) {
+  try {
+    // Disable buttons during authorization
+    authorizePublicBtn.disabled = true;
+    authorizePrivateBtn.disabled = true;
+
+    const originalPublicText = authorizePublicBtn.textContent;
+    const originalPrivateText = authorizePrivateBtn.textContent;
+
+    authorizePublicBtn.textContent = '授权中...';
+    authorizePrivateBtn.textContent = '授权中...';
+
+    // Generate PKCE values
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = await generateCodeChallenge(codeVerifier);
+
+    // Build authorization URL
+    const authUrl = new URL(OAUTH_WORKER_ENDPOINT);
+    authUrl.searchParams.set('code_verifier', codeVerifier);
+    authUrl.searchParams.set('code_challenge', codeChallenge);
+    authUrl.searchParams.set('scope', scope);
+
+    // Open authorization window
+    const authWindow = window.open(
+      authUrl.toString(),
+      'GitHub Authorization',
+      'width=600,height=700,scrollbars=yes,resizable=yes,status=no,menubar=no,toolbar=no,location=no'
+    );
+
+    if (!authWindow) {
+      throw new Error('无法打开授权窗口，请检查浏览器弹出窗口拦截设置');
+    }
+
+    // Create promise to handle authorization result
+    const authResult = await new Promise((resolve, reject) => {
+      const messageHandler = (event) => {
+        // Security: only accept messages from our worker domain
+        if (event.origin !== new URL(OAUTH_WORKER_ENDPOINT).origin) return;
+
+        // Cleanup
+        window.removeEventListener('message', messageHandler);
+
+        // Close window if still open
+        if (!authWindow.closed) {
+          authWindow.close();
+        }
+
+        const data = event.data;
+
+        if (data.type === 'OAUTH_SUCCESS') {
+          resolve(data);
+        } else if (data.type === 'OAUTH_ERROR') {
+          reject(new Error(data.message || '授权失败'));
+        }
+      };
+
+      // Listen for postMessage from worker
+      window.addEventListener('message', messageHandler);
+
+      // Set timeout for authorization
+      setTimeout(() => {
+        window.removeEventListener('message', messageHandler);
+        if (!authWindow.closed) authWindow.close();
+        reject(new Error('授权超时，请重试'));
+      }, 5 * 60 * 1000); // 5 minutes timeout
+    });
+
+    // Authorization successful - save token
+    if (authResult.accessToken) {
+      // Save token to storage
+      await chrome.storage.sync.set({ [TOKEN_STORAGE_KEY]: authResult.accessToken });
+
+      // Update UI
+      githubToken.value = authResult.accessToken.substring(0, 4) + '•'.repeat(Math.min(authResult.accessToken.length - 8, 12)) + authResult.accessToken.substring(authResult.accessToken.length - 4);
+      githubToken.type = 'password';
+      tokenIsVisible = false;
+      toggleTokenVisibility.textContent = 'Show';
+
+      const tokenType = authResult.tokenType === 'private' ? '私有仓库 + 公开仓库' : '仅公开仓库';
+      updateTokenStatus(`✅ 授权成功！已获得 ${tokenType} 访问权限`, 'success');
+
+      // Refresh rate limit status
+      await checkRateLimit();
+    }
+
+  } catch (error) {
+    console.error('OAuth authorization error:', error);
+    updateTokenStatus('❌ 授权失败: ' + error.message, 'error');
+  } finally {
+    // Re-enable buttons
+    authorizePublicBtn.disabled = false;
+    authorizePrivateBtn.disabled = false;
+    authorizePublicBtn.textContent = 'Authorize for Public Repos';
+    authorizePrivateBtn.textContent = 'Authorize for Public + Private Repos';
+  }
+}
+
+// OAuth Authorization button handlers
+authorizePublicBtn.addEventListener('click', () => startGitHubOAuth('public_repo'));
+authorizePrivateBtn.addEventListener('click', () => startGitHubOAuth('repo'));
 
 // Save token
 saveTokenBtn.addEventListener('click', async () => {
