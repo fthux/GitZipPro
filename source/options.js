@@ -25,16 +25,9 @@ const historyClearAll = document.getElementById('history-clear-all');
 // Token page elements
 const tokenAccessMode = document.getElementById('tokenAccessMode');
 const tokenInputSection = document.getElementById('tokenInputSection');
-const tokenAuthMethod = document.getElementById('tokenAuthMethod');
-const tokenManualSection = document.getElementById('tokenManualSection');
-const tokenOAuthSection = document.getElementById('tokenOAuthSection');
 const githubToken = document.getElementById('githubToken');
-const githubTokenOAuth = document.getElementById('githubTokenOAuth');
 const toggleTokenVisibility = document.getElementById('toggleTokenVisibility');
-const toggleTokenOAuthVisibility = document.getElementById('toggleTokenOAuthVisibility');
-const tokenStatusText = document.getElementById('tokenStatusText');
-const saveTokenBtn = document.getElementById('saveTokenBtn');
-const clearTokenBtn = document.getElementById('clearTokenBtn');
+const copyToken = document.getElementById('copyToken');
 const rateLimitStatus = document.getElementById('rateLimitStatus');
 const refreshRateLimitBtn = document.getElementById('refreshRateLimitBtn');
 const authorizePublicBtn = document.getElementById('authorizePublicBtn');
@@ -66,6 +59,11 @@ function activateMenu(target) {
   if (target === 'history' && !historyPageInitialized) {
     initHistoryPage();
     historyPageInitialized = true;
+  }
+
+  // 切换到Token页面时自动查询限流状态
+  if (target === 'token') {
+    checkRateLimit();
   }
 
   return true;
@@ -429,32 +427,61 @@ const TOKEN_MODE_KEY = 'gzpTokenAccessMode';
 
 // Token visibility states
 let tokenIsVisible = false;
-let tokenOAuthIsVisible = false;
+let saveTokenDebounceTimer = null;
 
-// Toggle manual token visibility
+// Toggle token visibility
 toggleTokenVisibility.addEventListener('click', () => {
   tokenIsVisible = !tokenIsVisible;
   githubToken.type = tokenIsVisible ? 'text' : 'password';
   toggleTokenVisibility.textContent = tokenIsVisible ? 'Hide' : 'Show';
 });
 
-// Toggle OAuth token visibility
-toggleTokenOAuthVisibility.addEventListener('click', () => {
-  tokenOAuthIsVisible = !tokenOAuthIsVisible;
-  githubTokenOAuth.type = tokenOAuthIsVisible ? 'text' : 'password';
-  toggleTokenOAuthVisibility.textContent = tokenOAuthIsVisible ? 'Hide' : 'Show';
+// Auto save token on input with debounce
+githubToken.addEventListener('input', () => {
+  clearTimeout(saveTokenDebounceTimer);
+  saveTokenDebounceTimer = setTimeout(async () => {
+    const token = githubToken.value.trim();
+
+    if (token && token.length > 0) {
+      await chrome.storage.sync.set({ [TOKEN_STORAGE_KEY]: token });
+      await checkRateLimit();
+    } else {
+      await chrome.storage.sync.remove(TOKEN_STORAGE_KEY);
+    }
+  }, 500);
 });
 
-// Handle token authentication method change
-tokenAuthMethod.addEventListener('change', () => {
-  const method = tokenAuthMethod.value;
+// Copy token to clipboard
+copyToken.addEventListener('click', async () => {
+  const result = await chrome.storage.sync.get([TOKEN_STORAGE_KEY]);
+  const token = result[TOKEN_STORAGE_KEY];
 
-  if (method === 'manual') {
-    tokenManualSection.style.display = 'block';
-    tokenOAuthSection.style.display = 'none';
-  } else if (method === 'oauth') {
-    tokenManualSection.style.display = 'none';
-    tokenOAuthSection.style.display = 'block';
+  if (token) {
+    try {
+      await navigator.clipboard.writeText(token);
+      copyToken.textContent = 'Copied!';
+      setTimeout(() => {
+        copyToken.textContent = 'Copy';
+      }, 1500);
+
+      // 使用Chrome扩展API显示系统通知
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icons/icon48.png',
+        title: 'Token Copied',
+        message: 'GitHub Personal Access Token copied to clipboard successfully.'
+      });
+
+    } catch (e) {
+      console.error('Failed to copy token:', e);
+
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icons/icon48.png',
+        title: 'Copy Failed',
+        message: 'Failed to copy token to clipboard. Please try again.'
+      });
+    }
   }
 });
 
@@ -466,11 +493,27 @@ tokenAccessMode.addEventListener('change', () => {
   // Save mode to storage
   chrome.storage.sync.set({ [TOKEN_MODE_KEY]: mode });
 
-  // If switching to anonymous, clear token input
+  // 匿名访问时显示警告提示
+  const anonymousWarning = document.getElementById('anonymousWarning');
   if (mode === 'anonymous') {
     githubToken.value = '';
-    updateTokenStatus('Anonymous access enabled. Rate limit: 60 requests/hour.', 'info');
+    anonymousWarning.style.display = 'block';
+  } else {
+    anonymousWarning.style.display = 'none';
+
+    // 切换回自定义模式时恢复已保存的Token
+    chrome.storage.sync.get([TOKEN_STORAGE_KEY], (result) => {
+      if (result[TOKEN_STORAGE_KEY]) {
+        githubToken.value = result[TOKEN_STORAGE_KEY];
+        githubToken.type = 'password';
+        tokenIsVisible = false;
+        toggleTokenVisibility.textContent = 'Show';
+      }
+    });
   }
+
+  // 切换模式时刷新限流状态
+  checkRateLimit();
 });
 
 // ============================================================
@@ -520,8 +563,8 @@ async function startGitHubOAuth(scope) {
     const originalPublicText = authorizePublicBtn.textContent;
     const originalPrivateText = authorizePrivateBtn.textContent;
 
-    authorizePublicBtn.textContent = '授权中...';
-    authorizePrivateBtn.textContent = '授权中...';
+    authorizePublicBtn.textContent = 'Authorizing...';
+    authorizePrivateBtn.textContent = 'Authorizing...';
 
     // Generate PKCE values
     const codeVerifier = generateCodeVerifier();
@@ -541,7 +584,7 @@ async function startGitHubOAuth(scope) {
     );
 
     if (!authWindow) {
-      throw new Error('无法打开授权窗口，请检查浏览器弹出窗口拦截设置');
+      throw new Error('Failed to open authorization window. Please check browser popup blocker settings.');
     }
 
     // Create promise to handle authorization result
@@ -574,8 +617,17 @@ async function startGitHubOAuth(scope) {
       setTimeout(() => {
         window.removeEventListener('message', messageHandler);
         if (!authWindow.closed) authWindow.close();
-        reject(new Error('授权超时，请重试'));
+        reject(new Error('Authorization timed out. Please try again.'));
       }, 5 * 60 * 1000); // 5 minutes timeout
+
+      // 监听授权窗口关闭事件
+      const authWindowCloseCheck = setInterval(() => {
+        if (authWindow.closed) {
+          clearInterval(authWindowCloseCheck);
+          window.removeEventListener('message', messageHandler);
+          reject(new Error('Authorization cancelled by user.'));
+        }
+      }, 500);
     });
 
     // Authorization successful - save token
@@ -589,16 +641,17 @@ async function startGitHubOAuth(scope) {
       tokenIsVisible = false;
       toggleTokenVisibility.textContent = 'Show';
 
-      const tokenType = authResult.tokenType === 'private' ? '私有仓库 + 公开仓库' : '仅公开仓库';
-      updateTokenStatus(`✅ 授权成功！已获得 ${tokenType} 访问权限`, 'success');
+      const tokenType = authResult.tokenType === 'private' ? 'Public + Private Repos' : 'Public Repos Only';
+      // 授权成功提示直接输出到限流状态区域
+      rateLimitStatus.textContent = `✅ Authorization successful! Granted access for ${tokenType}`;
 
-      // Refresh rate limit status
-      await checkRateLimit();
+      // 延迟刷新限流状态，确保Chrome Storage已经更新完成
+      setTimeout(() => checkRateLimit(), 100);
     }
 
   } catch (error) {
     console.error('OAuth authorization error:', error);
-    updateTokenStatus('❌ 授权失败: ' + error.message, 'error');
+    rateLimitStatus.textContent = '❌ Authorization failed: ' + error.message;
   } finally {
     // Re-enable buttons
     authorizePublicBtn.disabled = false;
@@ -612,73 +665,17 @@ async function startGitHubOAuth(scope) {
 authorizePublicBtn.addEventListener('click', () => startGitHubOAuth('public_repo'));
 authorizePrivateBtn.addEventListener('click', () => startGitHubOAuth('repo'));
 
-// Save token
-saveTokenBtn.addEventListener('click', async () => {
-  const token = githubToken.value.trim();
-
-  if (!token) {
-    updateTokenStatus('Please enter a token.', 'error');
-    return;
-  }
-
-  // Validate token format (basic check)
-  if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
-    updateTokenStatus('Token format appears invalid. GitHub tokens usually start with "ghp_" or "github_pat_".', 'warning');
-  }
-
-  // Save token to storage
-  try {
-    await chrome.storage.sync.set({ [TOKEN_STORAGE_KEY]: token });
-    updateTokenStatus('Token saved successfully!', 'success');
-
-    // Refresh rate limit status
-    await checkRateLimit();
-  } catch (error) {
-    updateTokenStatus('Failed to save token: ' + error.message, 'error');
-  }
-});
-
-// Clear token
-clearTokenBtn.addEventListener('click', async () => {
-  if (confirm('Are you sure you want to clear the saved token?')) {
-    githubToken.value = '';
-    await chrome.storage.sync.remove(TOKEN_STORAGE_KEY);
-    updateTokenStatus('Token cleared.', 'info');
-    await checkRateLimit();
-  }
-});
 
 // Refresh rate limit
 refreshRateLimitBtn.addEventListener('click', async () => {
   await checkRateLimit();
 });
 
-// Update token status display
-function updateTokenStatus(message, type = 'info') {
-  tokenStatusText.textContent = message;
 
-  // Reset color
-  tokenStatusText.style.color = '';
-
-  // Set color based on type
-  switch (type) {
-    case 'success':
-      tokenStatusText.style.color = '#0b8043'; // Green
-      break;
-    case 'error':
-      tokenStatusText.style.color = '#d93025'; // Red
-      break;
-    case 'warning':
-      tokenStatusText.style.color = '#f29900'; // Orange
-      break;
-    case 'info':
-      tokenStatusText.style.color = 'var(--text-scnd)';
-      break;
-  }
-}
 
 // Check GitHub rate limit
 async function checkRateLimit() {
+
   try {
     rateLimitStatus.textContent = 'Checking rate limit...';
 
@@ -693,14 +690,32 @@ async function checkRateLimit() {
 
     // Add token if available and mode is custom
     if (token && mode === 'custom') {
-      headers['Authorization'] = `token ${token}`;
+      // 仅使用ASCII字符，避免fetch报错
+      const cleanToken = token.replace(/[^\x00-\x7F]/g, '').trim();
+      headers['Authorization'] = `token ${cleanToken}`;
     }
 
     // Fetch rate limit info
     const response = await fetch('https://api.github.com/rate_limit', { headers });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      let errorMessage = '';
+
+      try {
+        const errorData = await response.json();
+        if (errorData.message) {
+          errorMessage += errorData.message;
+          if (errorData.documentation_url) {
+            errorMessage += `\nDocs: ${errorData.documentation_url}`;
+          }
+        } else {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+      } catch (e) {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
@@ -743,6 +758,9 @@ async function checkRateLimit() {
 // Load token settings
 async function loadTokenSettings() {
   try {
+    // 立即设置加载状态，避免显示横线
+    rateLimitStatus.textContent = 'Checking rate limit...';
+
     const result = await chrome.storage.sync.get([TOKEN_STORAGE_KEY, TOKEN_MODE_KEY]);
 
     // Load access mode
@@ -752,27 +770,27 @@ async function loadTokenSettings() {
     // Show/hide token input section
     tokenInputSection.style.display = mode === 'custom' ? 'block' : 'none';
 
+    // 匿名访问时显示警告提示
+    const anonymousWarning = document.getElementById('anonymousWarning');
+    if (mode === 'anonymous') {
+      anonymousWarning.style.display = 'block';
+    } else {
+      anonymousWarning.style.display = 'none';
+    }
+
     // Load token (masked for display)
     if (result[TOKEN_STORAGE_KEY]) {
-      const token = result[TOKEN_STORAGE_KEY];
-      // Show first 4 and last 4 characters, mask the rest
-      const maskedToken = token.length > 8
-        ? token.substring(0, 4) + '•'.repeat(Math.min(token.length - 8, 12)) + token.substring(token.length - 4)
-        : '••••••••';
-      githubToken.value = maskedToken;
+      githubToken.value = result[TOKEN_STORAGE_KEY];
       githubToken.type = 'password';
       tokenIsVisible = false;
       toggleTokenVisibility.textContent = 'Show';
-
-      updateTokenStatus('Token configured (masked for security).', 'success');
-    } else {
-      updateTokenStatus(mode === 'custom'
-        ? 'Token not configured. Enter your token and click "Save Token" to validate.'
-        : 'Anonymous access enabled. Rate limit: 60 requests/hour.', 'info');
     }
 
-    // Check rate limit
-    await checkRateLimit();
+    // 只有当前激活的是Token页面才主动查询，否则不查询
+    const isTokenPageActive = document.getElementById('token').classList.contains('active');
+    if (isTokenPageActive) {
+      checkRateLimit();
+    }
   } catch (error) {
     console.error('Failed to load token settings:', error);
     updateTokenStatus('Error loading token settings.', 'error');

@@ -330,12 +330,13 @@
     }
 
     select {
-      background-image: var(--select-icon);
-      background-repeat: no-repeat;
-      background-position: right 8px center;
-      background-size: 20px;
+      background-image: var(--select-icon) !important;
+      background-repeat: no-repeat !important;
+      background-position: right 8px center !important;
+      background-size: 20px !important;
       cursor: pointer;
       background-color: var(--card-bg);
+      padding-right: 36px !important;
     }
 
     html[data-theme="light"] select {
@@ -346,8 +347,18 @@
       color-scheme: dark;
     }
 
-select:focus, input[type="text"]:focus, input[type="password"]:focus, input[type="checkbox"]:focus {
-  background: var(--card-bg) !important;
+select:focus {
+  background-color: var(--card-bg) !important;
+  background-image: var(--select-icon) !important;
+  background-repeat: no-repeat !important;
+  background-position: right 8px center !important;
+  background-size: 20px !important;
+  box-shadow: 0 0 0 2px var(--primary-color) inset;
+  border-color: transparent;
+}
+
+input[type="text"]:focus, input[type="password"]:focus, input[type="checkbox"]:focus {
+  background-color: var(--card-bg) !important;
   box-shadow: 0 0 0 2px var(--primary-color) inset;
   border-color: transparent;
 }
@@ -995,6 +1006,18 @@ input[type="checkbox"] {
                   <li><strong>Anonymous Access:</strong> Uses public API without authentication (rate limited to 60 requests per hour)</li>
                   <li><strong>Custom Token:</strong> Use your personal GitHub token for higher rate limits and access to private repositories</li>
                 </ul>
+                
+                <div id="anonymousWarning" style="display: none; margin-top: 16px; padding: 12px; background: rgba(244, 67, 54, 0.1); border-left: 4px solid #f44336; border-radius: 4px;">
+                  <strong style="color: #d32f2f;">⚠️ Anonymous Mode Limitation</strong>
+                  <p style="margin: 8px 0 0 0; color: var(--text-main);">
+                    <strong>Limitations:</strong> Only 60 requests per hour shared with all other users on your network.
+                    This is very likely to be exhausted quickly.
+                  </p>
+                  <p style="margin: 6px 0 0 0; color: var(--text-main);">
+                    <strong>Recommendation:</strong> Create a free Personal Access Token
+                    to get 5000 requests per hour, and access your private repositories.
+                  </p>
+                </div>
               </div>
             </div>
             <div class="setting-control">
@@ -1006,110 +1029,43 @@ input[type="checkbox"] {
           </div>
 
            <div id="tokenInputSection" style="display: none;">
-             <div class="setting-row">
-               <div class="setting-info">
-                 <div class="setting-title">Token Authentication Method</div>
+             <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 16px;">
+               <div class="setting-info" style="padding-right: 0; margin-bottom: 8px;">
+                 <div class="setting-title">GitHub Personal Access Token</div>
                  <div class="setting-desc">
-                   Choose how you want to provide your GitHub access token:
+                   You can either manually enter your GitHub Personal Access Token, or click the authorization buttons below to get a token automatically via OAuth.
+                   <br><br>
+                   <strong>Authorization options:</strong>
+                   <ul>
+                     <li><strong>Public Repos Only:</strong> Grants access to public repositories only</li>
+                     <li><strong>Full Access:</strong> Grants access to both public and private repositories</li>
+                   </ul>
                  </div>
                </div>
-               <div class="setting-control">
-                 <select id="tokenAuthMethod">
-                   <option value="manual">Manual Token Input</option>
-                   <option value="oauth">GitHub OAuth Authorization</option>
-                 </select>
+               
+               <div class="input-group" style="max-width: 600px;">
+                 <input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="width: 340px;" />
+                 <button id="toggleTokenVisibility" type="button">Show</button>
+                 <button id="copyToken" type="button">Copy</button>
                </div>
-             </div>
-
-             <div id="tokenManualSection" style="display: block;">
-               <div class="setting-row">
-                 <div class="setting-info">
-                   <div class="setting-title">GitHub Personal Access Token</div>
-                   <div class="setting-desc">
-                     Enter your GitHub Personal Access Token (PAT). 
-                     <br><br>
-                     <strong>How to create a token:</strong>
-                     <ol>
-                       <li>Go to GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)</li>
-                       <li>Click "Generate new token" → "Generate new token (classic)"</li>
-                       <li>Give it a descriptive name (e.g., "GitZip Pro")</li>
-                       <li>Select scopes: <code>repo</code> (for private repos) and <code>read:org</code> (optional)</li>
-                       <li>Click "Generate token" and copy the token</li>
-                     </ol>
-                     <strong>Note:</strong> The token is stored locally in your browser and never sent to any server except GitHub.
-                   </div>
-                 </div>
-                 <div class="setting-control">
-                   <div class="input-group">
-                     <input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="width: 300px;" />
-                     <button id="toggleTokenVisibility" type="button">Show</button>
-                   </div>
-                 </div>
+               
+               <div style="display: flex; gap: 8px; max-width: 580px;">
+                 <button id="authorizePublicBtn" style="padding: 10px 16px; flex: 1; white-space: nowrap;">
+                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;">
+                     <circle cx="12" cy="12" r="10"/>
+                     <path d="M8 12s1.5 2 4 2 4-2 4-2"/>
+                   </svg>
+                   Authorize for Public Repos
+                 </button>
+                 <button id="authorizePrivateBtn" style="padding: 10px 16px; background: var(--primary-color); color: white; border: none; flex: 1; white-space: nowrap;">
+                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;">
+                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                   </svg>
+                   Authorize for Public + Private Repos
+                 </button>
                </div>
              </div>
-
-             <div id="tokenOAuthSection" style="display: none;">
-               <div class="setting-row">
-                 <div class="setting-info">
-                   <div class="setting-title">GitHub OAuth Authorization</div>
-                   <div class="setting-desc">
-                     Click the button below to authorize GitZip Pro directly with GitHub. 
-                     <br><br>
-                     <strong>Choose your required access level:</strong>
-                     <ul>
-                       <li><strong>Public Repos Only:</strong> Grants access to public repositories only (public_repo scope)</li>
-                       <li><strong>Full Access:</strong> Grants access to both public and private repositories (repo scope)</li>
-                     </ul>
-                   </div>
-                 </div>
-                 <div class="setting-control" style="flex-direction: column; gap: 12px; align-items: stretch;">
-                   <button id="authorizePublicBtn" style="padding: 10px 16px;">
-                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;">
-                       <circle cx="12" cy="12" r="10"/>
-                       <path d="M8 12s1.5 2 4 2 4-2 4-2"/>
-                       <line x1="9" y1="9" x2="9.01" y2="9"/>
-                       <line x1="15" y1="9" x2="15.01" y2="9"/>
-                     </svg>
-                     Authorize for Public Repos
-                   </button>
-                   <button id="authorizePrivateBtn" style="padding: 10px 16px; background: var(--primary-color); color: white; border: none;">
-                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;">
-                       <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                       <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                     </svg>
-                     Authorize for Public + Private Repos
-                   </button>
-                 </div>
-               </div>
-
-               <div class="setting-row">
-                 <div class="setting-info">
-                   <div class="setting-title">Obtained Token</div>
-                   <div class="setting-desc">
-                     Token obtained via OAuth authorization. Same token storage as manual input mode.
-                   </div>
-                 </div>
-                 <div class="setting-control">
-                   <div class="input-group">
-                     <input type="password" id="githubTokenOAuth" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="width: 300px;" />
-                     <button id="toggleTokenOAuthVisibility" type="button">Show</button>
-                   </div>
-                 </div>
-               </div>
-             </div>
-            
-            <div class="setting-row">
-              <div class="setting-info">
-                <div class="setting-title">Token Status</div>
-                <div class="setting-desc" id="tokenStatusText">
-                  Token not configured. Enter your token and click "Save Token" to validate.
-                </div>
-              </div>
-              <div class="setting-control">
-                <button id="saveTokenBtn" style="background: var(--primary-color); color: white; border: none;">Save Token</button>
-                <button id="clearTokenBtn" style="margin-left: 8px;">Clear Token</button>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -1119,7 +1075,7 @@ input[type="checkbox"] {
             <div class="setting-info">
               <div class="setting-title">Current Rate Limit Status</div>
               <div class="setting-desc" id="rateLimitStatus">
-                Loading rate limit information...
+                -
               </div>
             </div>
             <div class="setting-control">
