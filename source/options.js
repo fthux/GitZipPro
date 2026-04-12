@@ -61,7 +61,7 @@ function activateMenu(target) {
     historyPageInitialized = true;
   }
 
-  // 切换到Token页面时自动查询限流状态
+  // Automatically check rate limit when switching to Token page
   if (target === 'token') {
     checkRateLimit();
   }
@@ -464,7 +464,7 @@ copyToken.addEventListener('click', async () => {
         copyToken.textContent = 'Copy';
       }, 1500);
 
-      // 使用Chrome扩展API显示系统通知
+      // Show system notification using Chrome extension API
       chrome.notifications.create({
         type: 'basic',
         iconUrl: 'icons/icon48.png',
@@ -493,7 +493,7 @@ tokenAccessMode.addEventListener('change', () => {
   // Save mode to storage
   chrome.storage.sync.set({ [TOKEN_MODE_KEY]: mode });
 
-  // 匿名访问时显示警告提示
+  // Show warning when using anonymous access
   const anonymousWarning = document.getElementById('anonymousWarning');
   if (mode === 'anonymous') {
     githubToken.value = '';
@@ -501,7 +501,7 @@ tokenAccessMode.addEventListener('change', () => {
   } else {
     anonymousWarning.style.display = 'none';
 
-    // 切换回自定义模式时恢复已保存的Token
+    // Restore saved token when switching back to custom mode
     chrome.storage.sync.get([TOKEN_STORAGE_KEY], (result) => {
       if (result[TOKEN_STORAGE_KEY]) {
         githubToken.value = result[TOKEN_STORAGE_KEY];
@@ -512,7 +512,7 @@ tokenAccessMode.addEventListener('change', () => {
     });
   }
 
-  // 切换模式时刷新限流状态
+  // Refresh rate limit status when mode changes
   checkRateLimit();
 });
 
@@ -606,7 +606,7 @@ async function startGitHubOAuth(scope) {
         if (data.type === 'OAUTH_SUCCESS') {
           resolve(data);
         } else if (data.type === 'OAUTH_ERROR') {
-          reject(new Error(data.message || '授权失败'));
+          reject(new Error(data.message || 'Authorization failed'));
         }
       };
 
@@ -620,7 +620,7 @@ async function startGitHubOAuth(scope) {
         reject(new Error('Authorization timed out. Please try again.'));
       }, 5 * 60 * 1000); // 5 minutes timeout
 
-      // 监听授权窗口关闭事件
+      // Monitor authorization window close event
       const authWindowCloseCheck = setInterval(() => {
         if (authWindow.closed) {
           clearInterval(authWindowCloseCheck);
@@ -642,10 +642,10 @@ async function startGitHubOAuth(scope) {
       toggleTokenVisibility.textContent = 'Show';
 
       const tokenType = authResult.tokenType === 'private' ? 'Public + Private Repos' : 'Public Repos Only';
-      // 授权成功提示直接输出到限流状态区域
+      // Show authorization success message directly in rate limit status area
       rateLimitStatus.textContent = `✅ Authorization successful! Granted access for ${tokenType}`;
 
-      // 延迟刷新限流状态，确保Chrome Storage已经更新完成
+      // Delay rate limit refresh to ensure Chrome Storage has been updated
       setTimeout(() => checkRateLimit(), 100);
     }
 
@@ -690,7 +690,7 @@ async function checkRateLimit() {
 
     // Add token if available and mode is custom
     if (token && mode === 'custom') {
-      // 仅使用ASCII字符，避免fetch报错
+      // Use only ASCII characters to prevent fetch errors
       const cleanToken = token.replace(/[^\x00-\x7F]/g, '').trim();
       headers['Authorization'] = `token ${cleanToken}`;
     }
@@ -758,7 +758,7 @@ async function checkRateLimit() {
 // Load token settings
 async function loadTokenSettings() {
   try {
-    // 立即设置加载状态，避免显示横线
+    // Set loading state immediately to avoid empty display
     rateLimitStatus.textContent = 'Checking rate limit...';
 
     const result = await chrome.storage.sync.get([TOKEN_STORAGE_KEY, TOKEN_MODE_KEY]);
@@ -770,7 +770,7 @@ async function loadTokenSettings() {
     // Show/hide token input section
     tokenInputSection.style.display = mode === 'custom' ? 'block' : 'none';
 
-    // 匿名访问时显示警告提示
+    // Show warning when using anonymous access
     const anonymousWarning = document.getElementById('anonymousWarning');
     if (mode === 'anonymous') {
       anonymousWarning.style.display = 'block';
@@ -786,7 +786,7 @@ async function loadTokenSettings() {
       toggleTokenVisibility.textContent = 'Show';
     }
 
-    // 只有当前激活的是Token页面才主动查询，否则不查询
+    // Only query rate limit if Token page is currently active
     const isTokenPageActive = document.getElementById('token').classList.contains('active');
     if (isTokenPageActive) {
       checkRateLimit();
@@ -1145,7 +1145,7 @@ const starGithubBtn = document.getElementById('starGithubBtn');
 
 // Constants
 const GITHUB_REPO_URL = 'https://github.com/fthux/GitZipPro';
-const CHROME_EXTENSION_ID = 'abcdefghijklmnopqrstuvwxyz'; // 临时应用ID
+const CHROME_EXTENSION_ID = 'abcdefghijklmnopqrstuvwxyz'; // Temporary application ID
 const CHROME_WEBSTORE_URL = `https://chrome.google.com/webstore/detail/${CHROME_EXTENSION_ID}`;
 
 // Set current version on page load

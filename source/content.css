@@ -83,7 +83,7 @@
   border-color: var(--gzp-primary-color) !important;
 }
 
-/* Checkmark - 修复对勾居中问题 */
+/* Checkmark - Fix checkmark centering issue */
 .gzp-checkbox:checked::after {
   content: '' !important;
   display: block !important;

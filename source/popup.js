@@ -39,7 +39,7 @@ function applyTheme(theme) {
       moreMenu.classList.toggle('active');
     });
 
-    // 点击外部关闭菜单
+    // Close menu when clicking outside
     document.addEventListener('click', () => {
       moreMenu.classList.remove('active');
     });

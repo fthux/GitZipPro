@@ -106,7 +106,7 @@
       'Accept': 'application/vnd.github.v3+json'
     };
 
-    // 如果使用自定义token模式且有token，则添加认证头
+    // Add authentication header if using custom token mode with valid token
     if (githubToken && tokenAccessMode === 'custom') {
       headers['Authorization'] = `token ${githubToken}`;
     }
@@ -129,9 +129,9 @@
       throw new Error(`Network error: ${e.message}`);
     }
 
-    // 处理速率限制 (429 Too Many Requests 或 403 Forbidden with rate limit info)
+    // Handle rate limiting (429 Too Many Requests or 403 Forbidden with rate limit info)
     if ((resp.status === 429 || resp.status === 403) && attempt < 3) {
-      // 检查是否有 Retry-After 头
+      // Check for Retry-After header
       const retryAfter = resp.headers.get('Retry-After');
       const wait = retryAfter ? parseInt(retryAfter) * 1000 : (attempt + 1) * 2000;
       await new Promise(r => setTimeout(r, wait));
@@ -323,7 +323,7 @@
       const date = now.toISOString().slice(0, 10);
       const datetime = `${ts}-${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
 
-      // 处理路径名称: 如果是根目录则为空 否则取最后一级文件夹名
+      // Process path name: empty for root directory, otherwise take last folder name
       const pathName = parsed[0].path ? parsed[0].path.split('/').pop() : '';
 
       let zipName = template
