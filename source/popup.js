@@ -21,25 +21,45 @@ function applyTheme(theme) {
   const statusText = document.getElementById('status-text');
 
   // Setup button event listeners
-  const optionsButton = document.getElementById('options-button');
-  const starButton = document.getElementById('star-button');
-  const rateButton = document.getElementById('rate-button');
+  const optionsBtn = document.getElementById('options-btn');
+  const moreBtn = document.getElementById('more-btn');
+  const moreMenu = document.getElementById('more-menu');
+  const starBtn = document.getElementById('star-btn');
+  const rateBtn = document.getElementById('rate-btn');
 
-  if (optionsButton) {
-    optionsButton.addEventListener('click', () => {
+  if (optionsBtn) {
+    optionsBtn.addEventListener('click', () => {
       chrome.runtime.openOptionsPage();
     });
   }
 
-  if (starButton) {
-    starButton.addEventListener('click', () => {
-      chrome.tabs.create({ url: 'https://github.com/fthux/GitZipPro' });
+  if (moreBtn && moreMenu) {
+    moreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      moreMenu.classList.toggle('active');
+    });
+
+    // 点击外部关闭菜单
+    document.addEventListener('click', () => {
+      moreMenu.classList.remove('active');
+    });
+
+    moreMenu.addEventListener('click', (e) => {
+      e.stopPropagation();
     });
   }
 
-  if (rateButton) {
-    rateButton.addEventListener('click', () => {
+  if (starBtn) {
+    starBtn.addEventListener('click', () => {
       chrome.tabs.create({ url: 'https://github.com/fthux/GitZipPro' });
+      moreMenu.classList.remove('active');
+    });
+  }
+
+  if (rateBtn) {
+    rateBtn.addEventListener('click', () => {
+      chrome.tabs.create({ url: 'https://github.com/fthux/GitZipPro' });
+      moreMenu.classList.remove('active');
     });
   }
 

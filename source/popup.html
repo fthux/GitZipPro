@@ -59,12 +59,14 @@
 
     body {
       width: 280px;
-      min-height: 120px;
+      min-height: 160px;
       background: var(--bg-color);
       color: var(--text-main);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
       font-size: 13px;
       transition: background-color 0.2s, color 0.2s;
+      display: flex;
+      flex-direction: column;
     }
 
     header {
@@ -96,6 +98,7 @@
 
     main {
       padding: 14px 16px;
+      flex: 1;
     }
 
     .status-row {
@@ -129,7 +132,6 @@
       flex-direction: column;
       gap: 8px;
       margin-top: 16px;
-      border-top: 1px solid var(--border-color);
       padding-top: 12px;
     }
 
@@ -167,6 +169,102 @@
       color: var(--text-scnd);
     }
 
+    /* 底部工具栏 */
+    footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 6px 14px;
+      border-top: 1px solid var(--border-color);
+      position: relative;
+      margin: 0;
+    }
+
+    .footer-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-scnd);
+      font-size: 12px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 6px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .footer-btn:hover {
+      background-color: rgba(0, 0, 0, 0.05);
+      color: var(--text-main);
+    }
+
+    html[data-theme="dark"] .footer-btn:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .footer-btn-icon {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* 更多菜单 */
+    .more-menu {
+      position: absolute;
+      bottom: 50px;
+      right: 12px;
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+      min-width: 160px;
+      z-index: 100;
+      display: none;
+      overflow: hidden;
+    }
+
+    .more-menu.active {
+      display: block;
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      text-align: left;
+      transition: background-color 0.2s;
+    }
+
+    .menu-item:hover {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    html[data-theme="dark"] .menu-item:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .menu-item-icon {
+      width: 14px;
+      height: 14px;
+      color: var(--text-scnd);
+    }
+
+    .menu-divider {
+      height: 1px;
+      background: var(--border-color);
+      margin: 2px 0;
+    }
 
   </style>
 </head>
@@ -184,31 +282,40 @@
       <div class="dot inactive" id="status-dot"></div>
       <span id="status-text">Not on a GitHub repo page</span>
     </div>
-    
-    <div class="actions-container">
-      <button class="action-button" id="options-button">
-        <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-        Options
-      </button>
-      
-      <button class="action-button" id="star-button">
-        <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+  </main>
+
+  <footer>
+    <button class="footer-btn" id="options-btn">
+      <svg class="footer-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+      Options
+    </button>
+
+    <button class="footer-btn" id="more-btn">
+      <svg class="footer-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+      </svg>
+      more
+    </button>
+
+    <div class="more-menu" id="more-menu">
+      <button class="menu-item" id="star-btn">
+        <svg class="menu-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
         </svg>
         Star on GitHub
       </button>
-      
-      <button class="action-button" id="rate-button">
-        <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <div class="menu-divider"></div>
+      <button class="menu-item" id="rate-btn">
+        <svg class="menu-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
         </svg>
         Rate Us
       </button>
     </div>
-  </main>
+  </footer>
 
   <script src="popup.js"></script>
 </body>
