@@ -25,6 +25,19 @@ const historyContent = document.getElementById('history-content');
 const historyCheckedCount = document.getElementById('history-checked-count');
 const historyDeleteSelected = document.getElementById('history-delete-selected');
 const historyClearAll = document.getElementById('history-clear-all');
+const statsOverviewGrid = document.getElementById('stats-overview-grid');
+const statsRepoDimensions = document.getElementById('stats-repo-dimensions');
+const statsBranchDimensions = document.getElementById('stats-branch-dimensions');
+const statsTimeRange = document.getElementById('stats-time-range');
+const statsTypeFilter = document.getElementById('stats-type-filter');
+const statsRepoFilter = document.getElementById('stats-repo-filter');
+const statsBranchFilter = document.getElementById('stats-branch-filter');
+const statsKeywordFilter = document.getElementById('stats-keyword-filter');
+const statsResetFilters = document.getElementById('stats-reset-filters');
+const statsFilterSummary = document.getElementById('stats-filter-summary');
+const statsCustomRange = document.getElementById('stats-custom-range');
+const statsStartDate = document.getElementById('stats-start-date');
+const statsEndDate = document.getElementById('stats-end-date');
 
 // Token page elements
 const tokenAccessMode = document.getElementById('tokenAccessMode');
@@ -36,6 +49,7 @@ const rateLimitStatus = document.getElementById('rateLimitStatus');
 const refreshRateLimitBtn = document.getElementById('refreshRateLimitBtn');
 const authorizePublicBtn = document.getElementById('authorizePublicBtn');
 const authorizePrivateBtn = document.getElementById('authorizePrivateBtn');
+const tokenScopeStatus = document.getElementById('tokenScopeStatus');
 
 // ─── Version ──────────────────────────────────────────────────────────────────
 
@@ -63,6 +77,10 @@ function activateMenu(target) {
   if (target === 'history' && !historyPageInitialized) {
     initHistoryPage();
     historyPageInitialized = true;
+  }
+
+  if (target === 'stats') {
+    initStatsPage();
   }
 
   // Automatically check rate limit when switching to Token page
@@ -428,10 +446,39 @@ customRuleInput.addEventListener('keypress', (e) => {
 
 const TOKEN_STORAGE_KEY = STORAGE.GITHUB_TOKEN;
 const TOKEN_MODE_KEY = STORAGE.TOKEN_ACCESS_MODE;
+const TOKEN_SCOPE_KEY = STORAGE.TOKEN_SCOPE;
 
 // Token visibility states
 let tokenIsVisible = false;
 let saveTokenDebounceTimer = null;
+
+function renderTokenScopeStatus(mode, token, scope) {
+  if (!tokenScopeStatus) return;
+  tokenScopeStatus.classList.remove('idle', 'public', 'private', 'unknown');
+
+  if (mode !== 'custom' || !token) {
+    tokenScopeStatus.classList.add('idle');
+    tokenScopeStatus.textContent = 'No custom token in use.';
+    return;
+  }
+
+  if (scope === undefined || scope === null || scope === '') {
+    tokenScopeStatus.classList.add('idle');
+    tokenScopeStatus.textContent = 'Detecting token scope...';
+    return;
+  }
+
+  if (scope === 'private') {
+    tokenScopeStatus.classList.add('private');
+    tokenScopeStatus.textContent = 'Current token type: Public + Private repositories.';
+  } else if (scope === 'public') {
+    tokenScopeStatus.classList.add('public');
+    tokenScopeStatus.textContent = 'Current token type: Public repositories only.';
+  } else {
+    tokenScopeStatus.classList.add('unknown');
+    tokenScopeStatus.textContent = 'Current token type: Custom token (scope unknown).';
+  }
+}
 
 // Toggle token visibility
 toggleTokenVisibility.addEventListener('click', () => {
@@ -447,10 +494,12 @@ githubToken.addEventListener('input', () => {
     const token = githubToken.value.trim();
 
     if (token && token.length > 0) {
-      await chrome.storage.sync.set({ [TOKEN_STORAGE_KEY]: token });
+      await chrome.storage.sync.set({ [TOKEN_STORAGE_KEY]: token, [TOKEN_SCOPE_KEY]: 'unknown' });
+      renderTokenScopeStatus(tokenAccessMode.value, token, 'unknown');
       await checkRateLimit();
     } else {
-      await chrome.storage.sync.remove(TOKEN_STORAGE_KEY);
+      await chrome.storage.sync.remove([TOKEN_STORAGE_KEY, TOKEN_SCOPE_KEY]);
+      renderTokenScopeStatus(tokenAccessMode.value, '', '');
     }
   }, 500);
 });
@@ -502,17 +551,19 @@ tokenAccessMode.addEventListener('change', () => {
   if (mode === 'anonymous') {
     githubToken.value = '';
     anonymousWarning.style.display = 'block';
+    renderTokenScopeStatus(mode, '', '');
   } else {
     anonymousWarning.style.display = 'none';
 
     // Restore saved token when switching back to custom mode
-    chrome.storage.sync.get([TOKEN_STORAGE_KEY], (result) => {
+    chrome.storage.sync.get([TOKEN_STORAGE_KEY, TOKEN_SCOPE_KEY], (result) => {
       if (result[TOKEN_STORAGE_KEY]) {
         githubToken.value = result[TOKEN_STORAGE_KEY];
         githubToken.type = 'password';
         tokenIsVisible = false;
         toggleTokenVisibility.textContent = 'Show';
       }
+      renderTokenScopeStatus(mode, result[TOKEN_STORAGE_KEY], result[TOKEN_SCOPE_KEY]);
     });
   }
 
@@ -637,7 +688,8 @@ async function startGitHubOAuth(scope) {
     // Authorization successful - save token
     if (authResult.accessToken) {
       // Save token to storage
-      await chrome.storage.sync.set({ [TOKEN_STORAGE_KEY]: authResult.accessToken });
+      const storedScope = scope === 'repo' ? 'private' : 'public';
+      await chrome.storage.sync.set({ [TOKEN_STORAGE_KEY]: authResult.accessToken, [TOKEN_SCOPE_KEY]: storedScope });
 
       // Update UI
       githubToken.value = authResult.accessToken.substring(0, 4) + '•'.repeat(Math.min(authResult.accessToken.length - 8, 12)) + authResult.accessToken.substring(authResult.accessToken.length - 4);
@@ -645,9 +697,10 @@ async function startGitHubOAuth(scope) {
       tokenIsVisible = false;
       toggleTokenVisibility.textContent = 'Show';
 
-      const tokenType = authResult.tokenType === 'private' ? 'Public + Private Repos' : 'Public Repos Only';
+      const tokenType = storedScope === 'private' ? 'Public + Private Repos' : 'Public Repos Only';
       // Show authorization success message directly in rate limit status area
       rateLimitStatus.textContent = `✅ Authorization successful! Granted access for ${tokenType}`;
+      renderTokenScopeStatus('custom', authResult.accessToken, storedScope);
 
       // Delay rate limit refresh to ensure Chrome Storage has been updated
       setTimeout(() => checkRateLimit(), 100);
@@ -684,7 +737,7 @@ async function checkRateLimit() {
     rateLimitStatus.textContent = 'Checking rate limit...';
 
     // Get token from storage
-    const result = await chrome.storage.sync.get([TOKEN_STORAGE_KEY, TOKEN_MODE_KEY]);
+    const result = await chrome.storage.sync.get([TOKEN_STORAGE_KEY, TOKEN_MODE_KEY, TOKEN_SCOPE_KEY]);
     const token = result[TOKEN_STORAGE_KEY];
     const mode = result[TOKEN_MODE_KEY] || 'anonymous';
 
@@ -724,6 +777,33 @@ async function checkRateLimit() {
 
     const data = await response.json();
     const rate = data.rate || data.resources?.core;
+
+    // Detect and persist token scope from GitHub response headers when using custom token
+    if (token && mode === 'custom') {
+      const oauthScopesHeader = (response.headers.get('x-oauth-scopes') || '').toLowerCase();
+      const scopeList = oauthScopesHeader
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+      let detectedScope = 'unknown';
+      if (scopeList.includes('repo')) {
+        detectedScope = 'private';
+      } else if (scopeList.includes('public_repo')) {
+        detectedScope = 'public';
+      } else if (oauthScopesHeader.trim() === '') {
+        detectedScope = 'unknown';
+      } else {
+        // Tokens without repo/public_repo but still authenticated are treated as public-only
+        detectedScope = 'public';
+      }
+
+      if (result[TOKEN_SCOPE_KEY] !== detectedScope) {
+        await chrome.storage.sync.set({ [TOKEN_SCOPE_KEY]: detectedScope });
+      }
+      renderTokenScopeStatus(mode, token, detectedScope);
+    } else {
+      renderTokenScopeStatus(mode, token, result[TOKEN_SCOPE_KEY]);
+    }
 
     if (rate) {
       const remaining = rate.remaining;
@@ -765,7 +845,7 @@ async function loadTokenSettings() {
     // Set loading state immediately to avoid empty display
     rateLimitStatus.textContent = 'Checking rate limit...';
 
-    const result = await chrome.storage.sync.get([TOKEN_STORAGE_KEY, TOKEN_MODE_KEY]);
+    const result = await chrome.storage.sync.get([TOKEN_STORAGE_KEY, TOKEN_MODE_KEY, TOKEN_SCOPE_KEY]);
 
     // Load access mode
     const mode = result[TOKEN_MODE_KEY] || 'anonymous';
@@ -789,6 +869,7 @@ async function loadTokenSettings() {
       tokenIsVisible = false;
       toggleTokenVisibility.textContent = 'Show';
     }
+    renderTokenScopeStatus(mode, result[TOKEN_STORAGE_KEY], result[TOKEN_SCOPE_KEY]);
 
     // Only query rate limit if Token page is currently active
     const isTokenPageActive = document.getElementById('token').classList.contains('active');
@@ -806,6 +887,16 @@ async function loadTokenSettings() {
 const HISTORY_STORAGE_KEY = STORAGE.DOWNLOAD_HISTORY;
 let downloadHistory = [];
 let historyPageInitialized = false;
+let statsPageInitialized = false;
+const statsFilters = {
+  timeRange: 'all',
+  type: 'all',
+  repo: 'all',
+  branch: 'all',
+  keyword: '',
+  customStart: '',
+  customEnd: ''
+};
 
 // Format date for display with relative labels
 function formatHistoryDate(timestamp) {
@@ -843,6 +934,309 @@ function formatHistoryDate(timestamp) {
 function formatHistoryTime(timestamp) {
   const date = new Date(timestamp);
   return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatHistoryFileSize(bytes) {
+  if (!Number.isFinite(bytes) || bytes < 0) {
+    return 'Unknown size';
+  }
+
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let size = bytes;
+  let idx = 0;
+  while (size >= 1024 && idx < units.length - 1) {
+    size /= 1024;
+    idx++;
+  }
+  const value = size >= 10 || idx === 0 ? Math.round(size) : size.toFixed(1);
+  return `${value} ${units[idx]}`;
+}
+
+function classifyPathType(path) {
+  const name = (path || '').split('/').pop() || '';
+  if (!name) return 'folder';
+  return name.includes('.') ? 'file' : 'folder';
+}
+
+function getRecordSizeBytes(record) {
+  if (Array.isArray(record.fileDetails) && record.fileDetails.length > 0) {
+    return record.fileDetails.reduce((sum, item) => {
+      return sum + (Number.isFinite(item.sizeBytes) ? item.sizeBytes : 0);
+    }, 0);
+  }
+  return 0;
+}
+
+function aggregateStats(records) {
+  const summary = {
+    totalDownloads: records.length,
+    totalFolderDownloads: 0,
+    totalFileDownloads: 0,
+    totalDownloadedFiles: 0,
+    totalFilteredItems: 0,
+    totalFilteredFolders: 0,
+    totalFilteredFiles: 0,
+    totalDownloadedBytes: 0,
+    totalUniqueRepos: 0,
+    averageFilesPerDownload: 0
+  };
+
+  const repoMap = new Map();
+  const branchMap = new Map();
+
+  records.forEach((record) => {
+    const ts = Number(record.timestamp) || 0;
+    const filesCount = Number(record.fileCount) || (Array.isArray(record.files) ? record.files.length : 0);
+    const ignoredCount = Number(record.ignoredCount) || 0;
+    const downloadedBytes = getRecordSizeBytes(record);
+    const owner = record.owner || 'unknown';
+    const repo = record.repo || 'Unknown repository';
+    const branch = record.branch || 'main';
+    const repoKey = `${owner}/${repo}`;
+    const branchKey = `${owner}/${repo}#${branch}`;
+    const recordType = record.type === 'file' ? 'file' : 'folder';
+
+    summary.totalDownloadedFiles += filesCount;
+    summary.totalFilteredItems += ignoredCount;
+    summary.totalDownloadedBytes += downloadedBytes;
+    if (recordType === 'file') summary.totalFileDownloads++;
+    else summary.totalFolderDownloads++;
+
+    if (Array.isArray(record.ignoredFiles)) {
+      record.ignoredFiles.forEach((p) => {
+        if (classifyPathType(p) === 'file') summary.totalFilteredFiles++;
+        else summary.totalFilteredFolders++;
+      });
+    }
+
+    if (!repoMap.has(repoKey)) {
+      repoMap.set(repoKey, { repo: repoKey, downloads: 0, files: 0, filtered: 0, bytes: 0 });
+    }
+    const repoStats = repoMap.get(repoKey);
+    repoStats.downloads++;
+    repoStats.files += filesCount;
+    repoStats.filtered += ignoredCount;
+    repoStats.bytes += downloadedBytes;
+
+    if (!branchMap.has(branchKey)) {
+      branchMap.set(branchKey, { branch: branch, repo: repoKey, downloads: 0, files: 0, bytes: 0 });
+    }
+    const branchStats = branchMap.get(branchKey);
+    branchStats.downloads++;
+    branchStats.files += filesCount;
+    branchStats.bytes += downloadedBytes;
+  });
+
+  summary.totalUniqueRepos = repoMap.size;
+  summary.averageFilesPerDownload = summary.totalDownloads > 0
+    ? (summary.totalDownloadedFiles / summary.totalDownloads)
+    : 0;
+
+  const topRepos = Array.from(repoMap.values()).sort((a, b) => b.downloads - a.downloads).slice(0, 10);
+  const topBranches = Array.from(branchMap.values()).sort((a, b) => b.downloads - a.downloads).slice(0, 10);
+
+  return { summary, topRepos, topBranches };
+}
+
+function filterHistoryRecords(records) {
+  const now = Date.now();
+  const timeMap = {
+    today: now - 24 * 60 * 60 * 1000,
+    '7d': now - 7 * 24 * 60 * 60 * 1000,
+    '30d': now - 30 * 24 * 60 * 60 * 1000,
+    '90d': now - 90 * 24 * 60 * 60 * 1000
+  };
+  const keyword = statsFilters.keyword.trim().toLowerCase();
+
+  return records.filter((record) => {
+    const ts = Number(record.timestamp) || 0;
+    const owner = record.owner || 'unknown';
+    const repo = record.repo || 'Unknown repository';
+    const branch = record.branch || 'main';
+    const type = record.type === 'file' ? 'file' : 'folder';
+    const repoKey = `${owner}/${repo}`;
+    const path = (record.path || '').toLowerCase();
+    const downloadName = (record.downloadName || record.filename || '').toLowerCase();
+
+    if (statsFilters.timeRange !== 'all') {
+      if (statsFilters.timeRange === 'custom') {
+        if (statsFilters.customStart) {
+          const startTs = new Date(`${statsFilters.customStart}T00:00:00`).getTime();
+          if (Number.isFinite(startTs) && ts < startTs) return false;
+        }
+        if (statsFilters.customEnd) {
+          const endTs = new Date(`${statsFilters.customEnd}T23:59:59.999`).getTime();
+          if (Number.isFinite(endTs) && ts > endTs) return false;
+        }
+      } else {
+        const threshold = timeMap[statsFilters.timeRange];
+        if (threshold && ts < threshold) return false;
+      }
+    }
+    if (statsFilters.type !== 'all' && type !== statsFilters.type) return false;
+    if (statsFilters.repo !== 'all' && repoKey !== statsFilters.repo) return false;
+    if (statsFilters.branch !== 'all' && branch !== statsFilters.branch) return false;
+    if (keyword && !(`${repoKey} ${branch} ${path} ${downloadName}`).toLowerCase().includes(keyword)) return false;
+
+    return true;
+  });
+}
+
+function renderStatsFilterOptions() {
+  if (!statsRepoFilter || !statsBranchFilter) return;
+  const repoSet = new Set();
+  const branchSet = new Set();
+  downloadHistory.forEach((record) => {
+    repoSet.add(`${record.owner || 'unknown'}/${record.repo || 'Unknown repository'}`);
+    branchSet.add(record.branch || 'main');
+  });
+
+  const repoOptions = ['<option value="all">All Repositories</option>']
+    .concat(Array.from(repoSet).sort().map(v => `<option value="${v}">${v}</option>`));
+  const branchOptions = ['<option value="all">All Branches</option>']
+    .concat(Array.from(branchSet).sort().map(v => `<option value="${v}">${v}</option>`));
+
+  statsRepoFilter.innerHTML = repoOptions.join('');
+  statsBranchFilter.innerHTML = branchOptions.join('');
+
+  if (!repoSet.has(statsFilters.repo)) statsFilters.repo = 'all';
+  if (!branchSet.has(statsFilters.branch)) statsFilters.branch = 'all';
+  statsRepoFilter.value = statsFilters.repo;
+  statsBranchFilter.value = statsFilters.branch;
+}
+
+function renderTable(headers, rows) {
+  if (!rows || rows.length === 0) {
+    return `<div class="stats-empty">No data yet.</div>`;
+  }
+  return `
+    <table class="stats-table">
+      <thead>
+        <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+      </thead>
+      <tbody>
+        ${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderStats() {
+  if (!statsOverviewGrid || !statsRepoDimensions || !statsBranchDimensions) {
+    return;
+  }
+
+  const filteredRecords = filterHistoryRecords(downloadHistory);
+  const { summary, topRepos, topBranches } = aggregateStats(filteredRecords);
+  const overviewItems = [
+    ['Total Downloads', summary.totalDownloads.toLocaleString()],
+    ['Folder Downloads', summary.totalFolderDownloads.toLocaleString()],
+    ['File Downloads', summary.totalFileDownloads.toLocaleString()],
+    ['Downloaded Files', summary.totalDownloadedFiles.toLocaleString()],
+    ['Filtered Items', summary.totalFilteredItems.toLocaleString()],
+    ['Filtered Folders (estimated)', summary.totalFilteredFolders.toLocaleString()],
+    ['Filtered Files (estimated)', summary.totalFilteredFiles.toLocaleString()],
+    ['Total Download Size', formatHistoryFileSize(summary.totalDownloadedBytes)],
+    ['Unique Repositories', summary.totalUniqueRepos.toLocaleString()],
+    ['Avg Files / Download', summary.averageFilesPerDownload.toFixed(1)]
+  ];
+
+  statsOverviewGrid.innerHTML = overviewItems.map(([label, value]) => `
+    <div class="stats-kpi">
+      <div class="stats-kpi-label">${label}</div>
+      <div class="stats-kpi-value">${value}</div>
+      <div class="stats-kpi-subtle">Calculated from the current filtered history dataset.</div>
+    </div>
+  `).join('');
+
+  statsRepoDimensions.innerHTML = renderTable(
+    ['Repository', 'Downloads', 'Files', 'Filtered', 'Size'],
+    topRepos.map((item) => [
+      item.repo,
+      item.downloads.toLocaleString(),
+      item.files.toLocaleString(),
+      item.filtered.toLocaleString(),
+      formatHistoryFileSize(item.bytes)
+    ])
+  );
+
+  statsBranchDimensions.innerHTML = renderTable(
+    ['Branch', 'Repository', 'Downloads', 'Files', 'Size'],
+    topBranches.map((item) => [
+      item.branch,
+      item.repo,
+      item.downloads.toLocaleString(),
+      item.files.toLocaleString(),
+      formatHistoryFileSize(item.bytes)
+    ])
+  );
+
+  if (statsFilterSummary) {
+    statsFilterSummary.textContent = `Showing ${filteredRecords.length} / ${downloadHistory.length} history records`;
+  }
+}
+
+function attachStatsFilterListeners() {
+  if (!statsTimeRange || !statsTypeFilter || !statsRepoFilter || !statsBranchFilter || !statsKeywordFilter || !statsResetFilters || !statsCustomRange || !statsStartDate || !statsEndDate) {
+    return;
+  }
+  if (statsTimeRange.dataset.bound === '1') return;
+
+  const syncCustomRangeVisibility = () => {
+    const isCustom = statsTimeRange.value === 'custom';
+    statsCustomRange.classList.toggle('active', isCustom);
+  };
+
+  const onChange = () => {
+    statsFilters.timeRange = statsTimeRange.value;
+    statsFilters.type = statsTypeFilter.value;
+    statsFilters.repo = statsRepoFilter.value;
+    statsFilters.branch = statsBranchFilter.value;
+    statsFilters.keyword = statsKeywordFilter.value;
+    statsFilters.customStart = statsStartDate.value;
+    statsFilters.customEnd = statsEndDate.value;
+    syncCustomRangeVisibility();
+    renderStats();
+  };
+
+  statsTimeRange.addEventListener('change', onChange);
+  statsTypeFilter.addEventListener('change', onChange);
+  statsRepoFilter.addEventListener('change', onChange);
+  statsBranchFilter.addEventListener('change', onChange);
+  statsKeywordFilter.addEventListener('input', onChange);
+  statsStartDate.addEventListener('change', onChange);
+  statsEndDate.addEventListener('change', onChange);
+  statsResetFilters.addEventListener('click', () => {
+    statsFilters.timeRange = 'all';
+    statsFilters.type = 'all';
+    statsFilters.repo = 'all';
+    statsFilters.branch = 'all';
+    statsFilters.keyword = '';
+    statsFilters.customStart = '';
+    statsFilters.customEnd = '';
+    statsTimeRange.value = 'all';
+    statsTypeFilter.value = 'all';
+    statsRepoFilter.value = 'all';
+    statsBranchFilter.value = 'all';
+    statsKeywordFilter.value = '';
+    statsStartDate.value = '';
+    statsEndDate.value = '';
+    syncCustomRangeVisibility();
+    renderStats();
+  });
+
+  syncCustomRangeVisibility();
+  statsTimeRange.dataset.bound = '1';
+}
+
+async function initStatsPage() {
+  if (!statsPageInitialized) {
+    await loadHistory();
+    statsPageInitialized = true;
+    attachStatsFilterListeners();
+  }
+  renderStatsFilterOptions();
+  renderStats();
 }
 
 function getHistoryTypeInfo(record) {
@@ -920,6 +1314,10 @@ async function addHistoryRecord(record) {
 
   await saveHistory();
   renderHistory();
+  if (statsPageInitialized) {
+    renderStatsFilterOptions();
+    renderStats();
+  }
 }
 
 /**
@@ -934,6 +1332,10 @@ async function deleteSelectedRecords() {
   downloadHistory = downloadHistory.filter(record => !idsToDelete.includes(record.id));
   await saveHistory();
   renderHistory();
+  if (statsPageInitialized) {
+    renderStatsFilterOptions();
+    renderStats();
+  }
 }
 
 /**
@@ -947,6 +1349,10 @@ async function clearAllHistory() {
   downloadHistory = [];
   await saveHistory();
   renderHistory();
+  if (statsPageInitialized) {
+    renderStatsFilterOptions();
+    renderStats();
+  }
 }
 
 /**
@@ -1000,6 +1406,7 @@ function renderHistory() {
       const ownerName = record.owner || 'unknown';
       const downloadName = record.downloadName || record.filename || 'download.zip';
       const path = record.path || '';
+      const fileDetails = Array.isArray(record.fileDetails) ? record.fileDetails : [];
       const typeInfo = getHistoryTypeInfo(record);
       const targetUrl = buildHistoryTargetUrl(record);
 
@@ -1050,7 +1457,16 @@ function renderHistory() {
             ${filesCount > 0 ? `
               <div style="margin-top: 8px;"><strong>Files (${filesCount}):</strong></div>
               <div class="history-file-list">
-                ${record.files && record.files.slice(0, 20).map(file => `<div class="history-file-item">${file}</div>`).join('') || ''}
+                ${
+                  fileDetails.length > 0
+                    ? fileDetails.slice(0, 20).map(item => `
+                      <div class="history-file-item">
+                        <span>${item.path}</span>
+                        <span style="margin-left: 8px; color: var(--text-scnd);">(${formatHistoryFileSize(item.sizeBytes)})</span>
+                      </div>
+                    `).join('')
+                    : (record.files && record.files.slice(0, 20).map(file => `<div class="history-file-item"><span>${file}</span><span style="margin-left: 8px; color: var(--text-scnd);">(Unknown size)</span></div>`).join('') || '')
+                }
                 ${filesCount > 20 ? `<div class="history-file-item">... and ${filesCount - 20} more</div>` : ''}
               </div>
             ` : ''}
@@ -1146,10 +1562,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize message listener for download completion events
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'GZP_DOWNLOAD_COMPLETE' && message.record) {
-      // If history page is already initialized, add the record
-      if (historyPageInitialized) {
+      // If history/stats page is already initialized, add the record immediately
+      if (historyPageInitialized || statsPageInitialized) {
         addHistoryRecord(message.record);
         renderHistory(); // Re-render to show new record
+        if (statsPageInitialized) {
+          renderStatsFilterOptions();
+          renderStats();
+        }
       } else {
         // Store the record temporarily and add it when history page is initialized
         if (!window.pendingHistoryRecords) {
@@ -1174,6 +1594,8 @@ document.addEventListener('DOMContentLoaded', () => {
       window.pendingHistoryRecords = [];
       renderHistory();
     }
+  } else if (activeMenuItem && activeMenuItem.getAttribute('data-target') === 'stats') {
+    initStatsPage();
   }
 });
 

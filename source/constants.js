@@ -18,6 +18,7 @@
     IGNORE_CUSTOM_VARS: 'gzpIgnoreCustomVars',
     GITHUB_TOKEN: 'gzpGitHubToken',
     TOKEN_ACCESS_MODE: 'gzpTokenAccessMode',
+    TOKEN_SCOPE: 'gzpTokenScope',
     DOWNLOAD_HISTORY: 'gzpDownloadHistory'
   };
 

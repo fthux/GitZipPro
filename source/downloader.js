@@ -208,6 +208,7 @@
         const entryPath = entry.path;
         fileList.push({
           path: entryPath,
+          sizeBytes: Number.isFinite(entry.size) ? entry.size : null,
           fetch: () => fetchFile(owner, repo, branch, entryPath, signal, githubToken, tokenAccessMode),
         });
       } else if (entry.type === 'dir') {
@@ -278,6 +279,7 @@
         if (item.type === 'file') {
           fileList.push({
             path: item.path,
+            sizeBytes: null,
             fetch: () => fetchFile(item.owner, item.repo, item.branch, item.path, signal, githubToken, tokenAccessMode),
           });
         } else {
@@ -305,6 +307,9 @@
 
       const tasks = fileList.map(item => async () => {
         const bytes = await item.fetch();
+        if (item.sizeBytes == null) {
+          item.sizeBytes = bytes.length;
+        }
         zip.file(`${zipRoot}/${item.path}`, bytes);
         completed++;
         onProgress && onProgress(completed, total, `${completed} / ${total} files`);
@@ -356,6 +361,10 @@
         type: parsed[0].type,
         downloadName: zipName,
         files: fileList.map(item => item.path),
+        fileDetails: fileList.map(item => ({
+          path: item.path,
+          sizeBytes: Number.isFinite(item.sizeBytes) ? item.sizeBytes : null
+        })),
         fileCount: fileList.length,
         ignoredCount: totalIgnored,
         ignoredFiles: totalIgnoredFiles
