@@ -582,12 +582,44 @@ input[type="checkbox"] {
       gap: 16px;
       font-size: 12px;
       color: var(--text-scnd);
+      flex-wrap: wrap;
     }
 
     .history-record-meta-item {
       display: flex;
       align-items: center;
       gap: 4px;
+    }
+
+    .history-record-type-badge {
+      font-size: 11px;
+      color: var(--text-scnd);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 2px 8px;
+      line-height: 1.2;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .history-record-type-badge.file {
+      background: rgba(26, 115, 232, 0.08);
+    }
+
+    .history-record-type-badge.folder {
+      background: rgba(52, 168, 83, 0.08);
+    }
+
+    .history-open-link {
+      color: var(--primary-color);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .history-open-link:hover {
+      text-decoration: underline;
     }
 
     .history-record-expand {

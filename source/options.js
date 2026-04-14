@@ -845,6 +845,35 @@ function formatHistoryTime(timestamp) {
   return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
+function getHistoryTypeInfo(record) {
+  const rawType = record && record.type === 'file' ? 'file' : 'folder';
+  return rawType === 'file'
+    ? { type: 'file', label: 'File', icon: '📄' }
+    : { type: 'folder', label: 'Folder', icon: '📁' };
+}
+
+function buildHistoryTargetUrl(record) {
+  const ownerName = record.owner || 'unknown';
+  const repoName = record.repo || 'Unknown repository';
+  const branchName = record.branch || 'main';
+  const path = (record.path || '').replace(/^\/+|\/+$/g, '');
+  const typeInfo = getHistoryTypeInfo(record);
+
+  const base = `${URLS.GITHUB_BASE}/${ownerName}/${repoName}`;
+  if (!path) {
+    return `${base}/tree/${encodeURIComponent(branchName)}`;
+  }
+
+  if (typeInfo.type === 'file') {
+    const folderPath = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
+    return folderPath
+      ? `${base}/tree/${encodeURIComponent(branchName)}/${folderPath}`
+      : `${base}/tree/${encodeURIComponent(branchName)}`;
+  }
+
+  return `${base}/tree/${encodeURIComponent(branchName)}/${path}`;
+}
+
 /**
  * Save history to storage
  */
@@ -971,6 +1000,8 @@ function renderHistory() {
       const ownerName = record.owner || 'unknown';
       const downloadName = record.downloadName || record.filename || 'download.zip';
       const path = record.path || '';
+      const typeInfo = getHistoryTypeInfo(record);
+      const targetUrl = buildHistoryTargetUrl(record);
 
       html += `
         <div class="history-record" data-id="${record.id}">
@@ -982,6 +1013,7 @@ function renderHistory() {
               <div class="history-record-title">
                 <span class="history-record-repo">${ownerName}/${repoName}</span>
                 <span class="history-record-branch">${branchName}</span>
+                <span class="history-record-type-badge ${typeInfo.type}" title="Download source type">${typeInfo.icon} ${typeInfo.label}</span>
               </div>
               <div class="history-record-meta">
                 <div class="history-record-meta-item">
@@ -997,6 +1029,9 @@ function renderHistory() {
                   <span>${filesCount} ${filesCount === 1 ? 'file' : 'files'}</span>
                   ${ignoredCount > 0 ? `<span style="margin-left: 6px; color: var(--text-scnd); font-size: 11px;">(${ignoredCount} filtered out)</span>` : ''}
                 </div>
+                <a class="history-open-link" href="${targetUrl}" target="_blank" rel="noopener noreferrer" title="Open source location on GitHub">
+                  Open in GitHub
+                </a>
               </div>
             </div>
             <div class="history-record-expand">
@@ -1008,7 +1043,9 @@ function renderHistory() {
           <div class="history-record-details">
             <div><strong>Repository:</strong> ${ownerName}/${repoName}</div>
             <div><strong>Branch:</strong> ${branchName}</div>
+            <div><strong>Type:</strong> ${typeInfo.label}</div>
             ${path ? `<div><strong>Path:</strong> ${path}</div>` : ''}
+            <div><strong>Source URL:</strong> <a class="history-open-link" href="${targetUrl}" target="_blank" rel="noopener noreferrer">Open in GitHub</a></div>
             ${downloadName ? `<div><strong>Downloaded as:</strong> ${downloadName}</div>` : ''}
             ${filesCount > 0 ? `
               <div style="margin-top: 8px;"><strong>Files (${filesCount}):</strong></div>
@@ -1054,7 +1091,11 @@ function addHistoryEventListeners() {
   document.querySelectorAll('.history-record-header').forEach(header => {
     header.addEventListener('click', (e) => {
       // Don't toggle if checkbox was clicked
-      if (e.target.type === 'checkbox' || e.target.closest('.history-record-checkbox')) {
+      if (
+        e.target.type === 'checkbox' ||
+        e.target.closest('.history-record-checkbox') ||
+        e.target.closest('.history-open-link')
+      ) {
         return;
       }
       const record = header.closest('.history-record');
