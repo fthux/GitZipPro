@@ -12,9 +12,13 @@ function applyTheme(theme) {
 }
 
 (async () => {
+  const C = globalThis.GZP_CONSTANTS;
+  const STORAGE = C.STORAGE_KEYS;
+  const DEFAULTS = C.DEFAULTS;
+  const URLS = C.URLS;
   // Apply theme first
-  const result = await chrome.storage.sync.get(['gzpTheme']);
-  const theme = result.gzpTheme || 'system';
+  const result = await chrome.storage.sync.get([STORAGE.THEME]);
+  const theme = result[STORAGE.THEME] || DEFAULTS.THEME;
   applyTheme(theme);
 
   const dot = document.getElementById('status-dot');
@@ -52,21 +56,21 @@ function applyTheme(theme) {
 
   if (starBtn) {
     starBtn.addEventListener('click', () => {
-      chrome.tabs.create({ url: 'https://github.com/fthux/GitZipPro' });
+      chrome.tabs.create({ url: URLS.REPO });
       moreMenu.classList.remove('active');
     });
   }
 
   if (issueBtn) {
     issueBtn.addEventListener('click', () => {
-      chrome.tabs.create({ url: 'https://github.com/fthux/GitZipPro/issues/new' });
+      chrome.tabs.create({ url: URLS.REPO_ISSUES_NEW });
       moreMenu.classList.remove('active');
     });
   }
 
   if (rateBtn) {
     rateBtn.addEventListener('click', () => {
-      chrome.tabs.create({ url: 'https://github.com/fthux/GitZipPro' });
+      chrome.tabs.create({ url: C.CHROME_WEBSTORE.URL });
       moreMenu.classList.remove('active');
     });
   }

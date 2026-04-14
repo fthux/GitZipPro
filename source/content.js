@@ -7,6 +7,9 @@
 
 (function () {
   'use strict';
+  const C = globalThis.GZP_CONSTANTS;
+  const STORAGE = C.STORAGE_KEYS;
+  const DEFAULTS = C.DEFAULTS;
 
   // ─── Constants ────────────────────────────────────────────────────────────
 
@@ -23,7 +26,7 @@
   let downloadBtn = null;
   let cleanupTimeout = null;
   let isNavigating = false;  // 防止重复清除
-  let buttonPosition = 'bottom-right';  // Default position
+  let buttonPosition = DEFAULTS.BUTTON_POSITION;
 
   // Context menu state
   let lastRightClickedRow = null;
@@ -137,15 +140,15 @@
       branch = pathParts[treeIndex + 1];
     }
 
-    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+    const apiUrl = `${C.URLS.GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${filePath}`;
 
     // 获取保存的token设置
     const tokenResult = await new Promise((resolve) => {
-      chrome.storage.sync.get(['gzpGitHubToken', 'gzpTokenAccessMode'], resolve);
+      chrome.storage.sync.get([STORAGE.GITHUB_TOKEN, STORAGE.TOKEN_ACCESS_MODE], resolve);
     });
 
-    const token = tokenResult.gzpGitHubToken;
-    const mode = tokenResult.gzpTokenAccessMode || 'anonymous';
+    const token = tokenResult[STORAGE.GITHUB_TOKEN];
+    const mode = tokenResult[STORAGE.TOKEN_ACCESS_MODE] || DEFAULTS.TOKEN_ACCESS_MODE;
 
     // 准备请求头
     const headers = {
@@ -733,8 +736,8 @@
           setBtnState(BTN_STATES.ERROR, err.message);
 
           // 显示系统通知（受设置控制）
-          chrome.storage.sync.get(['gzpNotifyShow'], (res) => {
-            if (res.gzpNotifyShow !== false) {
+          chrome.storage.sync.get([STORAGE.NOTIFY_SHOW], (res) => {
+            if (res[STORAGE.NOTIFY_SHOW] !== false) {
               chrome.runtime.sendMessage({
                 type: 'GZP_SHOW_ERROR_NOTIFICATION',
                 message: err.message
@@ -1038,9 +1041,9 @@
   });
 
   // Load saved accent color on page load
-  chrome.storage.sync.get(['gzpAccentColor'], (res) => {
-    if (res.gzpAccentColor) {
-      applyAccentColor(res.gzpAccentColor);
+  chrome.storage.sync.get([STORAGE.ACCENT_COLOR], (res) => {
+    if (res[STORAGE.ACCENT_COLOR]) {
+      applyAccentColor(res[STORAGE.ACCENT_COLOR]);
     }
   });
 
@@ -1056,23 +1059,23 @@
   // ─── Load settings from storage ──────────────────────────────────────────
 
   // Settings state
-  let showFileSizes = true;
-  let doubleClickSelect = true;
+  let showFileSizes = DEFAULTS.SHOW_FILE_SIZES;
+  let doubleClickSelect = DEFAULTS.DOUBLE_CLICK_SELECT;
 
   // 文件大小请求控制器 用于取消未完成的请求
   const fileSizeAbortControllers = new Map();
 
   function loadSettings() {
     return new Promise((resolve) => {
-      chrome.storage.sync.get(['gzpButtonPosition', 'gzpShowFileSizes', 'gzpDoubleClickSelect'], (res) => {
-        const savedPosition = res.gzpButtonPosition || 'bottom-right';
+      chrome.storage.sync.get([STORAGE.BUTTON_POSITION, STORAGE.SHOW_FILE_SIZES, STORAGE.DOUBLE_CLICK_SELECT], (res) => {
+        const savedPosition = res[STORAGE.BUTTON_POSITION] || DEFAULTS.BUTTON_POSITION;
         if (buttonPosition !== savedPosition) {
           buttonPosition = savedPosition;
           updateButtonPosition();
         }
 
-        showFileSizes = res.gzpShowFileSizes !== false;
-        doubleClickSelect = res.gzpDoubleClickSelect !== false;
+        showFileSizes = res[STORAGE.SHOW_FILE_SIZES] !== false;
+        doubleClickSelect = res[STORAGE.DOUBLE_CLICK_SELECT] !== false;
 
         resolve();
       });
@@ -1090,13 +1093,13 @@
     // Listen for storage changes (when user updates settings)
     chrome.storage.onChanged.addListener((changes, namespace) => {
       if (namespace === 'sync') {
-        if (changes.gzpButtonPosition) {
-          buttonPosition = changes.gzpButtonPosition.newValue || 'bottom-right';
+        if (changes[STORAGE.BUTTON_POSITION]) {
+          buttonPosition = changes[STORAGE.BUTTON_POSITION].newValue || DEFAULTS.BUTTON_POSITION;
           updateButtonPosition();
         }
 
-        if (changes.gzpShowFileSizes) {
-          showFileSizes = changes.gzpShowFileSizes.newValue !== false;
+        if (changes[STORAGE.SHOW_FILE_SIZES]) {
+          showFileSizes = changes[STORAGE.SHOW_FILE_SIZES].newValue !== false;
 
           if (showFileSizes) {
             // 开启时 重新为所有行显示文件大小
@@ -1110,8 +1113,8 @@
           }
         }
 
-        if (changes.gzpDoubleClickSelect) {
-          doubleClickSelect = changes.gzpDoubleClickSelect.newValue !== false;
+        if (changes[STORAGE.DOUBLE_CLICK_SELECT]) {
+          doubleClickSelect = changes[STORAGE.DOUBLE_CLICK_SELECT].newValue !== false;
         }
       }
     });

@@ -8,6 +8,10 @@
 const themeSelect = document.getElementById('themeSelect');
 const buttonPositionSelect = document.getElementById('buttonPositionSelect');
 const versionDisplay = document.getElementById('versionDisplay');
+const C = globalThis.GZP_CONSTANTS;
+const STORAGE = C.STORAGE_KEYS;
+const DEFAULTS = C.DEFAULTS;
+const URLS = C.URLS;
 
 // Download page elements
 const namingPreset = document.getElementById('namingPreset');
@@ -108,7 +112,7 @@ function applyTheme(theme) {
 themeSelect.addEventListener('change', (e) => {
   const theme = e.target.value;
   applyTheme(theme);
-  chrome.storage.sync.set({ gzpTheme: theme });
+  chrome.storage.sync.set({ [STORAGE.THEME]: theme });
 });
 
 // ─── Accent Color ─────────────────────────────────────────────────────────────
@@ -183,7 +187,7 @@ document.querySelectorAll('.color-preset').forEach(btn => {
   btn.addEventListener('click', () => {
     const color = btn.getAttribute('data-color');
     applyAccentColor(color);
-    chrome.storage.sync.set({ gzpAccentColor: color });
+    chrome.storage.sync.set({ [STORAGE.ACCENT_COLOR]: color });
   });
 });
 
@@ -196,83 +200,83 @@ customColorPicker.addEventListener('input', (e) => {
 });
 
 customColorPicker.addEventListener('change', (e) => {
-  chrome.storage.sync.set({ gzpAccentColor: e.target.value });
+  chrome.storage.sync.set({ [STORAGE.ACCENT_COLOR]: e.target.value });
 });
 
 // Button Position
 buttonPositionSelect.addEventListener('change', () => {
-  chrome.storage.sync.set({ gzpButtonPosition: buttonPositionSelect.value });
+  chrome.storage.sync.set({ [STORAGE.BUTTON_POSITION]: buttonPositionSelect.value });
 });
 
 // Show File Sizes
 document.getElementById('showFileSizes').addEventListener('change', () => {
-  chrome.storage.sync.set({ gzpShowFileSizes: document.getElementById('showFileSizes').checked });
+  chrome.storage.sync.set({ [STORAGE.SHOW_FILE_SIZES]: document.getElementById('showFileSizes').checked });
 });
 
 // Double Click To Select
 document.getElementById('doubleClickSelect').addEventListener('change', () => {
-  chrome.storage.sync.set({ gzpDoubleClickSelect: document.getElementById('doubleClickSelect').checked });
+  chrome.storage.sync.set({ [STORAGE.DOUBLE_CLICK_SELECT]: document.getElementById('doubleClickSelect').checked });
 });
 
 // ZIP Naming Rule
 namingPreset.addEventListener('change', () => {
-  chrome.storage.sync.set({ gzpNamingPreset: namingPreset.value });
+  chrome.storage.sync.set({ [STORAGE.NAMING_PRESET]: namingPreset.value });
 });
 namingCustom.addEventListener('input', () => {
-  chrome.storage.sync.set({ gzpNamingCustom: namingCustom.value });
+  chrome.storage.sync.set({ [STORAGE.NAMING_CUSTOM]: namingCustom.value });
 });
 
 // Notifications
-notifyShow.addEventListener('change', () => chrome.storage.sync.set({ gzpNotifyShow: notifyShow.checked }));
-notifySound.addEventListener('change', () => chrome.storage.sync.set({ gzpNotifySound: notifySound.checked }));
-notifyOpen.addEventListener('change', () => chrome.storage.sync.set({ gzpNotifyOpen: notifyOpen.checked }));
+notifyShow.addEventListener('change', () => chrome.storage.sync.set({ [STORAGE.NOTIFY_SHOW]: notifyShow.checked }));
+notifySound.addEventListener('change', () => chrome.storage.sync.set({ [STORAGE.NOTIFY_SOUND]: notifySound.checked }));
+notifyOpen.addEventListener('change', () => chrome.storage.sync.set({ [STORAGE.NOTIFY_OPEN]: notifyOpen.checked }));
 
 // ─── Load All Saved Settings ──────────────────────────────────────────────────
 
 chrome.storage.sync.get(
-  ['gzpTheme', 'gzpAccentColor', 'gzpButtonPosition', 'gzpShowFileSizes', 'gzpDoubleClickSelect', 'gzpNamingPreset', 'gzpNamingCustom', 'gzpNotifyShow', 'gzpNotifySound', 'gzpNotifyOpen', 'gzpIgnoreLabels', 'gzpIgnoreCustomVars', 'gzpGitHubToken', 'gzpTokenAccessMode'],
+  [STORAGE.THEME, STORAGE.ACCENT_COLOR, STORAGE.BUTTON_POSITION, STORAGE.SHOW_FILE_SIZES, STORAGE.DOUBLE_CLICK_SELECT, STORAGE.NAMING_PRESET, STORAGE.NAMING_CUSTOM, STORAGE.NOTIFY_SHOW, STORAGE.NOTIFY_SOUND, STORAGE.NOTIFY_OPEN, STORAGE.IGNORE_LABELS, STORAGE.IGNORE_CUSTOM_VARS, STORAGE.GITHUB_TOKEN, STORAGE.TOKEN_ACCESS_MODE],
   (res) => {
     // Theme
-    const savedTheme = res.gzpTheme || 'system';
+    const savedTheme = res[STORAGE.THEME] || DEFAULTS.THEME;
     themeSelect.value = savedTheme;
     applyTheme(savedTheme);
 
     // Accent Color
-    const savedAccentColor = res.gzpAccentColor || '#1a73e8';
+    const savedAccentColor = res[STORAGE.ACCENT_COLOR] || DEFAULTS.ACCENT_COLOR;
     applyAccentColor(savedAccentColor);
 
     // Button Position
-    const savedButtonPosition = res.gzpButtonPosition || 'bottom-right';
+    const savedButtonPosition = res[STORAGE.BUTTON_POSITION] || DEFAULTS.BUTTON_POSITION;
     buttonPositionSelect.value = savedButtonPosition;
 
     // Show File Sizes
-    document.getElementById('showFileSizes').checked = res.gzpShowFileSizes !== false;
+    document.getElementById('showFileSizes').checked = res[STORAGE.SHOW_FILE_SIZES] !== false;
 
     // Double Click To Select
-    document.getElementById('doubleClickSelect').checked = res.gzpDoubleClickSelect !== false;
+    document.getElementById('doubleClickSelect').checked = res[STORAGE.DOUBLE_CLICK_SELECT] !== false;
 
     // ZIP Naming Rule
     const validPresets = Array.from(namingPreset.options).map(opt => opt.value);
-    const savedPreset = res.gzpNamingPreset;
-    namingPreset.value = validPresets.includes(savedPreset) ? savedPreset : '{repo}-{branch}-{path}_{ts}';
-    if (res.gzpNamingCustom !== undefined) {
-      namingCustom.value = res.gzpNamingCustom;
+    const savedPreset = res[STORAGE.NAMING_PRESET];
+    namingPreset.value = validPresets.includes(savedPreset) ? savedPreset : DEFAULTS.NAMING_PRESET;
+    if (res[STORAGE.NAMING_CUSTOM] !== undefined) {
+      namingCustom.value = res[STORAGE.NAMING_CUSTOM];
     }
 
     // Notifications (defaults: Show=true, Sound=true, Open=false)
-    notifyShow.checked = res.gzpNotifyShow !== false;
-    notifySound.checked = res.gzpNotifySound !== false;
-    notifyOpen.checked = res.gzpNotifyOpen === true;
+    notifyShow.checked = res[STORAGE.NOTIFY_SHOW] !== false;
+    notifySound.checked = res[STORAGE.NOTIFY_SOUND] !== false;
+    notifyOpen.checked = res[STORAGE.NOTIFY_OPEN] === true;
 
     // Auto Ignore
-    if (res.gzpIgnoreLabels) {
-      activeLabels = new Set(res.gzpIgnoreLabels);
+    if (res[STORAGE.IGNORE_LABELS]) {
+      activeLabels = new Set(res[STORAGE.IGNORE_LABELS]);
     } else {
       activeLabels = new Set(PRESET_COMBOS.full_repo);
     }
 
-    if (res.gzpIgnoreCustomVars) {
-      customRules = res.gzpIgnoreCustomVars;
+    if (res[STORAGE.IGNORE_CUSTOM_VARS]) {
+      customRules = res[STORAGE.IGNORE_CUSTOM_VARS];
     }
 
     renderIgnoreTags();
@@ -316,8 +320,8 @@ let customRules = [];
 
 function saveIgnoreSettings() {
   chrome.storage.sync.set({
-    gzpIgnoreLabels: Array.from(activeLabels),
-    gzpIgnoreCustomVars: customRules
+    [STORAGE.IGNORE_LABELS]: Array.from(activeLabels),
+    [STORAGE.IGNORE_CUSTOM_VARS]: customRules
   });
 }
 
@@ -422,8 +426,8 @@ customRuleInput.addEventListener('keypress', (e) => {
 
 // ─── Token Management ─────────────────────────────────────────────────────────
 
-const TOKEN_STORAGE_KEY = 'gzpGitHubToken';
-const TOKEN_MODE_KEY = 'gzpTokenAccessMode';
+const TOKEN_STORAGE_KEY = STORAGE.GITHUB_TOKEN;
+const TOKEN_MODE_KEY = STORAGE.TOKEN_ACCESS_MODE;
 
 // Token visibility states
 let tokenIsVisible = false;
@@ -520,7 +524,7 @@ tokenAccessMode.addEventListener('change', () => {
 // GitHub OAuth PKCE Authorization Implementation
 // ============================================================
 
-const OAUTH_WORKER_ENDPOINT = 'https://gitzip-pro-github-auth.fthux.com';
+const OAUTH_WORKER_ENDPOINT = URLS.OAUTH_WORKER;
 
 /**
  * Generate cryptographically secure random code verifier for PKCE
@@ -696,7 +700,7 @@ async function checkRateLimit() {
     }
 
     // Fetch rate limit info
-    const response = await fetch('https://api.github.com/rate_limit', { headers });
+    const response = await fetch(URLS.GITHUB_RATE_LIMIT, { headers });
 
     if (!response.ok) {
       let errorMessage = '';
@@ -799,7 +803,7 @@ async function loadTokenSettings() {
 
 // ─── History Page Implementation ──────────────────────────────────────────────
 
-const HISTORY_STORAGE_KEY = 'gzpDownloadHistory';
+const HISTORY_STORAGE_KEY = STORAGE.DOWNLOAD_HISTORY;
 let downloadHistory = [];
 let historyPageInitialized = false;
 
@@ -1144,9 +1148,9 @@ const rateUsBtn = document.getElementById('rateUsBtn');
 const starGithubBtn = document.getElementById('starGithubBtn');
 
 // Constants
-const GITHUB_REPO_URL = 'https://github.com/fthux/GitZipPro';
-const CHROME_EXTENSION_ID = 'abcdefghijklmnopqrstuvwxyz'; // Temporary application ID
-const CHROME_WEBSTORE_URL = `https://chrome.google.com/webstore/detail/${CHROME_EXTENSION_ID}`;
+const GITHUB_REPO_URL = URLS.REPO;
+const CHROME_EXTENSION_ID = C.CHROME_WEBSTORE.EXTENSION_ID;
+const CHROME_WEBSTORE_URL = C.CHROME_WEBSTORE.URL;
 
 // Set current version on page load
 document.addEventListener('DOMContentLoaded', () => {

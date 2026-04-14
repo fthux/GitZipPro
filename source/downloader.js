@@ -20,12 +20,15 @@
 
 (function (global) {
   'use strict';
+  const C = globalThis.GZP_CONSTANTS;
+  const STORAGE = C.STORAGE_KEYS;
+  const DEFAULTS = C.DEFAULTS;
 
   // ─── Config ───────────────────────────────────────────────────────────────
 
-  const GITHUB_API_BASE = 'https://api.github.com';
-  const CONCURRENCY_LIMIT = 5;   // max parallel fetch requests
-  const MAX_FILE_COUNT = 500; // safety cap
+  const GITHUB_API_BASE = C.URLS.GITHUB_API_BASE;
+  const CONCURRENCY_LIMIT = C.DOWNLOAD.CONCURRENCY_LIMIT;
+  const MAX_FILE_COUNT = C.DOWNLOAD.MAX_FILE_COUNT;
 
   // ─── URL Parser ───────────────────────────────────────────────────────────
 
@@ -236,7 +239,7 @@
     try {
       settings = await getSettings();
     } catch {
-      settings = { namingPreset: '{repo}-{branch}-{path}_{ts}', namingCustom: '', notifyShow: true, notifySound: true, notifyOpen: false, ignoreLabels: [], ignoreCustomVars: [], githubToken: '', tokenAccessMode: 'anonymous' };
+      settings = { namingPreset: DEFAULTS.NAMING_PRESET, namingCustom: DEFAULTS.NAMING_CUSTOM, notifyShow: DEFAULTS.NOTIFY_SHOW, notifySound: DEFAULTS.NOTIFY_SOUND, notifyOpen: DEFAULTS.NOTIFY_OPEN, ignoreLabels: [], ignoreCustomVars: [], githubToken: '', tokenAccessMode: DEFAULTS.TOKEN_ACCESS_MODE };
     }
     const { namingPreset, namingCustom, notifyShow, notifySound, notifyOpen, ignoreLabels, ignoreCustomVars, githubToken, tokenAccessMode } = settings;
 
@@ -398,18 +401,18 @@
   function getSettings() {
     return new Promise((resolve) => {
       chrome.storage.sync.get(
-        ['gzpNamingPreset', 'gzpNamingCustom', 'gzpNotifyShow', 'gzpNotifySound', 'gzpNotifyOpen', 'gzpIgnoreLabels', 'gzpIgnoreCustomVars', 'gzpGitHubToken', 'gzpTokenAccessMode'],
+        [STORAGE.NAMING_PRESET, STORAGE.NAMING_CUSTOM, STORAGE.NOTIFY_SHOW, STORAGE.NOTIFY_SOUND, STORAGE.NOTIFY_OPEN, STORAGE.IGNORE_LABELS, STORAGE.IGNORE_CUSTOM_VARS, STORAGE.GITHUB_TOKEN, STORAGE.TOKEN_ACCESS_MODE],
         (res) => {
           resolve({
-            namingPreset: res.gzpNamingPreset || '{repo}-{branch}-{path}_{ts}',
-            namingCustom: res.gzpNamingCustom || '',
-            notifyShow: res.gzpNotifyShow !== false,
-            notifySound: res.gzpNotifySound !== false,
-            notifyOpen: res.gzpNotifyOpen === true,
-            ignoreLabels: res.gzpIgnoreLabels, // undefined is handled during logic fallback
-            ignoreCustomVars: res.gzpIgnoreCustomVars || [],
-            githubToken: res.gzpGitHubToken || '',
-            tokenAccessMode: res.gzpTokenAccessMode || 'anonymous'
+            namingPreset: res[STORAGE.NAMING_PRESET] || DEFAULTS.NAMING_PRESET,
+            namingCustom: res[STORAGE.NAMING_CUSTOM] || DEFAULTS.NAMING_CUSTOM,
+            notifyShow: res[STORAGE.NOTIFY_SHOW] !== false,
+            notifySound: res[STORAGE.NOTIFY_SOUND] !== false,
+            notifyOpen: res[STORAGE.NOTIFY_OPEN] === true,
+            ignoreLabels: res[STORAGE.IGNORE_LABELS],
+            ignoreCustomVars: res[STORAGE.IGNORE_CUSTOM_VARS] || [],
+            githubToken: res[STORAGE.GITHUB_TOKEN] || '',
+            tokenAccessMode: res[STORAGE.TOKEN_ACCESS_MODE] || DEFAULTS.TOKEN_ACCESS_MODE
           });
         }
       );

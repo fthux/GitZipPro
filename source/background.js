@@ -9,6 +9,13 @@
  *   Response: { ok: true, downloadId: number } | { ok: false, error: string }
  */
 
+importScripts('constants.js');
+const MENU_IDS = {
+  ROOT: 'gitzip-pro-download',
+  CHECKED: 'gitzip-pro-checked-items',
+  SEPARATOR: 'gitzip-pro-separator',
+  SELECTED: 'gitzip-pro-selected-item'
+};
 
 const activeDownloads = new Map();
 
@@ -19,15 +26,15 @@ let selectedItemHref = null;
 chrome.runtime.onInstalled.addListener(() => {
   // Create parent menu item
   chrome.contextMenus.create({
-    id: 'gitzip-pro-download',
+    id: MENU_IDS.ROOT,
     title: 'GitZip Pro Download',
     contexts: ['page', 'link', 'selection']
   });
 
   // Create disabled "Checked Item(s)" submenu
   chrome.contextMenus.create({
-    id: 'gitzip-pro-checked-items',
-    parentId: 'gitzip-pro-download',
+    id: MENU_IDS.CHECKED,
+    parentId: MENU_IDS.ROOT,
     title: 'Checked Item(s)',
     contexts: ['page', 'link', 'selection'],
     enabled: false
@@ -35,16 +42,16 @@ chrome.runtime.onInstalled.addListener(() => {
 
   // Create separator
   chrome.contextMenus.create({
-    id: 'gitzip-pro-separator',
-    parentId: 'gitzip-pro-download',
+    id: MENU_IDS.SEPARATOR,
+    parentId: MENU_IDS.ROOT,
     type: 'separator',
     contexts: ['page', 'link', 'selection']
   });
 
   // Create dynamic "Selected Folder" submenu (will be updated)
   chrome.contextMenus.create({
-    id: 'gitzip-pro-selected-item',
-    parentId: 'gitzip-pro-download',
+    id: MENU_IDS.SELECTED,
+    parentId: MENU_IDS.ROOT,
     title: 'Selected Folder - (none)',
     contexts: ['page', 'link', 'selection']
   });
@@ -99,7 +106,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       menuTitle = `Selected Item - ${displayName}`;
     }
 
-    chrome.contextMenus.update('gitzip-pro-selected-item', {
+    chrome.contextMenus.update(MENU_IDS.SELECTED, {
       title: menuTitle
     });
 
@@ -143,7 +150,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 // Handle context menu click
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === 'gitzip-pro-selected-item' && selectedItemHref) {
+  if (info.menuItemId === MENU_IDS.SELECTED && selectedItemHref) {
     // Send message to content script to download the selected item
     chrome.tabs.sendMessage(tab.id, {
       type: 'GZP_DOWNLOAD_CONTEXT_ITEM',

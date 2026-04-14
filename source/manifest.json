@@ -21,6 +21,7 @@
     {
       "matches": ["https://github.com/*"],
       "js": [
+        "constants.js",
         "jszip.min.js",
         "downloader.js",
         "content.js"
@@ -47,7 +48,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["jszip.min.js"],
+      "resources": ["jszip.min.js", "constants.js"],
       "matches": ["https://github.com/*"]
     }
   ]
