@@ -23,7 +23,7 @@ const activeDownloads = new Map();
 let selectedItemHref = null;
 
 // Create context menu on installation
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
   // Create parent menu item
   chrome.contextMenus.create({
     id: MENU_IDS.ROOT,
@@ -55,6 +55,20 @@ chrome.runtime.onInstalled.addListener(() => {
     title: 'Selected Folder - (none)',
     contexts: ['page', 'link', 'selection']
   });
+
+  // Check if this is a fresh install (not an update)
+  if (details.reason === 'install') {
+    // Set a flag to show welcome modal
+    chrome.storage.sync.set({
+      'gitzip-pro-show-welcome': true
+    }, () => {
+      // Open options page to token section
+      chrome.runtime.openOptionsPage(() => {
+        // Add hash to navigate directly to token page
+        // This will be handled by the options page itself
+      });
+    });
+  }
 });
 
 // Update context menu when receiving right-click info from content script

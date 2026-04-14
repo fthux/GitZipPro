@@ -115,6 +115,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // No valid hash, default to first menu
     activateMenu('general');
   }
+
+  // Check if we should show welcome modal for first-time users
+  checkAndShowWelcomeModal();
 });
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
@@ -1457,16 +1460,15 @@ function renderHistory() {
             ${filesCount > 0 ? `
               <div style="margin-top: 8px;"><strong>Files (${filesCount}):</strong></div>
               <div class="history-file-list">
-                ${
-                  fileDetails.length > 0
-                    ? fileDetails.slice(0, 20).map(item => `
+                ${fileDetails.length > 0
+            ? fileDetails.slice(0, 20).map(item => `
                       <div class="history-file-item">
                         <span>${item.path}</span>
                         <span style="margin-left: 8px; color: var(--text-scnd);">(${formatHistoryFileSize(item.sizeBytes)})</span>
                       </div>
                     `).join('')
-                    : (record.files && record.files.slice(0, 20).map(file => `<div class="history-file-item"><span>${file}</span><span style="margin-left: 8px; color: var(--text-scnd);">(Unknown size)</span></div>`).join('') || '')
-                }
+            : (record.files && record.files.slice(0, 20).map(file => `<div class="history-file-item"><span>${file}</span><span style="margin-left: 8px; color: var(--text-scnd);">(Unknown size)</span></div>`).join('') || '')
+          }
                 ${filesCount > 20 ? `<div class="history-file-item">... and ${filesCount - 20} more</div>` : ''}
               </div>
             ` : ''}
@@ -1679,3 +1681,99 @@ rateUsBtn.addEventListener('click', () => {
 starGithubBtn.addEventListener('click', () => {
   window.open(GITHUB_REPO_URL, '_blank');
 });
+
+// ─── Welcome Modal for First-Time Users ──────────────────────────────────────
+
+/**
+ * Check if we should show the welcome modal for first-time users
+ */
+async function checkAndShowWelcomeModal() {
+  try {
+    // Check if we should show welcome modal
+    const result = await chrome.storage.sync.get(['gitzip-pro-show-welcome']);
+    const shouldShowWelcome = result['gitzip-pro-show-welcome'] === true;
+
+    if (shouldShowWelcome) {
+      // Remove the flag so modal only shows once
+      await chrome.storage.sync.remove(['gitzip-pro-show-welcome']);
+
+      // Navigate to token page
+      activateMenu('token');
+      window.location.hash = 'token';
+
+      // Show modal after a short delay to ensure page is loaded
+      setTimeout(() => {
+        showWelcomeModal();
+      }, 500);
+    }
+  } catch (error) {
+    console.error('Error checking welcome modal:', error);
+  }
+}
+
+/**
+ * Show the welcome modal
+ */
+function showWelcomeModal() {
+  const modal = document.getElementById('welcomeModal');
+  if (!modal) return;
+
+  modal.style.display = 'flex';
+
+  // Add event listeners
+  const closeBtn = document.getElementById('welcomeModalClose');
+  const learnMoreBtn = document.getElementById('welcomeModalLearnMore');
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      closeWelcomeModal();
+      // Start flashing the token dropdown
+      flashTokenDropdown();
+    });
+  }
+
+  if (learnMoreBtn) {
+    learnMoreBtn.addEventListener('click', () => {
+      // Open GitHub documentation about personal access tokens
+      window.open('https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens', '_blank');
+    });
+  }
+
+  // Close modal when clicking on overlay
+  const overlay = modal.querySelector('.welcome-modal-overlay');
+  if (overlay) {
+    overlay.addEventListener('click', () => {
+      closeWelcomeModal();
+      flashTokenDropdown();
+    });
+  }
+}
+
+/**
+ * Close the welcome modal
+ */
+function closeWelcomeModal() {
+  const modal = document.getElementById('welcomeModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+/**
+ * Make the token dropdown flash to draw attention
+ */
+function flashTokenDropdown() {
+  const tokenDropdown = document.getElementById('tokenAccessMode');
+  if (!tokenDropdown) return;
+
+  // Add flashing animation class
+  tokenDropdown.classList.add('token-dropdown-flash');
+
+  // Scroll to token dropdown if needed
+  tokenDropdown.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  // Remove animation class after it completes (3 cycles * 1s each = 3s)
+  setTimeout(() => {
+    tokenDropdown.classList.remove('token-dropdown-flash');
+  }, 3000);
+}

@@ -857,6 +857,204 @@ input[type="checkbox"] {
       color: #f29900;
     }
 
+    /* Welcome Modal Styles */
+    .welcome-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: welcomeFadeIn 0.3s ease;
+    }
+
+    @keyframes welcomeFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .welcome-modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+    }
+
+    .welcome-modal-content {
+      position: relative;
+      background: var(--card-bg);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color);
+      animation: welcomeSlideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes welcomeSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .welcome-modal-header {
+      padding: 32px 32px 16px;
+      text-align: center;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .welcome-modal-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 16px;
+      background: linear-gradient(135deg, var(--primary-color), #8ab4f8);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    .welcome-modal-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+
+    .welcome-modal-subtitle {
+      font-size: 14px;
+      color: var(--text-scnd);
+      font-weight: 500;
+    }
+
+    .welcome-modal-body {
+      padding: 24px 32px 32px;
+    }
+
+    .welcome-tip {
+      display: flex;
+      gap: 16px;
+      background: rgba(26, 115, 232, 0.05);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+      border: 1px solid rgba(26, 115, 232, 0.1);
+    }
+
+    .welcome-tip-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .welcome-tip-content h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+
+    .welcome-tip-content p {
+      font-size: 14px;
+      color: var(--text-main);
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .welcome-tip-content ul {
+      margin: 8px 0;
+      padding-left: 20px;
+    }
+
+    .welcome-tip-content li {
+      font-size: 13px;
+      color: var(--text-main);
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+
+    .welcome-tip-content strong {
+      color: var(--primary-color);
+    }
+
+    .welcome-actions {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .welcome-btn-primary {
+      flex: 1;
+      padding: 14px 24px;
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .welcome-btn-primary:hover {
+      background: #0b57d0;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(26, 115, 232, 0.3);
+    }
+
+    .welcome-btn-secondary {
+      flex: 1;
+      padding: 14px 24px;
+      background: transparent;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .welcome-btn-secondary:hover {
+      background: var(--hover-bg);
+      border-color: var(--primary-color);
+    }
+
+    .welcome-note {
+      text-align: center;
+      color: var(--text-scnd);
+      font-size: 13px;
+    }
+
+    /* Token dropdown flashing animation */
+    @keyframes tokenDropdownFlash {
+      0%, 100% {
+        box-shadow: 0 0 0 2px var(--primary-color) inset;
+        border-color: transparent;
+      }
+      50% {
+        box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.5) inset;
+        border-color: var(--primary-color);
+      }
+    }
+
+    .token-dropdown-flash {
+      animation: tokenDropdownFlash 1s ease-in-out 3;
+    }
+
   </style>
 </head>
 <body>
@@ -1427,6 +1625,46 @@ input[type="checkbox"] {
   </div>
 
   <span id="versionDisplay" style="display:none;"></span>
+  <!-- Welcome Modal for First-Time Users -->
+  <div id="welcomeModal" class="welcome-modal" style="display: none;">
+    <div class="welcome-modal-overlay"></div>
+    <div class="welcome-modal-content">
+      <div class="welcome-modal-header">
+        <div class="welcome-modal-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <h2 class="welcome-modal-title">Welcome to GitZip Pro! 🎉</h2>
+        <p class="welcome-modal-subtitle">This message will only appear once</p>
+      </div>
+      
+      <div class="welcome-modal-body">
+        <div class="welcome-tip">
+          <div class="welcome-tip-icon">💡</div>
+          <div class="welcome-tip-content">
+            <h3>Recommendation: Use a Custom Token</h3>
+            <p>For the best experience, we recommend using a <strong>GitHub Personal Access Token</strong> instead of anonymous access:</p>
+            <ul>
+              <li><strong>Higher rate limits:</strong> 5,000 requests per hour vs 60 with anonymous access</li>
+              <li><strong>Access private repositories:</strong> Download files from your private repos</li>
+              <li><strong>Better reliability:</strong> Avoid hitting rate limits during large downloads</li>
+            </ul>
+          </div>
+        </div>
+        
+        <div class="welcome-actions">
+          <button id="welcomeModalClose" class="welcome-btn-primary">Got it, let's set up!</button>
+          <button id="welcomeModalLearnMore" class="welcome-btn-secondary">Learn more about tokens</button>
+        </div>
+        
+        <div class="welcome-note">
+          <p><small>You can always change token settings later in the Token section.</small></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="constants.js"></script>
   <script src="options.js"></script>
 </body>
