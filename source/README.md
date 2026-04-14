@@ -74,6 +74,18 @@ Install from the Chrome Web Store:
 - Token visibility toggle and clipboard copy support.
 - Built-in rate limit status panel with refresh action.
 
+### Download Statistics & Tracking
+
+- Comprehensive download statistics collection:
+  - Count of files selected, downloaded, and ignored
+  - Detailed tracking of ignored file paths
+  - Statistics stored with each download history record
+- Real-time statistics display during downloads
+- Historical statistics accessible through download history:
+  - View ignored files list for each download
+  - Quick reference for download results with filtering breakdown
+- Statistics help users understand the impact of ignore rules on their downloads
+
 ### History, About, and Utility Pages
 
 - Download history page with grouped date view.
