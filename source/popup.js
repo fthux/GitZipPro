@@ -25,6 +25,7 @@ function applyTheme(theme) {
   const moreBtn = document.getElementById('more-btn');
   const moreMenu = document.getElementById('more-menu');
   const starBtn = document.getElementById('star-btn');
+  const issueBtn = document.getElementById('issue-btn');
   const rateBtn = document.getElementById('rate-btn');
 
   if (optionsBtn) {
@@ -52,6 +53,13 @@ function applyTheme(theme) {
   if (starBtn) {
     starBtn.addEventListener('click', () => {
       chrome.tabs.create({ url: 'https://github.com/fthux/GitZipPro' });
+      moreMenu.classList.remove('active');
+    });
+  }
+
+  if (issueBtn) {
+    issueBtn.addEventListener('click', () => {
+      chrome.tabs.create({ url: 'https://github.com/fthux/GitZipPro/issues/new' });
       moreMenu.classList.remove('active');
     });
   }
