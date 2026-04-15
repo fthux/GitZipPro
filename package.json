@@ -5,8 +5,7 @@
   "main": "build.js",
   "scripts": {
     "build": "node build.js",
-    "clean": "rm -rf build",
-    "prebuild": "npm run clean"
+    "clean": "node -e \"fs.rmSync('build', { recursive: true, force: true })\""
   },
   "keywords": [
     "chrome-extension",

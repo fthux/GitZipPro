@@ -14,10 +14,14 @@ const SOURCE_DIR = 'source';
 const BUILD_DIR = 'build';
 const IGNORE_FILES = ['README.md'];
 
-// 确保build目录存在
-if (!fs.existsSync(BUILD_DIR)) {
-  fs.mkdirSync(BUILD_DIR, { recursive: true });
+// 先清空旧的build目录（跨平台兼容)
+if (fs.existsSync(BUILD_DIR)) {
+  fs.rmSync(BUILD_DIR, { recursive: true, force: true });
+  console.log('Cleaned existing build directory');
 }
+
+// 创建新的build目录
+fs.mkdirSync(BUILD_DIR, { recursive: true });
 
 // 复制icons目录
 const iconsDir = path.join(SOURCE_DIR, 'icons');
