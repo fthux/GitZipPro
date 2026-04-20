@@ -1,7 +1,7 @@
 {
   "name": "gitzip-pro",
   "version": "1.0.0",
-  "description": "Chrome extension for downloading selected files from GitHub repositories",
+  "description": "GitZip for GitHub, but Pro.",
   "main": "build.js",
   "scripts": {
     "build": "node build.js",
@@ -14,7 +14,7 @@
     "download"
   ],
   "author": "",
-  "license": "MIT",
+  "license": "GPL",
   "devDependencies": {
     "terser": "^5.31.0",
     "clean-css": "^5.3.3",
