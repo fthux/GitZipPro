@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "GitZip Pro",
   "version": "1.0.0",
-  "description": "Download GitHub repository files and folders as ZIP with ease.",
+  "description": "GitZip for GitHub, but Pro.",
   "permissions": [
     "storage",
     "tabs",
