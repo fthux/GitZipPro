@@ -1,0 +1,13 @@
+Single purpose statement for Chrome Web Store:
+
+This extension has a single purpose: To enable users to select and download specific files and folders from public GitHub repository pages as ZIP archive files directly within the Chrome browser.
+
+All functionality provided by this extension directly supports this single purpose:
+- Adding selection interface elements to GitHub pages
+- Fetching selected file content from GitHub
+- Creating ZIP archives client-side
+- Saving the resulting ZIP file to the user's download folder
+- Providing download history for previously created archives
+- Allowing configuration of download behavior preferences
+
+This extension does not perform any other unrelated functions, does not modify website content beyond adding download selection controls, and does not collect or transmit any user data beyond what is required to perform GitHub file downloads.

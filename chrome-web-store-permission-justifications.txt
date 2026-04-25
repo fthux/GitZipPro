@@ -1,0 +1,20 @@
+Chrome Web Store Permission Justifications
+---
+
+✅ **storage Permission Justification**
+This permission is required to persistently store user configuration settings including custom ignore rules, download naming preferences, notification settings and download history records. This data is stored exclusively on the user's local device and is never transmitted externally. This allows user preferences and history to be retained between browser restarts and extension updates.
+
+✅ **tabs Permission Justification**
+This permission is required to detect when the user navigates to GitHub repository pages, so that the extension can inject the download selection interface only on valid GitHub domain pages. The extension only reads tab URL and does not access or modify tab content on any other websites. This ensures the extension only activates on supported GitHub pages.
+
+✅ **downloads Permission Justification**
+This permission is required to initiate the download of the generated ZIP archive file to the user's local filesystem, and to provide proper download completion status notifications. This permission is used exclusively for saving ZIP archives created by this extension, no other files are downloaded or modified.
+
+✅ **notifications Permission Justification**
+This permission is required to display browser notifications when ZIP archive creation completes successfully or if errors occur during download. Users may optionally disable notifications entirely within the extension settings. No notifications are displayed for purposes unrelated to download operations initiated by the user.
+
+✅ **contextMenus Permission Justification**
+This permission is required to add an optional right-click context menu entry on GitHub pages to provide alternative quick access to download functionality. This context menu only appears when right-clicking within GitHub repository pages and is never shown on other websites.
+
+✅ **Host Permission Justification (github.com)**
+This host permission is required to allow the extension to inject the download selection interface elements directly into GitHub repository pages, and to make authorized API requests to GitHub to retrieve file content for selected items. This permission is limited exclusively to the github.com domain and no other websites are accessed by this extension.
