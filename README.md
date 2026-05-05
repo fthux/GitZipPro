@@ -4,9 +4,11 @@ GitZip Pro is a Chrome extension inspired by **GitZip for GitHub**, with additio
 
 ## Install
 
-Install from the Chrome Web Store:
+- [Chrome Browser](https://chromewebstore.google.com/detail/gitzip-pro/lpjpkopdlnpgcifigibaelbbkmigjjnp)
 
-- [Install GitZip Pro](https://chrome.google.com/webstore/detail/abcdefghijklmnopqrstuvwxyz)
+- [Brave Browser](https://chromewebstore.google.com/detail/gitzip-pro/lpjpkopdlnpgcifigibaelbbkmigjjnp)
+
+- Edge Browser (In review)
 
 ## Features
 
