@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "GitZip Pro",
   "version": "1.0.0",
+  "default_locale": "en",
   "description": "GitZip for GitHub, but Pro.",
   "permissions": [
     "storage",
@@ -48,7 +49,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["jszip.min.js", "constants.js"],
+      "resources": ["jszip.min.js", "constants.js", "locales/*"],
       "matches": ["https://github.com/*"]
     }
   ]

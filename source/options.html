@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GitZip Pro — Settings</title>
+  <title data-i18n="app.name">GitZip Pro — Settings</title>
   <style>
     :root {
       color-scheme: light;
@@ -1062,7 +1062,7 @@ input[type="checkbox"] {
   <div class="sidebar">
     <div class="sidebar-header">
       <img src="icons/icon48.png" alt="Icon" />
-      <span class="title">GitZip Pro</span>
+      <span class="title" data-i18n="app.name">GitZip Pro</span>
     </div>
     
     <div class="menu-group">
@@ -1071,14 +1071,14 @@ input[type="checkbox"] {
           <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
           <circle cx="12" cy="12" r="3"/>
         </svg>
-        General
+              <span data-i18n="pages.general">General</span>
       </div>
       <div class="menu-item" data-target="token">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
           <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
         </svg>
-        Token
+              <span data-i18n="pages.token">Token</span>
       </div>
       <div class="menu-item" data-target="download">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;">
@@ -1086,14 +1086,14 @@ input[type="checkbox"] {
           <polyline points="7 10 12 15 17 10"/>
           <line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
-        Download
+              <span data-i18n="pages.download">Download</span>
       </div>
       <div class="menu-item" data-target="history">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;">
           <circle cx="12" cy="12" r="10"/>
           <polyline points="12 6 12 12 16 14"/>
         </svg>
-        History
+              <span data-i18n="pages.history">History</span>
       </div>
       <div class="menu-item" data-target="stats">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;">
@@ -1101,7 +1101,7 @@ input[type="checkbox"] {
           <line x1="12" y1="20" x2="12" y2="4"/>
           <line x1="6" y1="20" x2="6" y2="14"/>
         </svg>
-        Stats
+              <span data-i18n="pages.stats">Stats</span>
       </div>
        <div class="menu-item" data-target="about">
          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;">
@@ -1109,8 +1109,8 @@ input[type="checkbox"] {
            <line x1="12" y1="16" x2="12" y2="12"/>
            <line x1="12" y1="8" x2="12.01" y2="8"/>
          </svg>
-         About
-       </div>
+              <span data-i18n="pages.about">About</span>
+      </div>
      </div>
   </div>
 
@@ -1119,29 +1119,29 @@ input[type="checkbox"] {
       
       <!-- General Page -->
       <div id="general" class="page active">
-        <h1 class="page-title">General</h1>
+        <h1 class="page-title" data-i18n="general.page_title">General</h1>
 
-         <h2 class="section-title">Appearance</h2>
+         <h2 class="section-title" data-i18n="general.appearance">Appearance</h2>
          <div class="card">
            <div class="setting-row">
              <div class="setting-info">
-               <div class="setting-title">Theme</div>
-               <div class="setting-desc">Choose the preferred color theme for the extension interface.</div>
+                <div class="setting-title" data-i18n="general.theme">Theme</div>
+                <div class="setting-desc" data-i18n="general.theme_desc">Choose the preferred color theme for the extension interface.</div>
              </div>
              <div class="setting-control">
-               <select id="themeSelect">
-                 <option value="system">System</option>
-                 <option value="light">Light</option>
-                 <option value="dark">Dark</option>
-               </select>
+                <select id="themeSelect">
+                  <option value="system" data-i18n-value="general.theme_system">System</option>
+                  <option value="light" data-i18n-value="general.theme_light">Light</option>
+                  <option value="dark" data-i18n-value="general.theme_dark">Dark</option>
+                </select>
              </div>
            </div>
            
-           <div class="setting-row">
-             <div class="setting-info">
-               <div class="setting-title">Accent Color</div>
-               <div class="setting-desc">Customize the primary theme color used throughout the interface. Choose a preset or pick your own color.</div>
-             </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-title" data-i18n="general.accent_color">Accent Color</div>
+                <div class="setting-desc" data-i18n="general.accent_color_desc">Customize the primary theme color used throughout the interface. Choose a preset or pick your own color.</div>
+              </div>
              <div class="setting-control" style="flex-direction: column; gap: 12px; align-items: flex-end;">
                <div id="presetColors" style="display: flex; gap: 8px;">
                  <button class="color-preset" data-color="#1a73e8" style="padding: 0; width: 28px; height: 28px; border-radius: 9999px; border: 3px solid transparent; cursor: pointer; background: #1a73e8; transition: all 0.15s ease; box-sizing: border-box;" title="Blue"></button>
@@ -1157,36 +1157,49 @@ input[type="checkbox"] {
                </div>
              </div>
            </div>
-         </div>
-        
-        <h2 class="section-title">Interface Behavior</h2>
-        <div class="card">
+          <!-- Language -->
           <div class="setting-row">
             <div class="setting-info">
-              <div class="setting-title">Download Button Position</div>
-              <div class="setting-desc">Choose where the download button appears on GitHub repository pages.</div>
+              <div class="setting-title" data-i18n="general.language">Language</div>
+              <div class="setting-desc" data-i18n="general.language_desc">Select the display language for the extension interface.</div>
             </div>
             <div class="setting-control">
-              <select id="buttonPositionSelect">
-                <option value="bottom-right">Bottom Right</option>
-                <option value="top-left">Top Left</option>
-                <option value="top-right">Top Right</option>
-                <option value="bottom-left">Bottom Left</option>
-                <option value="top-center">Top Center</option>
-                <option value="bottom-center">Bottom Center</option>
-                <option value="left-center">Left Center </option>
-                <option value="right-center">Right Center</option>
+              <select id="languageSelect">
+                <option value="en" data-i18n-value="languages.en">English</option>
+                <option value="zh-CN" data-i18n-value="languages.zh-CN">简体中文</option>
               </select>
             </div>
           </div>
         </div>
+        
+                <h2 class="section-title" data-i18n="general.interface_behavior">Interface Behavior</h2>
+        <div class="card">
+          <div class="setting-row">
+            <div class="setting-info">
+                <div class="setting-title" data-i18n="general.button_position">Download Button Position</div>
+                <div class="setting-desc" data-i18n="general.button_position_desc">Choose where the download button appears on GitHub repository pages.</div>
+            </div>
+            <div class="setting-control">
+                <select id="buttonPositionSelect">
+                  <option value="bottom-right" data-i18n-value="general.button_position_bottom_right">Bottom Right</option>
+                  <option value="top-left" data-i18n-value="general.button_position_top_left">Top Left</option>
+                  <option value="top-right" data-i18n-value="general.button_position_top_right">Top Right</option>
+                  <option value="bottom-left" data-i18n-value="general.button_position_bottom_left">Bottom Left</option>
+                  <option value="top-center" data-i18n-value="general.button_position_top_center">Top Center</option>
+                  <option value="bottom-center" data-i18n-value="general.button_position_bottom_center">Bottom Center</option>
+                  <option value="left-center" data-i18n-value="general.button_position_left_center">Left Center</option>
+                  <option value="right-center" data-i18n-value="general.button_position_right_center">Right Center</option>
+                </select>
+            </div>
+          </div>
+        </div>
           
-        <h2 class="section-title">Interactions</h2>
+        <h2 class="section-title" data-i18n="general.interactions">Interactions</h2>
           <div class="card">
             <div class="setting-row">
               <div class="setting-info">
-                <div class="setting-title">Show File Sizes</div>
-                <div class="setting-desc">Display file size information next to each file in repository listings.</div>
+                <div class="setting-title" data-i18n="general.show_file_sizes">Show File Sizes</div>
+                <div class="setting-desc" data-i18n="general.show_file_sizes_desc">Display file size information next to each file in repository listings.</div>
               </div>
               <div class="setting-control">
                 <label class="switch">
@@ -1198,8 +1211,8 @@ input[type="checkbox"] {
             
             <div class="setting-row">
               <div class="setting-info">
-                <div class="setting-title">Double Click To Select</div>
-                <div class="setting-desc">Enable double-clicking on file or folder rows to toggle selection.</div>
+                <div class="setting-title" data-i18n="general.double_click_select">Double Click To Select</div>
+                <div class="setting-desc" data-i18n="general.double_click_select_desc">Enable double-clicking on file or folder rows to toggle selection.</div>
               </div>
               <div class="setting-control">
                 <label class="switch">
@@ -1214,17 +1227,14 @@ input[type="checkbox"] {
 
       <!-- Download Page -->
       <div id="download" class="page">
-        <h1 class="page-title">Download</h1>
-        
+        <h1 class="page-title" data-i18n="download.page_title">Download</h1>
 
-
-
-        <h2 class="section-title">File Storage</h2>
+        <h2 class="section-title" data-i18n="download.file_storage">File Storage</h2>
         <div class="card">
           <div class="setting-row">
             <div class="setting-info">
-              <div class="setting-title">ZIP Naming Rule</div>
-              <div class="setting-desc">Define the filename format for the downloaded ZIP archive. You can choose a preset or type a custom name.<br><br>
+              <div class="setting-title" data-i18n="download.zip_naming_rule">ZIP Naming Rule</div>
+              <div class="setting-desc" data-i18n-html="download.zip_naming_rule_desc">Define the filename format for the downloaded ZIP archive. You can choose a preset or type a custom name.<br><br>
                  Available variables:
                  <ul>
                    <li><code>{repo}</code> : Repository name</li>
@@ -1248,34 +1258,34 @@ input[type="checkbox"] {
                 <option value="{repo}_{datetime}">{repo}_{datetime}.zip</option>
                 <option value="{repo}-{branch}-{path}_{ts}" selected>{repo}-{branch}-{path}_{ts}.zip</option>
               </select>
-              <input type="text" id="namingCustom" placeholder="Or type custom format..." style="width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-hover); color: var(--text-main); font-family: monospace; font-size: 13px;" />
+              <input type="text" id="namingCustom" data-i18n-placeholder="download.naming_custom_placeholder" placeholder="Or type custom format..." style="width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-hover); color: var(--text-main); font-family: monospace; font-size: 13px;" />
             </div>
           </div>
         </div>
 
-        <h2 class="section-title">Auto-Ignore Files</h2>
+        <h2 class="section-title" data-i18n="download.auto_ignore">Auto-Ignore Files</h2>
         <div class="card">
           <!-- Presets Group -->
           <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 12px;">
             <div class="setting-info" style="margin-bottom: 4px;">
-              <div class="setting-title">Quick Presets</div>
-              <div class="setting-desc">Instantly load predefined filter combinations for different scenarios.</div>
+              <div class="setting-title" data-i18n="download.quick_presets">Quick Presets</div>
+              <div class="setting-desc" data-i18n="download.quick_presets_desc">Instantly load predefined filter combinations for different scenarios.</div>
             </div>
             <div class="setting-control presets-wrapper" style="display: flex; justify-content: flex-start; gap: 16px; flex-wrap: wrap; width: 100%;">
               <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; color: var(--text-main); user-select: none;">
-                <input type="checkbox" class="gzp-preset-chk" value="full_repo" /> Full Repository
+                <input type="checkbox" class="gzp-preset-chk" value="full_repo" /> <span data-i18n="download.preset_full_repo">Full Repository</span>
               </label>
               <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; color: var(--text-main); user-select: none;">
-                <input type="checkbox" class="gzp-preset-chk" value="code_only" /> Code Only
+                <input type="checkbox" class="gzp-preset-chk" value="code_only" /> <span data-i18n="download.preset_code_only">Code Only</span>
               </label>
               <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; color: var(--text-main); user-select: none;">
-                <input type="checkbox" class="gzp-preset-chk" value="docs_only" /> Documentation Only
+                <input type="checkbox" class="gzp-preset-chk" value="docs_only" /> <span data-i18n="download.preset_docs_only">Documentation Only</span>
               </label>
               <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; color: var(--text-main); user-select: none;">
-                <input type="checkbox" class="gzp-preset-chk" value="design_assets" /> Design Assets
+                <input type="checkbox" class="gzp-preset-chk" value="design_assets" /> <span data-i18n="download.preset_design_assets">Design Assets</span>
               </label>
               <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; color: var(--text-main); user-select: none;">
-                <input type="checkbox" class="gzp-preset-chk" value="minimal" /> Minimal
+                <input type="checkbox" class="gzp-preset-chk" value="minimal" /> <span data-i18n="download.preset_minimal">Minimal</span>
               </label>
             </div>
           </div>
@@ -1283,8 +1293,8 @@ input[type="checkbox"] {
           <!-- Predefined Groups (Common, Media & Others) -->
           <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 12px;">
             <div class="setting-info" style="margin-bottom: 4px;">
-              <div class="setting-title">Common (Code & System)</div>
-              <div class="setting-desc">Commonly ignored files and folders for developers.</div>
+              <div class="setting-title" data-i18n="download.common_group">Common (Code & System)</div>
+              <div class="setting-desc" data-i18n="download.common_group_desc">Commonly ignored files and folders for developers.</div>
             </div>
             <div class="ignore-tags-grid" id="ignoreCommonGroup" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; width: 100%;">
               <!-- Rendered via JS -->
@@ -1293,8 +1303,8 @@ input[type="checkbox"] {
 
           <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 12px; margin-top: 12px;">
             <div class="setting-info" style="margin-bottom: 4px;">
-              <div class="setting-title">Media & Others</div>
-              <div class="setting-desc">Large asset files or documentation to optionally ignore.</div>
+              <div class="setting-title" data-i18n="download.media_group">Media & Others</div>
+              <div class="setting-desc" data-i18n="download.media_group_desc">Large asset files or documentation to optionally ignore.</div>
             </div>
             <div class="ignore-tags-grid" id="ignoreMediaGroup" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; width: 100%;">
               <!-- Rendered via JS -->
@@ -1306,13 +1316,13 @@ input[type="checkbox"] {
           <!-- Custom Rules -->
           <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 12px;">
             <div class="setting-info" style="margin-bottom: 4px;">
-              <div class="setting-title">Custom Rules</div>
-              <div class="setting-desc">Add your own wildcard patterns. E.g., <code>*.log</code> for files, <code>temp_data/</code> for folders.</div>
+              <div class="setting-title" data-i18n="download.custom_rules">Custom Rules</div>
+              <div class="setting-desc" data-i18n-html="download.custom_rules_desc">Add your own wildcard patterns. E.g., <code>*.log</code> for files, <code>temp_data/</code> for folders.</div>
             </div>
             
             <div style="display: flex; gap: 8px; width: 100%;">
-              <input type="text" id="customRuleInput" placeholder="Pattern (e.g. *.spec.js)" style="flex: 1; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-hover); color: var(--text-main); font-family: monospace; font-size: 13px;" />
-              <button id="addCustomRuleBtn" style="padding: 6px 12px; background: var(--accent-color); color: #fff; border: none; border-radius: 4px; cursor: pointer;">Add Rule</button>
+              <input type="text" id="customRuleInput" data-i18n-placeholder="download.custom_placeholder" placeholder="Pattern (e.g. *.spec.js)" style="flex: 1; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-hover); color: var(--text-main); font-family: monospace; font-size: 13px;" />
+              <button id="addCustomRuleBtn" data-i18n="download.add_rule" style="padding: 6px 12px; background: var(--accent-color); color: #fff; border: none; border-radius: 4px; cursor: pointer;">Add Rule</button>
             </div>
 
             <div id="customRulesList" style="width: 100%; display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
@@ -1321,12 +1331,12 @@ input[type="checkbox"] {
           </div>
         </div>
 
-        <h2 class="section-title">Notifications</h2>
+        <h2 class="section-title" data-i18n="download.notifications">Notifications</h2>
         <div class="card">
           <div class="setting-row">
             <div class="setting-info">
-              <div class="setting-title">Show Notification</div>
-              <div class="setting-desc">Display a browser popup when the download completes.</div>
+              <div class="setting-title" data-i18n="download.show_notification">Show Notification</div>
+              <div class="setting-desc" data-i18n="download.show_notification_desc">Display a browser popup when the download completes.</div>
             </div>
             <div class="setting-control">
               <label class="switch">
@@ -1337,8 +1347,8 @@ input[type="checkbox"] {
           </div>
           <div class="setting-row">
             <div class="setting-info">
-              <div class="setting-title">Play Sound</div>
-              <div class="setting-desc">Play a short "ding" chime when the download completes.</div>
+              <div class="setting-title" data-i18n="download.play_sound">Play Sound</div>
+              <div class="setting-desc" data-i18n="download.play_sound_desc">Play a short "ding" chime when the download completes.</div>
             </div>
             <div class="setting-control">
               <label class="switch">
@@ -1349,8 +1359,8 @@ input[type="checkbox"] {
           </div>
           <div class="setting-row">
             <div class="setting-info">
-              <div class="setting-title">Open Folder</div>
-              <div class="setting-desc">Automatically open the OS save folder when the download completes.</div>
+              <div class="setting-title" data-i18n="download.open_folder">Open Folder</div>
+              <div class="setting-desc" data-i18n="download.open_folder_desc">Automatically open the OS save folder when the download completes.</div>
             </div>
             <div class="setting-control">
               <label class="switch">
@@ -1365,100 +1375,100 @@ input[type="checkbox"] {
 
       <!-- History Page -->
       <div id="history" class="page">
-        <h1 class="page-title">Download History</h1>
+        <h1 class="page-title" data-i18n="history.page_title">Download History</h1>
         
         <div class="history-controls" style="display: none;">
           <div class="history-selection-info">
-            <span id="history-checked-count">0</span> selected
+            <span id="history-checked-count">0</span> <span data-i18n="history.selected">selected</span>
           </div>
           
           <div class="history-actions">
-            <button id="history-delete-selected" disabled>Delete selected</button>
-            <button id="history-clear-all">Clear all history</button>
+            <button id="history-delete-selected" disabled data-i18n="history.delete_selected">Delete selected</button>
+            <button id="history-clear-all" data-i18n="history.clear_all">Clear all history</button>
           </div>
         </div>
 
         <div id="history-content">
           <!-- History records will be inserted here by JavaScript -->
           <div class="history-empty-state">
-            <h3>No download history yet</h3>
-            <p>Your download history will appear here after you download files from GitHub repositories.</p>
+            <h3 data-i18n="history.empty_title">No download history yet</h3>
+            <p data-i18n="history.empty_desc">Your download history will appear here after you download files from GitHub repositories.</p>
           </div>
         </div>
       </div>
 
       <!-- Stats Page -->
       <div id="stats" class="page">
-        <h1 class="page-title">Statistics</h1>
+        <h1 class="page-title" data-i18n="stats.page_title">Statistics</h1>
 
-        <h2 class="section-title">Interactive Filters</h2>
+        <h2 class="section-title" data-i18n="stats.interactive_filters">Interactive Filters</h2>
         <div class="card" style="padding: 16px;">
           <div class="stats-filters">
             <div class="stats-filter-item">
-              <label for="stats-time-range">Time Range</label>
+              <label for="stats-time-range" data-i18n="stats.time_range">Time Range</label>
               <select id="stats-time-range">
-                <option value="all">All Time</option>
-                <option value="today">Today</option>
-                <option value="7d">Last 7 Days</option>
-                <option value="30d">Last 30 Days</option>
-                <option value="90d">Last 90 Days</option>
-                <option value="custom">Custom Range</option>
+                <option value="all" data-i18n-value="stats.time_range_all">All Time</option>
+                <option value="today" data-i18n-value="stats.time_range_today">Today</option>
+                <option value="7d" data-i18n-value="stats.time_range_7d">Last 7 Days</option>
+                <option value="30d" data-i18n-value="stats.time_range_30d">Last 30 Days</option>
+                <option value="90d" data-i18n-value="stats.time_range_90d">Last 90 Days</option>
+                <option value="custom" data-i18n-value="stats.time_range_custom">Custom Range</option>
               </select>
             </div>
             <div class="stats-filter-item">
-              <label for="stats-type-filter">Download Type</label>
+              <label for="stats-type-filter" data-i18n="stats.download_type">Download Type</label>
               <select id="stats-type-filter">
-                <option value="all">All Types</option>
-                <option value="folder">Folder</option>
-                <option value="file">File</option>
+                <option value="all" data-i18n-value="stats.type_all">All Types</option>
+                <option value="folder" data-i18n-value="stats.type_folder">Folder</option>
+                <option value="file" data-i18n-value="stats.type_file">File</option>
               </select>
             </div>
             <div class="stats-filter-item">
-              <label for="stats-repo-filter">Repository</label>
+              <label for="stats-repo-filter" data-i18n="stats.repository">Repository</label>
               <select id="stats-repo-filter">
-                <option value="all">All Repositories</option>
+                <option value="all" data-i18n-value="stats.repo_all">All Repositories</option>
               </select>
             </div>
             <div class="stats-filter-item">
-              <label for="stats-branch-filter">Branch</label>
+              <label for="stats-branch-filter" data-i18n="stats.branch">Branch</label>
               <select id="stats-branch-filter">
-                <option value="all">All Branches</option>
+                <option value="all" data-i18n-value="stats.branch_all">All Branches</option>
               </select>
             </div>
             <div class="stats-filter-item">
-              <label for="stats-keyword-filter">Path/Name Keyword</label>
-              <input id="stats-keyword-filter" type="text" placeholder="e.g. src, docs, api" />
+              <label for="stats-keyword-filter" data-i18n="stats.keyword">Path/Name Keyword</label>
+              <input id="stats-keyword-filter" type="text" data-i18n-placeholder="stats.keyword_placeholder" placeholder="e.g. src, docs, api" />
             </div>
             <div class="stats-filter-item">
-              <button id="stats-reset-filters" type="button">Reset Filters</button>
+              <button id="stats-reset-filters" type="button" data-i18n="stats.reset_filters">Reset Filters</button>
             </div>
           </div>
           <div class="stats-custom-range" id="stats-custom-range">
             <div class="stats-filter-item">
-              <label for="stats-start-date">Start Date</label>
+              <label for="stats-start-date" data-i18n="stats.start_date">Start Date</label>
               <input id="stats-start-date" type="date" />
             </div>
             <div class="stats-filter-item">
-              <label for="stats-end-date">End Date</label>
+              <label for="stats-end-date" data-i18n="stats.end_date">End Date</label>
               <input id="stats-end-date" type="date" />
             </div>
           </div>
           <div id="stats-filter-summary" class="stats-empty" style="padding: 0;"></div>
         </div>
 
-        <h2 class="section-title">Overview</h2>
+        <h2 class="section-title" data-i18n="stats.overview">Overview</h2>
         <div class="card" style="padding: 16px;">
           <div class="stats-grid" id="stats-overview-grid"></div>
         </div>
 
-        <h2 class="section-title">Repository Dimensions</h2>
+        <h2 class="section-title" data-i18n="stats.repo_dimensions">Repository Dimensions</h2>
         <div class="card">
           <div class="setting-row" style="display: block;">
             <div id="stats-repo-dimensions"></div>
           </div>
         </div>
 
-        <h2 class="section-title">Branch Dimensions</h2>
+        <h2 class="section-title" data-i18n="stats.branch_dimensions">Branch Dimensions</h2>
         <div class="card">
           <div class="setting-row" style="display: block;">
             <div id="stats-branch-dimensions"></div>
@@ -1468,14 +1478,14 @@ input[type="checkbox"] {
 
       <!-- Token Page -->
       <div id="token" class="page">
-        <h1 class="page-title">GitHub Token</h1>
+        <h1 class="page-title" data-i18n="token.page_title">GitHub Token</h1>
         
-        <h2 class="section-title">Custom Token</h2>
+        <h2 class="section-title" data-i18n="token.custom_token">Custom Token</h2>
         <div class="card">
           <div class="setting-row">
             <div class="setting-info">
-              <div class="setting-title">GitHub API Access</div>
-              <div class="setting-desc">
+              <div class="setting-title" data-i18n="token.api_access">GitHub API Access</div>
+              <div class="setting-desc" data-i18n-html="token.api_access_desc">
                 Choose how GitZip Pro accesses GitHub API:
                 <ul>
                   <li><strong>Anonymous Access:</strong> Uses public API without authentication (rate limited to 60 requests per hour)</li>
@@ -1497,14 +1507,14 @@ input[type="checkbox"] {
             </div>
             <div class="setting-control">
               <select id="tokenAccessMode">
-                <option value="anonymous">Anonymous Access</option>
-                <option value="custom">Custom Token</option>
+                <option value="anonymous" data-i18n-value="token.anonymous_access">Anonymous Access</option>
+                <option value="custom" data-i18n-value="token.custom_token">Custom Token</option>
               </select>
             </div>
           </div>
           <div class="setting-row">
             <div class="setting-info">
-              <div class="setting-title">Token Scope</div>
+              <div class="setting-title" data-i18n="token.token_scope">Token Scope</div>
               <div class="setting-desc token-scope-status idle" id="tokenScopeStatus">
                 No custom token in use.
               </div>
@@ -1514,8 +1524,8 @@ input[type="checkbox"] {
            <div id="tokenInputSection" style="display: none;">
              <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 16px;">
                <div class="setting-info" style="padding-right: 0; margin-bottom: 8px;">
-                 <div class="setting-title">GitHub Personal Access Token</div>
-                 <div class="setting-desc">
+                 <div class="setting-title" data-i18n="token.token_input_title">GitHub Personal Access Token</div>
+                 <div class="setting-desc" data-i18n-html="token.token_input_desc">
                    You can either manually enter your GitHub Personal Access Token, or click the authorization buttons below to get a token automatically via OAuth.
                    <br><br>
                    <strong>Authorization options:</strong>
@@ -1527,20 +1537,20 @@ input[type="checkbox"] {
                </div>
                
                <div class="input-group" style="max-width: 600px;">
-                 <input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="width: 340px;" />
-                 <button id="toggleTokenVisibility" type="button">Show</button>
-                 <button id="copyToken" type="button">Copy</button>
+                 <input type="password" id="githubToken" data-i18n-placeholder="token.token_placeholder" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="width: 340px;" />
+                 <button id="toggleTokenVisibility" type="button" data-i18n="token.token_show">Show</button>
+                 <button id="copyToken" type="button" data-i18n="token.token_copy">Copy</button>
                </div>
                
                <div style="display: flex; gap: 8px; max-width: 580px;">
-                 <button id="authorizePublicBtn" style="padding: 10px 16px; flex: 1; white-space: nowrap;">
+                 <button id="authorizePublicBtn" style="padding: 10px 16px; flex: 1; white-space: nowrap;" data-i18n="token.auth_public_btn">
                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;">
                      <circle cx="12" cy="12" r="10"/>
                      <path d="M8 12s1.5 2 4 2 4-2 4-2"/>
                    </svg>
                    Authorize for Public Repos
                  </button>
-                 <button id="authorizePrivateBtn" style="padding: 10px 16px; background: var(--primary-color); color: white; border: none; flex: 1; white-space: nowrap;">
+                 <button id="authorizePrivateBtn" style="padding: 10px 16px; background: var(--primary-color); color: white; border: none; flex: 1; white-space: nowrap;" data-i18n="token.auth_private_btn">
                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;">
                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -1552,17 +1562,17 @@ input[type="checkbox"] {
           </div>
         </div>
 
-        <h2 class="section-title">Rate Limits & Usage</h2>
+        <h2 class="section-title" data-i18n="token.rate_limits">Rate Limits & Usage</h2>
         <div class="card">
           <div class="setting-row">
             <div class="setting-info">
-              <div class="setting-title">Current Rate Limit Status</div>
+              <div class="setting-title" data-i18n="token.rate_limit_status">Current Rate Limit Status</div>
               <div class="setting-desc" id="rateLimitStatus">
                 -
               </div>
             </div>
             <div class="setting-control">
-              <button id="refreshRateLimitBtn">Refresh Status</button>
+              <button id="refreshRateLimitBtn" data-i18n="token.rate_limit_refresh">Refresh Status</button>
             </div>
           </div>
         </div>
@@ -1570,16 +1580,16 @@ input[type="checkbox"] {
 
       <!-- About Page -->
       <div id="about" class="page">
-        <h1 class="page-title">About GitZip Pro</h1>
+        <h1 class="page-title" data-i18n="about.page_title">About GitZip Pro</h1>
         
         <div class="card">
           <div class="setting-row">
             <div class="setting-info">
-              <div class="setting-title">Version</div>
+              <div class="setting-title" data-i18n="about.version">Version</div>
               <div class="setting-desc" id="currentVersion">Loading...</div>
             </div>
             <div class="setting-control">
-              <button id="checkUpdateBtn">Check for Updates</button>
+              <button id="checkUpdateBtn" data-i18n="about.check_updates">Check for Updates</button>
             </div>
           </div>
           <div class="setting-row" id="updateStatusRow" style="display: none;">
@@ -1589,33 +1599,33 @@ input[type="checkbox"] {
           </div>
         </div>
 
-        <h2 class="section-title">Links</h2>
+        <h2 class="section-title" data-i18n="about.links">Links</h2>
         <div class="card">
           <div class="setting-row">
             <div class="setting-info">
-              <div class="setting-title">Star on GitHub</div>
-              <div class="setting-desc">Support this project by starring it on GitHub.</div>
+              <div class="setting-title" data-i18n="about.star_github">Star on GitHub</div>
+              <div class="setting-desc" data-i18n="about.star_github_desc">Support this project by starring it on GitHub.</div>
             </div>
             <div class="setting-control">
-              <button id="starGithubBtn">Star Repository</button>
+              <button id="starGithubBtn" data-i18n="about.star_repo">Star Repository</button>
             </div>
           </div>
           <div class="setting-row">
             <div class="setting-info">
-              <div class="setting-title">Report an Issue</div>
-              <div class="setting-desc">Found a bug or have a feature request? Open an issue on GitHub.</div>
+              <div class="setting-title" data-i18n="about.report_issue">Report an Issue</div>
+              <div class="setting-desc" data-i18n="about.report_issue_desc">Found a bug or have a feature request? Open an issue on GitHub.</div>
             </div>
             <div class="setting-control">
-              <button id="reportIssueBtn">Open Issue</button>
+              <button id="reportIssueBtn" data-i18n="about.open_issue">Open Issue</button>
             </div>
           </div>
           <div class="setting-row">
             <div class="setting-info">
-              <div class="setting-title">Rate Us</div>
-              <div class="setting-desc">Enjoying GitZip Pro? Leave a review on Chrome Web Store.</div>
+              <div class="setting-title" data-i18n="about.rate_us">Rate Us</div>
+              <div class="setting-desc" data-i18n="about.rate_us_desc">Enjoying GitZip Pro? Leave a review on Chrome Web Store.</div>
             </div>
             <div class="setting-control">
-              <button id="rateUsBtn">Rate Extension</button>
+              <button id="rateUsBtn" data-i18n="about.rate_extension">Rate Extension</button>
             </div>
           </div>
         </div>
@@ -1635,37 +1645,44 @@ input[type="checkbox"] {
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           </svg>
         </div>
-        <h2 class="welcome-modal-title">Welcome to GitZip Pro! 🎉</h2>
-        <p class="welcome-modal-subtitle">This message will only appear once</p>
+        <h2 class="welcome-modal-title" data-i18n="welcome_modal.title">Welcome to GitZip Pro! 🎉</h2>
+        <p class="welcome-modal-subtitle" data-i18n="welcome_modal.subtitle">This message will only appear once</p>
       </div>
       
       <div class="welcome-modal-body">
         <div class="welcome-tip">
           <div class="welcome-tip-icon">💡</div>
           <div class="welcome-tip-content">
-            <h3>Recommendation: Use a Custom Token</h3>
-            <p>For the best experience, we recommend using a <strong>GitHub Personal Access Token</strong> instead of anonymous access:</p>
+            <h3 data-i18n="welcome_modal.tip_title">Recommendation: Use a Custom Token</h3>
+            <p data-i18n="welcome_modal.tip_desc">For the best experience, we recommend using a <strong>GitHub Personal Access Token</strong> instead of anonymous access:</p>
             <ul>
-              <li><strong>Higher rate limits:</strong> 5,000 requests per hour vs 60 with anonymous access</li>
-              <li><strong>Access private repositories:</strong> Download files from your private repos</li>
-              <li><strong>Better reliability:</strong> Avoid hitting rate limits during large downloads</li>
+              <li data-i18n="welcome_modal.tip_bullet_1"><strong>Higher rate limits:</strong> 5,000 requests per hour vs 60 with anonymous access</li>
+              <li data-i18n="welcome_modal.tip_bullet_2"><strong>Access private repositories:</strong> Download files from your private repos</li>
+              <li data-i18n="welcome_modal.tip_bullet_3"><strong>Better reliability:</strong> Avoid hitting rate limits during large downloads</li>
             </ul>
           </div>
         </div>
         
         <div class="welcome-actions">
-          <button id="welcomeModalClose" class="welcome-btn-primary">Got it, let's set up!</button>
-          <button id="welcomeModalLearnMore" class="welcome-btn-secondary">Learn more about tokens</button>
+          <button id="welcomeModalClose" class="welcome-btn-primary" data-i18n="welcome_modal.btn_setup">Got it, let's set up!</button>
+          <button id="welcomeModalLearnMore" class="welcome-btn-secondary" data-i18n="welcome_modal.btn_learn_more">Learn more about tokens</button>
         </div>
         
         <div class="welcome-note">
-          <p><small>You can always change token settings later in the Token section.</small></p>
+          <p><small data-i18n="welcome_modal.footer_note">You can always change token settings later in the Token section.</small></p>
         </div>
       </div>
     </div>
   </div>
 
   <script src="constants.js"></script>
+  <script src="i18n.js"></script>
+  <script>
+  (async function initOptionsPage() {
+    await GZP_I18N.init();
+    GZP_I18N.applyTranslations();
+  })();
+  </script>
   <script src="options.js"></script>
 </body>
 </html>

@@ -1,0 +1,551 @@
+{
+  "extName": {
+    "message": "GitZip Pro"
+  },
+  "extDescription": {
+    "message": "GitZip for GitHub, but Pro."
+  },
+  "optionsTitle": {
+    "message": "GitZip Pro — Settings"
+  },
+  "general": {
+    "message": "General"
+  },
+  "token": {
+    "message": "Token"
+  },
+  "download": {
+    "message": "Download"
+  },
+  "history": {
+    "message": "History"
+  },
+  "stats": {
+    "message": "Stats"
+  },
+  "about": {
+    "message": "About"
+  },
+  "generalPageTitle": {
+    "message": "General"
+  },
+  "appearance": {
+    "message": "Appearance"
+  },
+  "theme": {
+    "message": "Theme"
+  },
+  "themeDesc": {
+    "message": "Choose the preferred color theme for the extension interface."
+  },
+  "system": {
+    "message": "System"
+  },
+  "light": {
+    "message": "Light"
+  },
+  "dark": {
+    "message": "Dark"
+  },
+  "accentColor": {
+    "message": "Accent Color"
+  },
+  "accentColorDesc": {
+    "message": "Customize the primary theme color used throughout the interface. Choose a preset or pick your own color."
+  },
+  "interfaceBehavior": {
+    "message": "Interface Behavior"
+  },
+  "downloadBtnPosition": {
+    "message": "Download Button Position"
+  },
+  "downloadBtnPositionDesc": {
+    "message": "Choose where the download button appears on GitHub repository pages."
+  },
+  "bottomRight": {
+    "message": "Bottom Right"
+  },
+  "topLeft": {
+    "message": "Top Left"
+  },
+  "topRight": {
+    "message": "Top Right"
+  },
+  "bottomLeft": {
+    "message": "Bottom Left"
+  },
+  "topCenter": {
+    "message": "Top Center"
+  },
+  "bottomCenter": {
+    "message": "Bottom Center"
+  },
+  "leftCenter": {
+    "message": "Left Center"
+  },
+  "rightCenter": {
+    "message": "Right Center"
+  },
+  "language": {
+    "message": "Language"
+  },
+  "languageDesc": {
+    "message": "Select the display language for the extension interface. Changing the language will reload the page."
+  },
+  "english": {
+    "message": "English"
+  },
+  "chineseSimplified": {
+    "message": "简体中文"
+  },
+  "interactions": {
+    "message": "Interactions"
+  },
+  "showFileSizes": {
+    "message": "Show File Sizes"
+  },
+  "showFileSizesDesc": {
+    "message": "Display file size information next to each file in repository listings."
+  },
+  "doubleClickSelect": {
+    "message": "Double Click To Select"
+  },
+  "doubleClickSelectDesc": {
+    "message": "Enable double-clicking on file or folder rows to toggle selection."
+  },
+  "downloadPageTitle": {
+    "message": "Download"
+  },
+  "fileStorage": {
+    "message": "File Storage"
+  },
+  "zipNamingRule": {
+    "message": "ZIP Naming Rule"
+  },
+  "zipNamingRuleDesc": {
+    "message": "Define the filename format for the downloaded ZIP archive. You can choose a preset or type a custom name."
+  },
+  "orTypeCustom": {
+    "message": "Or type custom format..."
+  },
+  "autoIgnoreFiles": {
+    "message": "Auto-Ignore Files"
+  },
+  "quickPresets": {
+    "message": "Quick Presets"
+  },
+  "quickPresetsDesc": {
+    "message": "Instantly load predefined filter combinations for different scenarios."
+  },
+  "fullRepository": {
+    "message": "Full Repository"
+  },
+  "codeOnly": {
+    "message": "Code Only"
+  },
+  "docsOnly": {
+    "message": "Documentation Only"
+  },
+  "designAssets": {
+    "message": "Design Assets"
+  },
+  "minimal": {
+    "message": "Minimal"
+  },
+  "commonGroupTitle": {
+    "message": "Common (Code & System)"
+  },
+  "commonGroupDesc": {
+    "message": "Commonly ignored files and folders for developers."
+  },
+  "mediaGroupTitle": {
+    "message": "Media & Others"
+  },
+  "mediaGroupDesc": {
+    "message": "Large asset files or documentation to optionally ignore."
+  },
+  "customRules": {
+    "message": "Custom Rules"
+  },
+  "customRulesDesc": {
+    "message": "Add your own wildcard patterns. E.g., <code>*.log</code> for files, <code>temp_data/</code> for folders."
+  },
+  "patternPlaceholder": {
+    "message": "Pattern (e.g. *.spec.js)"
+  },
+  "addRule": {
+    "message": "Add Rule"
+  },
+  "notifications": {
+    "message": "Notifications"
+  },
+  "showNotification": {
+    "message": "Show Notification"
+  },
+  "showNotificationDesc": {
+    "message": "Display a browser popup when the download completes."
+  },
+  "playSound": {
+    "message": "Play Sound"
+  },
+  "playSoundDesc": {
+    "message": "Play a short \"ding\" chime when the download completes."
+  },
+  "openFolder": {
+    "message": "Open Folder"
+  },
+  "openFolderDesc": {
+    "message": "Automatically open the OS save folder when the download completes."
+  },
+  "historyPageTitle": {
+    "message": "Download History"
+  },
+  "selected": {
+    "message": "selected"
+  },
+  "deleteSelected": {
+    "message": "Delete selected"
+  },
+  "clearAllHistory": {
+    "message": "Clear all history"
+  },
+  "noHistoryYet": {
+    "message": "No download history yet"
+  },
+  "noHistoryDesc": {
+    "message": "Your download history will appear here after you download files from GitHub repositories."
+  },
+  "openInGitHub": {
+    "message": "Open in GitHub"
+  },
+  "files_one": {
+    "message": "file"
+  },
+  "files_other": {
+    "message": "files"
+  },
+  "filteredOut": {
+    "message": "filtered out"
+  },
+  "statsPageTitle": {
+    "message": "Statistics"
+  },
+  "interactiveFilters": {
+    "message": "Interactive Filters"
+  },
+  "timeRange": {
+    "message": "Time Range"
+  },
+  "allTime": {
+    "message": "All Time"
+  },
+  "today": {
+    "message": "Today"
+  },
+  "last7Days": {
+    "message": "Last 7 Days"
+  },
+  "last30Days": {
+    "message": "Last 30 Days"
+  },
+  "last90Days": {
+    "message": "Last 90 Days"
+  },
+  "customRange": {
+    "message": "Custom Range"
+  },
+  "downloadType": {
+    "message": "Download Type"
+  },
+  "allTypes": {
+    "message": "All Types"
+  },
+  "folder": {
+    "message": "Folder"
+  },
+  "file": {
+    "message": "File"
+  },
+  "repository": {
+    "message": "Repository"
+  },
+  "allRepositories": {
+    "message": "All Repositories"
+  },
+  "branch": {
+    "message": "Branch"
+  },
+  "allBranches": {
+    "message": "All Branches"
+  },
+  "pathNameKeyword": {
+    "message": "Path/Name Keyword"
+  },
+  "keywordPlaceholder": {
+    "message": "e.g. src, docs, api"
+  },
+  "resetFilters": {
+    "message": "Reset Filters"
+  },
+  "startDate": {
+    "message": "Start Date"
+  },
+  "endDate": {
+    "message": "End Date"
+  },
+  "overview": {
+    "message": "Overview"
+  },
+  "totalDownloads": {
+    "message": "Total Downloads"
+  },
+  "folderDownloads": {
+    "message": "Folder Downloads"
+  },
+  "fileDownloads": {
+    "message": "File Downloads"
+  },
+  "downloadedFiles": {
+    "message": "Downloaded Files"
+  },
+  "filteredItems": {
+    "message": "Filtered Items"
+  },
+  "totalDownloadSize": {
+    "message": "Total Download Size"
+  },
+  "uniqueRepositories": {
+    "message": "Unique Repositories"
+  },
+  "avgFilesPerDownload": {
+    "message": "Avg Files / Download"
+  },
+  "repoDimensions": {
+    "message": "Repository Dimensions"
+  },
+  "branchDimensions": {
+    "message": "Branch Dimensions"
+  },
+  "downloads": {
+    "message": "Downloads"
+  },
+  "size": {
+    "message": "Size"
+  },
+  "tokenPageTitle": {
+    "message": "GitHub Token"
+  },
+  "customToken": {
+    "message": "Custom Token"
+  },
+  "githubApiAccess": {
+    "message": "GitHub API Access"
+  },
+  "anonymousAccess": {
+    "message": "Anonymous Access"
+  },
+  "customTokenLabel": {
+    "message": "Custom Token"
+  },
+  "tokenScope": {
+    "message": "Token Scope"
+  },
+  "noCustomToken": {
+    "message": "No custom token in use."
+  },
+  "tokenInputDesc": {
+    "message": "You can either manually enter your GitHub Personal Access Token, or click the authorization buttons below to get a token automatically via OAuth."
+  },
+  "publicReposOnly": {
+    "message": "Public Repos Only"
+  },
+  "fullAccess": {
+    "message": "Full Access"
+  },
+  "authorizePublic": {
+    "message": "Authorize for Public Repos"
+  },
+  "authorizePrivate": {
+    "message": "Authorize for Public + Private Repos"
+  },
+  "authorizing": {
+    "message": "Authorizing..."
+  },
+  "show": {
+    "message": "Show"
+  },
+  "hide": {
+    "message": "Hide"
+  },
+  "copy": {
+    "message": "Copy"
+  },
+  "copied": {
+    "message": "Copied!"
+  },
+  "rateLimitStatus": {
+    "message": "Current Rate Limit Status"
+  },
+  "refreshStatus": {
+    "message": "Refresh Status"
+  },
+  "aboutPageTitle": {
+    "message": "About GitZip Pro"
+  },
+  "version": {
+    "message": "Version"
+  },
+  "checkForUpdates": {
+    "message": "Check for Updates"
+  },
+  "checking": {
+    "message": "Checking..."
+  },
+  "links": {
+    "message": "Links"
+  },
+  "starOnGitHub": {
+    "message": "Star on GitHub"
+  },
+  "starOnGitHubDesc": {
+    "message": "Support this project by starring it on GitHub."
+  },
+  "starRepo": {
+    "message": "Star Repository"
+  },
+  "reportIssue": {
+    "message": "Report an Issue"
+  },
+  "reportIssueDesc": {
+    "message": "Found a bug or have a feature request? Open an issue on GitHub."
+  },
+  "openIssue": {
+    "message": "Open Issue"
+  },
+  "rateUs": {
+    "message": "Rate Us"
+  },
+  "rateUsDesc": {
+    "message": "Enjoying GitZip Pro? Leave a review on Chrome Web Store."
+  },
+  "rateExtension": {
+    "message": "Rate Extension"
+  },
+  "welcomeTitle": {
+    "message": "Welcome to GitZip Pro! 🎉"
+  },
+  "welcomeSubtitle": {
+    "message": "This message will only appear once"
+  },
+  "welcomeTipTitle": {
+    "message": "Recommendation: Use a Custom Token"
+  },
+  "welcomeTipDesc1": {
+    "message": "For the best experience, we recommend using a <strong>GitHub Personal Access Token</strong> instead of anonymous access:"
+  },
+  "welcomeTokenLi1": {
+    "message": "<strong>Higher rate limits:</strong> 5,000 requests per hour vs 60 with anonymous access"
+  },
+  "welcomeTokenLi2": {
+    "message": "<strong>Access private repositories:</strong> Download files from your private repos"
+  },
+  "welcomeTokenLi3": {
+    "message": "<strong>Better reliability:</strong> Avoid hitting rate limits during large downloads"
+  },
+  "welcomeGotIt": {
+    "message": "Got it, let's set up!"
+  },
+  "welcomeLearnMore": {
+    "message": "Learn more about tokens"
+  },
+  "welcomeNote": {
+    "message": "You can always change token settings later in the Token section."
+  },
+  "downloadBtnLabel": {
+    "message": "Download"
+  },
+  "downloading": {
+    "message": "Downloading…"
+  },
+  "done": {
+    "message": "Done!"
+  },
+  "error": {
+    "message": "Error"
+  },
+  "scanning": {
+    "message": "Scanning…"
+  },
+  "notOnGitHub": {
+    "message": "Not on GitHub"
+  },
+  "activeOnRepo": {
+    "message": "Active on $1"
+  },
+  "notOnRepoPage": {
+    "message": "Not on a repo file page"
+  },
+  "unableToDetect": {
+    "message": "Unable to detect page"
+  },
+  "options": {
+    "message": "Options"
+  },
+  "more": {
+    "message": "more"
+  },
+  "selectForDownload": {
+    "message": "Select for download"
+  },
+  "noValidItemsSelected": {
+    "message": "No valid GitHub items selected."
+  },
+  "allSkippedByIgnore": {
+    "message": "All selected items were skipped by ignore rules ($1 item$2 excluded). Check your ignore settings if this is not intended."
+  },
+  "noFilesFound": {
+    "message": "No files found in selection."
+  },
+  "downloadCompleted": {
+    "message": "Download completed successfully!"
+  },
+  "downloadFailed": {
+    "message": "GitZip Pro - Download Failed"
+  },
+  "tokenCopied": {
+    "message": "Token Copied"
+  },
+  "tokenCopiedMsg": {
+    "message": "GitHub Personal Access Token copied to clipboard successfully."
+  },
+  "copyFailed": {
+    "message": "Copy Failed"
+  },
+  "copyFailedMsg": {
+    "message": "Failed to copy token to clipboard. Please try again."
+  },
+  "checkingRateLimit": {
+    "message": "Checking rate limit..."
+  },
+  "anonymousWarningTitle": {
+    "message": "⚠️ Anonymous Mode Limitation"
+  },
+  "anonymousWarningDesc1": {
+    "message": "<strong>Limitations:</strong> Only 60 requests per hour shared with all other users on your network. This is very likely to be exhausted quickly."
+  },
+  "anonymousWarningDesc2": {
+    "message": "<strong>Recommendation:</strong> Create a free Personal Access Token to get 5000 requests per hour, and access your private repositories."
+  },
+  "currentVersion": {
+    "message": "Loading..."
+  },
+  "scannedFiles": {
+    "message": "$1 / $2 files"
+  },
+  "fileCount": {
+    "message": "$1 files"
+  },
+  "unknownSize": {
+    "message": "Unknown size"
+  }
+}

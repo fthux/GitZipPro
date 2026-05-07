@@ -21,6 +21,10 @@ function applyTheme(theme) {
   const theme = result[STORAGE.THEME] || DEFAULTS.THEME;
   applyTheme(theme);
 
+  // Initialize i18n
+  await GZP_I18N.init();
+  GZP_I18N.applyTranslations();
+
   const dot = document.getElementById('status-dot');
   const statusText = document.getElementById('status-text');
 
@@ -81,7 +85,7 @@ function applyTheme(theme) {
 
     const url = new URL(tab.url);
     if (url.hostname !== 'github.com') {
-      statusText.textContent = 'Not on GitHub';
+      statusText.textContent = GZP_I18N.t('popup.not_on_github');
       return;
     }
 
@@ -97,11 +101,11 @@ function applyTheme(theme) {
 
     if (isRepo && !isExcluded) {
       dot.classList.remove('inactive');
-      statusText.textContent = `Active on ${parts[0]}/${parts[1]}`;
+      statusText.textContent = GZP_I18N.t('popup.active_on', { owner: parts[0], repo: parts[1] });
     } else {
-      statusText.textContent = 'Not on a repo file page';
+      statusText.textContent = GZP_I18N.t('popup.not_on_repo_page');
     }
   } catch (e) {
-    statusText.textContent = 'Unable to detect page';
+    statusText.textContent = GZP_I18N.t('popup.unable_to_detect');
   }
 })();

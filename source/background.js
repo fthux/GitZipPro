@@ -10,6 +10,7 @@
  */
 
 importScripts('constants.js');
+importScripts('i18n.js');
 const MENU_IDS = {
   ROOT: 'gitzip-pro-download',
   CHECKED: 'gitzip-pro-checked-items',
@@ -21,6 +22,50 @@ const activeDownloads = new Map();
 
 // Context menu state
 let selectedItemHref = null;
+
+// Default locale for background notifications (loaded asynchronously)
+let backgroundTranslations = {};
+let backgroundLocale = 'en';
+
+// Load translations for background
+async function initBackgroundI18n() {
+  const locale = await GZP_I18N.init();
+  backgroundLocale = locale;
+  backgroundTranslations = await GZP_I18N.loadLocale(locale);
+}
+initBackgroundI18n();
+
+// Listen for locale changes from options page
+chrome.storage.onChanged.addListener((changes) => {
+  const localeKey = STORAGE_KEYS.LANGUAGE;
+  if (changes[localeKey]) {
+    const newLocale = changes[localeKey].newValue;
+    GZP_I18N.loadLocale(newLocale).then(translations => {
+      backgroundLocale = newLocale;
+      backgroundTranslations = translations;
+    });
+  }
+});
+
+// Helper to translate a key in background context
+function t(key, vars) {
+  const parts = key.split('.');
+  let value = backgroundTranslations;
+  for (const part of parts) {
+    if (value && typeof value === 'object' && part in value) {
+      value = value[part];
+    } else {
+      return key;
+    }
+  }
+  if (typeof value !== 'string') return key;
+  if (vars) {
+    return value.replace(/\{(\w+)\}/g, (match, varName) => {
+      return varName in vars ? String(vars[varName]) : match;
+    });
+  }
+  return value;
+}
 
 // Create context menu on installation
 chrome.runtime.onInstalled.addListener((details) => {
@@ -112,12 +157,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     const displayName = itemName || (href ? href.split('/').pop() : 'unknown');
     let menuTitle;
     if (itemType === 'file') {
-      menuTitle = `Selected File - ${displayName}`;
+      menuTitle = t('context_menu.selected_file', { name: displayName });
     } else if (itemType === 'folder') {
-      menuTitle = `Selected Folder - ${displayName}`;
+      menuTitle = t('context_menu.selected_folder', { name: displayName });
     } else {
       // Fallback for unknown type
-      menuTitle = `Selected Item - ${displayName}`;
+      menuTitle = t('context_menu.selected_item', { name: displayName });
     }
 
     chrome.contextMenus.update(MENU_IDS.SELECTED, {
@@ -136,7 +181,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       chrome.notifications.create({
         type: 'basic',
         iconUrl: 'icons/icon48.png',
-        title: 'GitZip Pro - Download Failed',
+        title: t('notifications.download_failed_title'),
         message: errorMessage,
         priority: 2
       }, (err) => {
@@ -145,7 +190,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           chrome.notifications.create({
             type: 'basic',
             iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
-            title: 'GitZip Pro - Download Failed',
+            title: t('notifications.download_failed_title'),
             message: errorMessage,
             priority: 2
           });
@@ -186,7 +231,7 @@ chrome.downloads.onChanged.addListener((delta) => {
             type: 'basic',
             iconUrl: 'icons/icon48.png',
             title: 'GitZip Pro',
-            message: 'Download completed successfully!'
+            message: t('notifications.download_complete_msg')
           }, (err) => {
             if (chrome.runtime.lastError) {
               // Fallback to data URI if local resource fails
@@ -194,7 +239,7 @@ chrome.downloads.onChanged.addListener((delta) => {
                 type: 'basic',
                 iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
                 title: 'GitZip Pro',
-                message: 'Download completed successfully!'
+                message: t('notifications.download_complete_msg')
               });
             }
           });

@@ -6,6 +6,7 @@
 // ─── Elements ─────────────────────────────────────────────────────────────────
 
 const themeSelect = document.getElementById('themeSelect');
+const languageSelect = document.getElementById('languageSelect');
 const buttonPositionSelect = document.getElementById('buttonPositionSelect');
 const versionDisplay = document.getElementById('versionDisplay');
 const C = globalThis.GZP_CONSTANTS;
@@ -224,6 +225,38 @@ customColorPicker.addEventListener('change', (e) => {
   chrome.storage.sync.set({ [STORAGE.ACCENT_COLOR]: e.target.value });
 });
 
+// Language
+languageSelect.addEventListener('change', () => {
+  const locale = languageSelect.value;
+  GZP_I18N.setLocale(locale);
+  chrome.storage.sync.set({ [STORAGE.LANGUAGE]: locale });
+});
+
+// Listen for language changes to re-render dynamically translated content
+document.addEventListener('gzp-locale-changed', () => {
+  // Re-translate token / rate limit status
+  checkRateLimit();
+
+  // Refresh the token UI elements (buttons, toggle, etc.)
+  loadTokenSettings();
+
+  // Re-render ignore tags
+  renderIgnoreTags();
+  updatePresetButtons();
+  renderCustomRules();
+
+  // Re-render history if initialized
+  if (historyPageInitialized) {
+    renderHistory();
+  }
+
+  // Re-render stats if initialized
+  if (statsPageInitialized) {
+    renderStatsFilterOptions();
+    renderStats();
+  }
+});
+
 // Button Position
 buttonPositionSelect.addEventListener('change', () => {
   chrome.storage.sync.set({ [STORAGE.BUTTON_POSITION]: buttonPositionSelect.value });
@@ -255,12 +288,20 @@ notifyOpen.addEventListener('change', () => chrome.storage.sync.set({ [STORAGE.N
 // ─── Load All Saved Settings ──────────────────────────────────────────────────
 
 chrome.storage.sync.get(
-  [STORAGE.THEME, STORAGE.ACCENT_COLOR, STORAGE.BUTTON_POSITION, STORAGE.SHOW_FILE_SIZES, STORAGE.DOUBLE_CLICK_SELECT, STORAGE.NAMING_PRESET, STORAGE.NAMING_CUSTOM, STORAGE.NOTIFY_SHOW, STORAGE.NOTIFY_SOUND, STORAGE.NOTIFY_OPEN, STORAGE.IGNORE_LABELS, STORAGE.IGNORE_CUSTOM_VARS, STORAGE.GITHUB_TOKEN, STORAGE.TOKEN_ACCESS_MODE],
+  [STORAGE.THEME, STORAGE.LANGUAGE, STORAGE.ACCENT_COLOR, STORAGE.BUTTON_POSITION, STORAGE.SHOW_FILE_SIZES, STORAGE.DOUBLE_CLICK_SELECT, STORAGE.NAMING_PRESET, STORAGE.NAMING_CUSTOM, STORAGE.NOTIFY_SHOW, STORAGE.NOTIFY_SOUND, STORAGE.NOTIFY_OPEN, STORAGE.IGNORE_LABELS, STORAGE.IGNORE_CUSTOM_VARS, STORAGE.GITHUB_TOKEN, STORAGE.TOKEN_ACCESS_MODE],
   (res) => {
     // Theme
     const savedTheme = res[STORAGE.THEME] || DEFAULTS.THEME;
     themeSelect.value = savedTheme;
     applyTheme(savedTheme);
+
+    // Language - always call setLocale to ensure translations are loaded
+    // (GZP_I18N.init() may not have completed yet; setLocale loads from file)
+    const savedLanguage = res[STORAGE.LANGUAGE];
+    const currentLocale = GZP_I18N.getCurrentLocale();
+    const localeToUse = savedLanguage || currentLocale;
+    GZP_I18N.setLocale(localeToUse);
+    languageSelect.value = localeToUse;
 
     // Accent Color
     const savedAccentColor = res[STORAGE.ACCENT_COLOR] || DEFAULTS.ACCENT_COLOR;
@@ -308,6 +349,7 @@ chrome.storage.sync.get(
     loadTokenSettings();
   }
 );
+
 
 // ─── Auto Ignore Files ────────────────────────────────────────────────────────
 
@@ -461,25 +503,25 @@ function renderTokenScopeStatus(mode, token, scope) {
 
   if (mode !== 'custom' || !token) {
     tokenScopeStatus.classList.add('idle');
-    tokenScopeStatus.textContent = 'No custom token in use.';
+    tokenScopeStatus.textContent = GZP_I18N.t('token.token_scope_idle');
     return;
   }
 
   if (scope === undefined || scope === null || scope === '') {
     tokenScopeStatus.classList.add('idle');
-    tokenScopeStatus.textContent = 'Detecting token scope...';
+    tokenScopeStatus.textContent = GZP_I18N.t('token.token_scope_detecting');
     return;
   }
 
   if (scope === 'private') {
     tokenScopeStatus.classList.add('private');
-    tokenScopeStatus.textContent = 'Current token type: Public + Private repositories.';
+    tokenScopeStatus.textContent = GZP_I18N.t('token.token_scope_private');
   } else if (scope === 'public') {
     tokenScopeStatus.classList.add('public');
-    tokenScopeStatus.textContent = 'Current token type: Public repositories only.';
+    tokenScopeStatus.textContent = GZP_I18N.t('token.token_scope_public');
   } else {
     tokenScopeStatus.classList.add('unknown');
-    tokenScopeStatus.textContent = 'Current token type: Custom token (scope unknown).';
+    tokenScopeStatus.textContent = GZP_I18N.t('token.token_scope_unknown');
   }
 }
 
@@ -487,7 +529,7 @@ function renderTokenScopeStatus(mode, token, scope) {
 toggleTokenVisibility.addEventListener('click', () => {
   tokenIsVisible = !tokenIsVisible;
   githubToken.type = tokenIsVisible ? 'text' : 'password';
-  toggleTokenVisibility.textContent = tokenIsVisible ? 'Hide' : 'Show';
+  toggleTokenVisibility.textContent = tokenIsVisible ? GZP_I18N.t('token.token_hide') : GZP_I18N.t('token.token_show');
 });
 
 // Auto save token on input with debounce
@@ -515,17 +557,17 @@ copyToken.addEventListener('click', async () => {
   if (token) {
     try {
       await navigator.clipboard.writeText(token);
-      copyToken.textContent = 'Copied!';
+      copyToken.textContent = GZP_I18N.t('token.token_copied');
       setTimeout(() => {
-        copyToken.textContent = 'Copy';
+        copyToken.textContent = GZP_I18N.t('token.token_copy');
       }, 1500);
 
       // Show system notification using Chrome extension API
       chrome.notifications.create({
         type: 'basic',
         iconUrl: 'icons/icon48.png',
-        title: 'Token Copied',
-        message: 'GitHub Personal Access Token copied to clipboard successfully.'
+        title: GZP_I18N.t('notifications.token_copied_title'),
+        message: GZP_I18N.t('notifications.token_copied_msg')
       });
 
     } catch (e) {
@@ -534,8 +576,8 @@ copyToken.addEventListener('click', async () => {
       chrome.notifications.create({
         type: 'basic',
         iconUrl: 'icons/icon48.png',
-        title: 'Copy Failed',
-        message: 'Failed to copy token to clipboard. Please try again.'
+        title: GZP_I18N.t('notifications.copy_failed_title'),
+        message: GZP_I18N.t('notifications.copy_failed_msg')
       });
     }
   }
@@ -564,7 +606,7 @@ tokenAccessMode.addEventListener('change', () => {
         githubToken.value = result[TOKEN_STORAGE_KEY];
         githubToken.type = 'password';
         tokenIsVisible = false;
-        toggleTokenVisibility.textContent = 'Show';
+        toggleTokenVisibility.textContent = GZP_I18N.t('token.token_show');
       }
       renderTokenScopeStatus(mode, result[TOKEN_STORAGE_KEY], result[TOKEN_SCOPE_KEY]);
     });
@@ -621,8 +663,8 @@ async function startGitHubOAuth(scope) {
     const originalPublicText = authorizePublicBtn.textContent;
     const originalPrivateText = authorizePrivateBtn.textContent;
 
-    authorizePublicBtn.textContent = 'Authorizing...';
-    authorizePrivateBtn.textContent = 'Authorizing...';
+    authorizePublicBtn.textContent = GZP_I18N.t('token.auth_authorizing');
+    authorizePrivateBtn.textContent = GZP_I18N.t('token.auth_authorizing');
 
     // Generate PKCE values
     const codeVerifier = generateCodeVerifier();
@@ -698,11 +740,11 @@ async function startGitHubOAuth(scope) {
       githubToken.value = authResult.accessToken.substring(0, 4) + '•'.repeat(Math.min(authResult.accessToken.length - 8, 12)) + authResult.accessToken.substring(authResult.accessToken.length - 4);
       githubToken.type = 'password';
       tokenIsVisible = false;
-      toggleTokenVisibility.textContent = 'Show';
+      toggleTokenVisibility.textContent = GZP_I18N.t('token.token_show');
 
-      const tokenType = storedScope === 'private' ? 'Public + Private Repos' : 'Public Repos Only';
+      const tokenType = storedScope === 'private' ? GZP_I18N.t('token.auth_success').replace('{type}', 'Public + Private Repos') : GZP_I18N.t('token.auth_success').replace('{type}', 'Public Repos Only');
       // Show authorization success message directly in rate limit status area
-      rateLimitStatus.textContent = `✅ Authorization successful! Granted access for ${tokenType}`;
+      rateLimitStatus.textContent = GZP_I18N.t('token.auth_success').replace('{type}', storedScope === 'private' ? 'Public + Private Repos' : 'Public Repos Only');
       renderTokenScopeStatus('custom', authResult.accessToken, storedScope);
 
       // Delay rate limit refresh to ensure Chrome Storage has been updated
@@ -711,13 +753,13 @@ async function startGitHubOAuth(scope) {
 
   } catch (error) {
     console.error('OAuth authorization error:', error);
-    rateLimitStatus.textContent = '❌ Authorization failed: ' + error.message;
+    rateLimitStatus.textContent = GZP_I18N.t('token.auth_failed').replace('{message}', error.message);
   } finally {
     // Re-enable buttons
     authorizePublicBtn.disabled = false;
     authorizePrivateBtn.disabled = false;
-    authorizePublicBtn.textContent = 'Authorize for Public Repos';
-    authorizePrivateBtn.textContent = 'Authorize for Public + Private Repos';
+    authorizePublicBtn.textContent = GZP_I18N.t('token.auth_public_btn');
+    authorizePrivateBtn.textContent = GZP_I18N.t('token.auth_private_btn');
   }
 }
 
@@ -737,7 +779,7 @@ refreshRateLimitBtn.addEventListener('click', async () => {
 async function checkRateLimit() {
 
   try {
-    rateLimitStatus.textContent = 'Checking rate limit...';
+    rateLimitStatus.textContent = GZP_I18N.t('token.rate_limit_checking');
 
     // Get token from storage
     const result = await chrome.storage.sync.get([TOKEN_STORAGE_KEY, TOKEN_MODE_KEY, TOKEN_SCOPE_KEY]);
@@ -814,39 +856,40 @@ async function checkRateLimit() {
       const resetTime = new Date(rate.reset * 1000);
       const resetIn = Math.max(0, Math.round((resetTime.getTime() - Date.now()) / 1000 / 60)); // minutes
 
-      let statusText = `Remaining: ${remaining}/${limit} requests`;
+      let statusText = GZP_I18N.t('token_rate_data.remaining_fmt', { remaining, limit });
 
       if (resetIn > 0) {
-        statusText += ` (resets in ${resetIn} minutes)`;
+        statusText += ' (' + GZP_I18N.t('token_rate_data.resets_in', { minutes: resetIn }) + ')';
       } else {
-        statusText += ' (reset soon)';
+        statusText += ' (' + GZP_I18N.t('token_rate_data.reset_soon') + ')';
       }
 
       // Add mode info
-      statusText += `\nMode: ${mode === 'custom' ? 'Authenticated' : 'Anonymous'}`;
+      const modeLabel = GZP_I18N.t(mode === 'custom' ? 'token_rate_data.mode_authenticated' : 'token_rate_data.mode_anonymous');
+      statusText += '\n' + GZP_I18N.t('token_rate_data.mode', { mode: modeLabel });
 
       // Add warning if low
       if (remaining < 10) {
-        statusText += '\n⚠️ Rate limit almost exhausted!';
+        statusText += '\n' + GZP_I18N.t('token_rate_data.almost_exhausted');
       } else if (remaining < limit * 0.2) {
-        statusText += '\n⚠️ Rate limit getting low.';
+        statusText += '\n' + GZP_I18N.t('token_rate_data.getting_low');
       }
 
       rateLimitStatus.textContent = statusText;
     } else {
-      rateLimitStatus.textContent = 'Rate limit data not available.';
+      rateLimitStatus.textContent = GZP_I18N.t('token.rate_limit_not_available');
     }
   } catch (error) {
     console.error('Failed to check rate limit:', error);
-    rateLimitStatus.textContent = `Error: ${error.message}`;
+    rateLimitStatus.textContent = GZP_I18N.t('token.rate_limit_error').replace('{message}', error.message);
   }
 }
 
 // Load token settings
 async function loadTokenSettings() {
   try {
-    // Set loading state immediately to avoid empty display
-    rateLimitStatus.textContent = 'Checking rate limit...';
+  // Set loading state immediately to avoid empty display
+  rateLimitStatus.textContent = GZP_I18N.t('token.rate_limit_checking');
 
     const result = await chrome.storage.sync.get([TOKEN_STORAGE_KEY, TOKEN_MODE_KEY, TOKEN_SCOPE_KEY]);
 
@@ -870,7 +913,7 @@ async function loadTokenSettings() {
       githubToken.value = result[TOKEN_STORAGE_KEY];
       githubToken.type = 'password';
       tokenIsVisible = false;
-      toggleTokenVisibility.textContent = 'Show';
+      toggleTokenVisibility.textContent = GZP_I18N.t('token.token_show');
     }
     renderTokenScopeStatus(mode, result[TOKEN_STORAGE_KEY], result[TOKEN_SCOPE_KEY]);
 
@@ -914,9 +957,14 @@ function formatHistoryDate(timestamp) {
   const normToday = normalize(today);
   const normYesterday = normalize(yesterday);
 
+  // Get locale from current i18n setting for date formatting
+  const locale = GZP_I18N && GZP_I18N.getCurrentLocale ? 
+    (GZP_I18N.getCurrentLocale() === 'zh-CN' ? 'zh-CN' : 'en-US') : 
+    'en-US';
+
   // Format weekday, month day, year (e.g., "Friday, March 27, 2026")
   const formatFullDate = (d) => {
-    return d.toLocaleDateString('en-US', {
+    return d.toLocaleDateString(locale, {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -925,9 +973,9 @@ function formatHistoryDate(timestamp) {
   };
 
   if (normRecord.getTime() === normToday.getTime()) {
-    return `Today - ${formatFullDate(recordDate)}`;
+    return `${GZP_I18N.t('history.date_today')} - ${formatFullDate(recordDate)}`;
   } else if (normRecord.getTime() === normYesterday.getTime()) {
-    return `Yesterday - ${formatFullDate(recordDate)}`;
+    return `${GZP_I18N.t('history.date_yesterday')} - ${formatFullDate(recordDate)}`;
   } else {
     return formatFullDate(recordDate);
   }
@@ -941,7 +989,7 @@ function formatHistoryTime(timestamp) {
 
 function formatHistoryFileSize(bytes) {
   if (!Number.isFinite(bytes) || bytes < 0) {
-    return 'Unknown size';
+    return GZP_I18N.t('history.unknown_size');
   }
 
   const units = ['B', 'KB', 'MB', 'GB'];
@@ -1094,9 +1142,9 @@ function renderStatsFilterOptions() {
     branchSet.add(record.branch || 'main');
   });
 
-  const repoOptions = ['<option value="all">All Repositories</option>']
+  const repoOptions = [`<option value="all">${GZP_I18N.t('stats.repo_all')}</option>`]
     .concat(Array.from(repoSet).sort().map(v => `<option value="${v}">${v}</option>`));
-  const branchOptions = ['<option value="all">All Branches</option>']
+  const branchOptions = [`<option value="all">${GZP_I18N.t('stats.branch_all')}</option>`]
     .concat(Array.from(branchSet).sort().map(v => `<option value="${v}">${v}</option>`));
 
   statsRepoFilter.innerHTML = repoOptions.join('');
@@ -1110,7 +1158,7 @@ function renderStatsFilterOptions() {
 
 function renderTable(headers, rows) {
   if (!rows || rows.length === 0) {
-    return `<div class="stats-empty">No data yet.</div>`;
+    return `<div class="stats-empty">${GZP_I18N.t('stats.no_data')}</div>`;
   }
   return `
     <table class="stats-table">
@@ -1131,29 +1179,30 @@ function renderStats() {
 
   const filteredRecords = filterHistoryRecords(downloadHistory);
   const { summary, topRepos, topBranches } = aggregateStats(filteredRecords);
+  const t = (key) => GZP_I18N.t(key);
   const overviewItems = [
-    ['Total Downloads', summary.totalDownloads.toLocaleString()],
-    ['Folder Downloads', summary.totalFolderDownloads.toLocaleString()],
-    ['File Downloads', summary.totalFileDownloads.toLocaleString()],
-    ['Downloaded Files', summary.totalDownloadedFiles.toLocaleString()],
-    ['Filtered Items', summary.totalFilteredItems.toLocaleString()],
-    ['Filtered Folders (estimated)', summary.totalFilteredFolders.toLocaleString()],
-    ['Filtered Files (estimated)', summary.totalFilteredFiles.toLocaleString()],
-    ['Total Download Size', formatHistoryFileSize(summary.totalDownloadedBytes)],
-    ['Unique Repositories', summary.totalUniqueRepos.toLocaleString()],
-    ['Avg Files / Download', summary.averageFilesPerDownload.toFixed(1)]
+    [t('stats.kpi_total_downloads'), summary.totalDownloads.toLocaleString()],
+    [t('stats.kpi_folder_downloads'), summary.totalFolderDownloads.toLocaleString()],
+    [t('stats.kpi_file_downloads'), summary.totalFileDownloads.toLocaleString()],
+    [t('stats.kpi_downloaded_files'), summary.totalDownloadedFiles.toLocaleString()],
+    [t('stats.kpi_filtered_items'), summary.totalFilteredItems.toLocaleString()],
+    [t('stats.kpi_filtered_folders'), summary.totalFilteredFolders.toLocaleString()],
+    [t('stats.kpi_filtered_files'), summary.totalFilteredFiles.toLocaleString()],
+    [t('stats.kpi_total_size'), formatHistoryFileSize(summary.totalDownloadedBytes)],
+    [t('stats.kpi_unique_repos'), summary.totalUniqueRepos.toLocaleString()],
+    [t('stats.kpi_avg_files'), summary.averageFilesPerDownload.toFixed(1)]
   ];
 
   statsOverviewGrid.innerHTML = overviewItems.map(([label, value]) => `
     <div class="stats-kpi">
       <div class="stats-kpi-label">${label}</div>
       <div class="stats-kpi-value">${value}</div>
-      <div class="stats-kpi-subtle">Calculated from the current filtered history dataset.</div>
+      <div class="stats-kpi-subtle">${t('stats.calculated_from')}</div>
     </div>
   `).join('');
 
   statsRepoDimensions.innerHTML = renderTable(
-    ['Repository', 'Downloads', 'Files', 'Filtered', 'Size'],
+    [t('stats.table_repo'), t('stats.table_downloads'), t('stats.table_files'), t('stats.table_filtered'), t('stats.table_size')],
     topRepos.map((item) => [
       item.repo,
       item.downloads.toLocaleString(),
@@ -1164,7 +1213,7 @@ function renderStats() {
   );
 
   statsBranchDimensions.innerHTML = renderTable(
-    ['Branch', 'Repository', 'Downloads', 'Files', 'Size'],
+    [t('stats.table_branch'), t('stats.table_repo'), t('stats.table_downloads'), t('stats.table_files'), t('stats.table_size')],
     topBranches.map((item) => [
       item.branch,
       item.repo,
@@ -1175,7 +1224,7 @@ function renderStats() {
   );
 
   if (statsFilterSummary) {
-    statsFilterSummary.textContent = `Showing ${filteredRecords.length} / ${downloadHistory.length} history records`;
+    statsFilterSummary.textContent = t('stats.showing_records').replace('{count}', filteredRecords.length).replace('{total}', downloadHistory.length);
   }
 }
 
@@ -1245,8 +1294,8 @@ async function initStatsPage() {
 function getHistoryTypeInfo(record) {
   const rawType = record && record.type === 'file' ? 'file' : 'folder';
   return rawType === 'file'
-    ? { type: 'file', label: 'File', icon: '📄' }
-    : { type: 'folder', label: 'Folder', icon: '📁' };
+    ? { type: 'file', label: GZP_I18N.t('history.type_file'), icon: '📄' }
+    : { type: 'folder', label: GZP_I18N.t('history.type_folder'), icon: '📁' };
 }
 
 function buildHistoryTargetUrl(record) {
@@ -1345,7 +1394,7 @@ async function deleteSelectedRecords() {
  * Clear all history records
  */
 async function clearAllHistory() {
-  if (downloadHistory.length === 0 || !confirm('Are you sure you want to clear all download history?')) {
+  if (downloadHistory.length === 0 || !confirm(GZP_I18N.t('history.clear_confirm'))) {
     return;
   }
 
@@ -1370,10 +1419,10 @@ function renderHistory() {
 
   // Show empty state if no history
   if (downloadHistory.length === 0) {
-    historyContent.innerHTML = `
+      historyContent.innerHTML = `
       <div class="history-empty-state">
-        <h3>No download history yet</h3>
-        <p>Your download history will appear here after you download files from GitHub repositories.</p>
+        <h3>${GZP_I18N.t('history.empty_title')}</h3>
+        <p>${GZP_I18N.t('history.empty_desc')}</p>
       </div>
     `;
     historyDeleteSelected.disabled = true;
@@ -1396,9 +1445,9 @@ function renderHistory() {
   // Render groups
   let html = '';
   Object.entries(grouped).forEach(([dateLabel, records]) => {
-    html += `
-      <div class="history-date-group">
-        <div class="history-date-header">${dateLabel}</div>
+      html += `
+        <div class="history-date-group">
+          <div class="history-date-header">${dateLabel}</div>
     `;
 
     records.forEach(record => {
@@ -1413,6 +1462,7 @@ function renderHistory() {
       const typeInfo = getHistoryTypeInfo(record);
       const targetUrl = buildHistoryTargetUrl(record);
 
+      const filesLabel = filesCount === 1 ? GZP_I18N.t('history.file') : GZP_I18N.t('history.files');
       html += `
         <div class="history-record" data-id="${record.id}">
           <div class="history-record-header">
@@ -1436,11 +1486,11 @@ function renderHistory() {
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <span>${filesCount} ${filesCount === 1 ? 'file' : 'files'}</span>
-                  ${ignoredCount > 0 ? `<span style="margin-left: 6px; color: var(--text-scnd); font-size: 11px;">(${ignoredCount} filtered out)</span>` : ''}
+                  <span>${filesCount} ${filesLabel}</span>
+                  ${ignoredCount > 0 ? `<span style="margin-left: 6px; color: var(--text-scnd); font-size: 11px;">${GZP_I18N.t('history.filtered_out', { count: ignoredCount })}</span>` : ''}
                 </div>
-                <a class="history-open-link" href="${targetUrl}" target="_blank" rel="noopener noreferrer" title="Open source location on GitHub">
-                  Open in GitHub
+                  <a class="history-open-link" href="${targetUrl}" target="_blank" rel="noopener noreferrer" title="${GZP_I18N.t('history.open_in_github')}">
+                  ${GZP_I18N.t('history.open_in_github')}
                 </a>
               </div>
             </div>
@@ -1451,14 +1501,14 @@ function renderHistory() {
             </div>
           </div>
           <div class="history-record-details">
-            <div><strong>Repository:</strong> ${ownerName}/${repoName}</div>
-            <div><strong>Branch:</strong> ${branchName}</div>
-            <div><strong>Type:</strong> ${typeInfo.label}</div>
-            ${path ? `<div><strong>Path:</strong> ${path}</div>` : ''}
-            <div><strong>Source URL:</strong> <a class="history-open-link" href="${targetUrl}" target="_blank" rel="noopener noreferrer">Open in GitHub</a></div>
-            ${downloadName ? `<div><strong>Downloaded as:</strong> ${downloadName}</div>` : ''}
+            <div><strong>${GZP_I18N.t('history.detail_repository')}</strong> ${ownerName}/${repoName}</div>
+            <div><strong>${GZP_I18N.t('history.detail_branch')}</strong> ${branchName}</div>
+            <div><strong>${GZP_I18N.t('history.detail_type')}</strong> ${typeInfo.label}</div>
+            ${path ? `<div><strong>${GZP_I18N.t('history.detail_path')}</strong> ${path}</div>` : ''}
+            <div><strong>${GZP_I18N.t('history.detail_source_url')}</strong> <a class="history-open-link" href="${targetUrl}" target="_blank" rel="noopener noreferrer">${GZP_I18N.t('history.open_in_github')}</a></div>
+            ${downloadName ? `<div><strong>${GZP_I18N.t('history.detail_downloaded_as')}</strong> ${downloadName}</div>` : ''}
             ${filesCount > 0 ? `
-              <div style="margin-top: 8px;"><strong>Files (${filesCount}):</strong></div>
+              <div style="margin-top: 8px;"><strong>${GZP_I18N.t('history.detail_files_count', { count: filesCount })}</strong></div>
               <div class="history-file-list">
                 ${fileDetails.length > 0
             ? fileDetails.slice(0, 20).map(item => `
@@ -1467,20 +1517,20 @@ function renderHistory() {
                         <span style="margin-left: 8px; color: var(--text-scnd);">(${formatHistoryFileSize(item.sizeBytes)})</span>
                       </div>
                     `).join('')
-            : (record.files && record.files.slice(0, 20).map(file => `<div class="history-file-item"><span>${file}</span><span style="margin-left: 8px; color: var(--text-scnd);">(Unknown size)</span></div>`).join('') || '')
+            : (record.files && record.files.slice(0, 20).map(file => `<div class="history-file-item"><span>${file}</span><span style="margin-left: 8px; color: var(--text-scnd);">(${GZP_I18N.t('history.unknown_size')})</span></div>`).join('') || '')
           }
-                ${filesCount > 20 ? `<div class="history-file-item">... and ${filesCount - 20} more</div>` : ''}
+                ${filesCount > 20 ? `<div class="history-file-item">${GZP_I18N.t('history.and_more', { count: filesCount - 20 })}</div>` : ''}
               </div>
             ` : ''}
             ${ignoredCount > 0 ? `
               <div style="margin-top: 8px;">
-                <strong>Filtered out:</strong> ${ignoredCount} ${ignoredCount === 1 ? 'file was' : 'files were'} excluded based on your auto‑ignore settings.
+                <strong>${GZP_I18N.t('history.filtered_out_label')}</strong> ${GZP_I18N.t('history.filtered_out_desc', { count: ignoredCount })}
                 ${record.ignoredFiles && record.ignoredFiles.length > 0 ? `
                   <div style="margin-top: 4px; font-size: 12px;">
-                    <strong>Filtered files:</strong>
+                    <strong>${GZP_I18N.t('history.filtered_files_label')}</strong>
                     <div class="history-file-list" style="margin-top: 4px;">
                       ${record.ignoredFiles.slice(0, 10).map(file => `<div class="history-file-item">${file}</div>`).join('')}
-                      ${record.ignoredFiles.length > 10 ? `<div class="history-file-item">... and ${record.ignoredFiles.length - 10} more</div>` : ''}
+                      ${record.ignoredFiles.length > 10 ? `<div class="history-file-item">${GZP_I18N.t('history.and_more', { count: record.ignoredFiles.length - 10 })}</div>` : ''}
                     </div>
                   </div>
                 ` : ''}
@@ -1627,43 +1677,43 @@ document.addEventListener('DOMContentLoaded', () => {
 // Check for updates
 checkUpdateBtn.addEventListener('click', async () => {
   checkUpdateBtn.disabled = true;
-  checkUpdateBtn.textContent = 'Checking...';
+  checkUpdateBtn.textContent = GZP_I18N.t('about.checking_updates');
   updateStatusRow.style.display = 'flex';
-  updateStatusText.textContent = 'Checking for updates...';
+  updateStatusText.textContent = GZP_I18N.t('about.loading');
 
   try {
     if (chrome.runtime && chrome.runtime.requestUpdateCheck) {
       chrome.runtime.requestUpdateCheck((status, details) => {
         checkUpdateBtn.disabled = false;
-        checkUpdateBtn.textContent = 'Check for Updates';
+        checkUpdateBtn.textContent = GZP_I18N.t('about.check_updates');
 
         if (status === 'update_available') {
-          updateStatusText.textContent = `New version ${details.version} available! Downloading update...`;
+          updateStatusText.textContent = GZP_I18N.t('about.update_available').replace('{version}', details.version);
           updateStatusText.style.color = '#0b8043';
 
           // Chrome will automatically download and install the update
           chrome.runtime.onUpdateAvailable.addListener(() => {
-            updateStatusText.textContent = 'Update downloaded. The extension will be updated on next browser restart.';
+            updateStatusText.textContent = GZP_I18N.t('about.update_downloaded');
           });
         } else if (status === 'no_update') {
-          updateStatusText.textContent = 'You are using the latest version.';
+          updateStatusText.textContent = GZP_I18N.t('about.latest_version');
           updateStatusText.style.color = 'var(--text-scnd)';
         } else if (status === 'throttled') {
-          updateStatusText.textContent = 'Update check throttled. Please try again later.';
+          updateStatusText.textContent = GZP_I18N.t('about.update_throttled');
           updateStatusText.style.color = '#f29900';
         }
       });
     } else {
-      updateStatusText.textContent = 'Update API not available in development mode.';
+      updateStatusText.textContent = GZP_I18N.t('about.update_dev_mode');
       updateStatusText.style.color = 'var(--text-scnd)';
       checkUpdateBtn.disabled = false;
-      checkUpdateBtn.textContent = 'Check for Updates';
+      checkUpdateBtn.textContent = GZP_I18N.t('about.check_updates');
     }
   } catch (error) {
-    updateStatusText.textContent = `Error checking updates: ${error.message}`;
+    updateStatusText.textContent = GZP_I18N.t('about.update_error').replace('{message}', error.message);
     updateStatusText.style.color = '#d93025';
     checkUpdateBtn.disabled = false;
-    checkUpdateBtn.textContent = 'Check for Updates';
+    checkUpdateBtn.textContent = GZP_I18N.t('about.check_updates');
   }
 });
 

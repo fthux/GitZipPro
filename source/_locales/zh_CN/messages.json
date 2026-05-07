@@ -1,0 +1,551 @@
+{
+  "extName": {
+    "message": "GitZip Pro"
+  },
+  "extDescription": {
+    "message": "GitZip for GitHub 的专业增强版。"
+  },
+  "optionsTitle": {
+    "message": "GitZip Pro — 设置"
+  },
+  "general": {
+    "message": "常规"
+  },
+  "token": {
+    "message": "令牌"
+  },
+  "download": {
+    "message": "下载"
+  },
+  "history": {
+    "message": "历史"
+  },
+  "stats": {
+    "message": "统计"
+  },
+  "about": {
+    "message": "关于"
+  },
+  "generalPageTitle": {
+    "message": "常规"
+  },
+  "appearance": {
+    "message": "外观"
+  },
+  "theme": {
+    "message": "主题"
+  },
+  "themeDesc": {
+    "message": "选择扩展界面的首选颜色主题。"
+  },
+  "system": {
+    "message": "跟随系统"
+  },
+  "light": {
+    "message": "浅色"
+  },
+  "dark": {
+    "message": "深色"
+  },
+  "accentColor": {
+    "message": "强调色"
+  },
+  "accentColorDesc": {
+    "message": "自定义界面中使用的主色调。可选择预设颜色或自行挑选颜色。"
+  },
+  "interfaceBehavior": {
+    "message": "界面行为"
+  },
+  "downloadBtnPosition": {
+    "message": "下载按钮位置"
+  },
+  "downloadBtnPositionDesc": {
+    "message": "选择下载按钮在 GitHub 仓库页面上的显示位置。"
+  },
+  "bottomRight": {
+    "message": "右下"
+  },
+  "topLeft": {
+    "message": "左上"
+  },
+  "topRight": {
+    "message": "右上"
+  },
+  "bottomLeft": {
+    "message": "左下"
+  },
+  "topCenter": {
+    "message": "顶部居中"
+  },
+  "bottomCenter": {
+    "message": "底部居中"
+  },
+  "leftCenter": {
+    "message": "左侧居中"
+  },
+  "rightCenter": {
+    "message": "右侧居中"
+  },
+  "language": {
+    "message": "语言"
+  },
+  "languageDesc": {
+    "message": "选择扩展界面的显示语言。切换语言将重新加载页面。"
+  },
+  "english": {
+    "message": "English"
+  },
+  "chineseSimplified": {
+    "message": "简体中文"
+  },
+  "interactions": {
+    "message": "交互"
+  },
+  "showFileSizes": {
+    "message": "显示文件大小"
+  },
+  "showFileSizesDesc": {
+    "message": "在仓库文件列表中每个文件旁边显示大小信息。"
+  },
+  "doubleClickSelect": {
+    "message": "双击选择"
+  },
+  "doubleClickSelectDesc": {
+    "message": "启用双击文件或文件夹行来切换选中状态。"
+  },
+  "downloadPageTitle": {
+    "message": "下载"
+  },
+  "fileStorage": {
+    "message": "文件存储"
+  },
+  "zipNamingRule": {
+    "message": "ZIP 命名规则"
+  },
+  "zipNamingRuleDesc": {
+    "message": "定义下载的 ZIP 压缩包的文件名格式。可选择预设或输入自定义名称。"
+  },
+  "orTypeCustom": {
+    "message": "或输入自定义格式..."
+  },
+  "autoIgnoreFiles": {
+    "message": "自动忽略文件"
+  },
+  "quickPresets": {
+    "message": "快速预设"
+  },
+  "quickPresetsDesc": {
+    "message": "针对不同场景一键加载预定义的过滤组合。"
+  },
+  "fullRepository": {
+    "message": "完整仓库"
+  },
+  "codeOnly": {
+    "message": "仅代码"
+  },
+  "docsOnly": {
+    "message": "仅文档"
+  },
+  "designAssets": {
+    "message": "设计资源"
+  },
+  "minimal": {
+    "message": "最小化"
+  },
+  "commonGroupTitle": {
+    "message": "通用（代码和系统）"
+  },
+  "commonGroupDesc": {
+    "message": "开发人员常用的忽略文件和文件夹。"
+  },
+  "mediaGroupTitle": {
+    "message": "媒体和其他"
+  },
+  "mediaGroupDesc": {
+    "message": "可选择性忽略的大型资源文件或文档。"
+  },
+  "customRules": {
+    "message": "自定义规则"
+  },
+  "customRulesDesc": {
+    "message": "添加你自己的通配符模式。例如 <code>*.log</code>（匹配文件），<code>temp_data/</code>（匹配文件夹）。"
+  },
+  "patternPlaceholder": {
+    "message": "通配符模式（如 *.spec.js）"
+  },
+  "addRule": {
+    "message": "添加规则"
+  },
+  "notifications": {
+    "message": "通知"
+  },
+  "showNotification": {
+    "message": "显示通知"
+  },
+  "showNotificationDesc": {
+    "message": "下载完成时显示浏览器弹窗通知。"
+  },
+  "playSound": {
+    "message": "播放提示音"
+  },
+  "playSoundDesc": {
+    "message": "下载完成时播放简短的提示音。"
+  },
+  "openFolder": {
+    "message": "打开文件夹"
+  },
+  "openFolderDesc": {
+    "message": "下载完成时自动打开系统的保存文件夹。"
+  },
+  "historyPageTitle": {
+    "message": "下载历史"
+  },
+  "selected": {
+    "message": "已选择"
+  },
+  "deleteSelected": {
+    "message": "删除选中"
+  },
+  "clearAllHistory": {
+    "message": "清空所有历史"
+  },
+  "noHistoryYet": {
+    "message": "暂无下载历史"
+  },
+  "noHistoryDesc": {
+    "message": "当你从 GitHub 仓库下载文件后，下载历史将会显示在这里。"
+  },
+  "openInGitHub": {
+    "message": "在 GitHub 中打开"
+  },
+  "files_one": {
+    "message": "个文件"
+  },
+  "files_other": {
+    "message": "个文件"
+  },
+  "filteredOut": {
+    "message": "已过滤"
+  },
+  "statsPageTitle": {
+    "message": "统计"
+  },
+  "interactiveFilters": {
+    "message": "交互式筛选"
+  },
+  "timeRange": {
+    "message": "时间范围"
+  },
+  "allTime": {
+    "message": "全部时间"
+  },
+  "today": {
+    "message": "今天"
+  },
+  "last7Days": {
+    "message": "最近 7 天"
+  },
+  "last30Days": {
+    "message": "最近 30 天"
+  },
+  "last90Days": {
+    "message": "最近 90 天"
+  },
+  "customRange": {
+    "message": "自定义范围"
+  },
+  "downloadType": {
+    "message": "下载类型"
+  },
+  "allTypes": {
+    "message": "全部类型"
+  },
+  "folder": {
+    "message": "文件夹"
+  },
+  "file": {
+    "message": "文件"
+  },
+  "repository": {
+    "message": "仓库"
+  },
+  "allRepositories": {
+    "message": "全部仓库"
+  },
+  "branch": {
+    "message": "分支"
+  },
+  "allBranches": {
+    "message": "全部分支"
+  },
+  "pathNameKeyword": {
+    "message": "路径/名称关键字"
+  },
+  "keywordPlaceholder": {
+    "message": "例如：src、docs、api"
+  },
+  "resetFilters": {
+    "message": "重置筛选"
+  },
+  "startDate": {
+    "message": "开始日期"
+  },
+  "endDate": {
+    "message": "结束日期"
+  },
+  "overview": {
+    "message": "概览"
+  },
+  "totalDownloads": {
+    "message": "总下载次数"
+  },
+  "folderDownloads": {
+    "message": "文件夹下载"
+  },
+  "fileDownloads": {
+    "message": "文件下载"
+  },
+  "downloadedFiles": {
+    "message": "已下载文件数"
+  },
+  "filteredItems": {
+    "message": "已过滤项目"
+  },
+  "totalDownloadSize": {
+    "message": "总下载大小"
+  },
+  "uniqueRepositories": {
+    "message": "独立仓库数"
+  },
+  "avgFilesPerDownload": {
+    "message": "平均文件数/下载"
+  },
+  "repoDimensions": {
+    "message": "仓库维度"
+  },
+  "branchDimensions": {
+    "message": "分支维度"
+  },
+  "downloads": {
+    "message": "下载次数"
+  },
+  "size": {
+    "message": "大小"
+  },
+  "tokenPageTitle": {
+    "message": "GitHub 令牌"
+  },
+  "customToken": {
+    "message": "自定义令牌"
+  },
+  "githubApiAccess": {
+    "message": "GitHub API 访问"
+  },
+  "anonymousAccess": {
+    "message": "匿名访问"
+  },
+  "customTokenLabel": {
+    "message": "自定义令牌"
+  },
+  "tokenScope": {
+    "message": "令牌权限范围"
+  },
+  "noCustomToken": {
+    "message": "当前未使用自定义令牌。"
+  },
+  "tokenInputDesc": {
+    "message": "你可以手动输入 GitHub 个人访问令牌，或点击下方的授权按钮通过 OAuth 自动获取令牌。"
+  },
+  "publicReposOnly": {
+    "message": "仅公开仓库"
+  },
+  "fullAccess": {
+    "message": "完全访问"
+  },
+  "authorizePublic": {
+    "message": "授权公开仓库"
+  },
+  "authorizePrivate": {
+    "message": "授权公开 + 私有仓库"
+  },
+  "authorizing": {
+    "message": "授权中..."
+  },
+  "show": {
+    "message": "显示"
+  },
+  "hide": {
+    "message": "隐藏"
+  },
+  "copy": {
+    "message": "复制"
+  },
+  "copied": {
+    "message": "已复制！"
+  },
+  "rateLimitStatus": {
+    "message": "当前速率限制状态"
+  },
+  "refreshStatus": {
+    "message": "刷新状态"
+  },
+  "aboutPageTitle": {
+    "message": "关于 GitZip Pro"
+  },
+  "version": {
+    "message": "版本"
+  },
+  "checkForUpdates": {
+    "message": "检查更新"
+  },
+  "checking": {
+    "message": "检查中..."
+  },
+  "links": {
+    "message": "链接"
+  },
+  "starOnGitHub": {
+    "message": "在 GitHub 上点赞"
+  },
+  "starOnGitHubDesc": {
+    "message": "在 GitHub 上为该项目点星支持我们。"
+  },
+  "starRepo": {
+    "message": "前往仓库"
+  },
+  "reportIssue": {
+    "message": "报告问题"
+  },
+  "reportIssueDesc": {
+    "message": "发现 Bug 或有功能需求？在 GitHub 上提交 Issue。"
+  },
+  "openIssue": {
+    "message": "提交 Issue"
+  },
+  "rateUs": {
+    "message": "给我们评分"
+  },
+  "rateUsDesc": {
+    "message": "喜欢 GitZip Pro？在 Chrome 网上应用店留下评价。"
+  },
+  "rateExtension": {
+    "message": "评分"
+  },
+  "welcomeTitle": {
+    "message": "欢迎使用 GitZip Pro！🎉"
+  },
+  "welcomeSubtitle": {
+    "message": "此消息只会显示一次"
+  },
+  "welcomeTipTitle": {
+    "message": "建议：使用自定义令牌"
+  },
+  "welcomeTipDesc1": {
+    "message": "为了获得最佳体验，我们建议使用 <strong>GitHub 个人访问令牌</strong> 而不是匿名访问："
+  },
+  "welcomeTokenLi1": {
+    "message": "<strong>更高的速率限制：</strong>每小时 5000 次请求，匿名仅 60 次"
+  },
+  "welcomeTokenLi2": {
+    "message": "<strong>访问私有仓库：</strong>下载你的私有仓库中的文件"
+  },
+  "welcomeTokenLi3": {
+    "message": "<strong>更可靠的体验：</strong>避免在大量下载时达到速率限制"
+  },
+  "welcomeGotIt": {
+    "message": "知道了，开始设置！"
+  },
+  "welcomeLearnMore": {
+    "message": "了解令牌更多信息"
+  },
+  "welcomeNote": {
+    "message": "你可以随时在「令牌」页面更改令牌设置。"
+  },
+  "downloadBtnLabel": {
+    "message": "下载"
+  },
+  "downloading": {
+    "message": "下载中…"
+  },
+  "done": {
+    "message": "完成！"
+  },
+  "error": {
+    "message": "错误"
+  },
+  "scanning": {
+    "message": "扫描中…"
+  },
+  "notOnGitHub": {
+    "message": "不在 GitHub"
+  },
+  "activeOnRepo": {
+    "message": "在 $1 上活跃"
+  },
+  "notOnRepoPage": {
+    "message": "不在仓库文件页面"
+  },
+  "unableToDetect": {
+    "message": "无法检测页面"
+  },
+  "options": {
+    "message": "选项"
+  },
+  "more": {
+    "message": "更多"
+  },
+  "selectForDownload": {
+    "message": "选择下载"
+  },
+  "noValidItemsSelected": {
+    "message": "未选择有效的 GitHub 项目。"
+  },
+  "allSkippedByIgnore": {
+    "message": "所有选中的项目均被忽略规则跳过（已排除 $1 项）。如果这不是预期行为，请检查你的忽略设置。"
+  },
+  "noFilesFound": {
+    "message": "未找到可下载的文件。"
+  },
+  "downloadCompleted": {
+    "message": "下载成功完成！"
+  },
+  "downloadFailed": {
+    "message": "GitZip Pro - 下载失败"
+  },
+  "tokenCopied": {
+    "message": "令牌已复制"
+  },
+  "tokenCopiedMsg": {
+    "message": "GitHub 个人访问令牌已成功复制到剪贴板。"
+  },
+  "copyFailed": {
+    "message": "复制失败"
+  },
+  "copyFailedMsg": {
+    "message": "复制令牌到剪贴板失败，请重试。"
+  },
+  "checkingRateLimit": {
+    "message": "正在检查速率限制..."
+  },
+  "anonymousWarningTitle": {
+    "message": "⚠️ 匿名模式限制"
+  },
+  "anonymousWarningDesc1": {
+    "message": "<strong>限制：</strong>每小时仅 60 次请求，与你网络上的其他用户共享。这很可能很快就会被耗尽。"
+  },
+  "anonymousWarningDesc2": {
+    "message": "<strong>建议：</strong>创建一个免费的 Personal Access Token，即可获得每小时 5000 次请求，并访问你的私有仓库。"
+  },
+  "currentVersion": {
+    "message": "加载中..."
+  },
+  "scannedFiles": {
+    "message": "扫描 $1 / $2 个文件"
+  },
+  "fileCount": {
+    "message": "$1 个文件"
+  },
+  "unknownSize": {
+    "message": "未知大小"
+  }
+}

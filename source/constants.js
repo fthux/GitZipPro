@@ -19,7 +19,8 @@
     GITHUB_TOKEN: 'gzpGitHubToken',
     TOKEN_ACCESS_MODE: 'gzpTokenAccessMode',
     TOKEN_SCOPE: 'gzpTokenScope',
-    DOWNLOAD_HISTORY: 'gzpDownloadHistory'
+    DOWNLOAD_HISTORY: 'gzpDownloadHistory',
+    LANGUAGE: 'gzpLocale'
   };
 
   const DEFAULTS = {
@@ -33,7 +34,8 @@
     NOTIFY_SHOW: true,
     NOTIFY_SOUND: true,
     NOTIFY_OPEN: false,
-    TOKEN_ACCESS_MODE: 'anonymous'
+    TOKEN_ACCESS_MODE: 'anonymous',
+    LANGUAGE: 'en'
   };
 
   const URLS = {
