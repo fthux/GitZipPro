@@ -64,16 +64,34 @@
   appearance: none !important;
   -webkit-appearance: none !important;
 
-  border: 2px solid #6e7681 !important;
+  border: 2px solid #d0d7de !important;
   border-radius: 3px !important;
-  background: #0d1117 !important;
+  background: #ffffff !important;
   transition: all 0.15s ease !important;
 
   position: relative !important;
   flex-shrink: 0 !important;
 }
 
+/* Dark theme overrides for checkbox */
+[data-color-mode="dark"] .gzp-checkbox {
+  border-color: #6e7681 !important;
+  background: #0d1117 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .gzp-checkbox {
+    border-color: #6e7681 !important;
+    background: #0d1117 !important;
+  }
+}
+
 .gzp-checkbox:hover {
+  border-color: var(--gzp-primary-color) !important;
+}
+
+/* Dark theme hover */
+[data-color-mode="dark"] .gzp-checkbox:hover {
   border-color: var(--gzp-primary-color) !important;
 }
 
