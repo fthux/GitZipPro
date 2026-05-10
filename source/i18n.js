@@ -241,6 +241,23 @@
     return value;
   }
 
+  /**
+   * Reload translations for a locale and update the internal state,
+   * without saving to storage or dispatching events.
+   * This is useful for content scripts that need to update the internal
+   * translations object without triggering side effects like storage writes.
+   * @param {string} locale - The locale code (e.g. 'en', 'zh-CN')
+   * @returns {Promise<object>} The loaded translations
+   */
+  async function reloadLocale(locale) {
+    if (!SUPPORTED_LOCALES.includes(locale)) {
+      locale = DEFAULT_LOCALE;
+    }
+    currentLocale = locale;
+    translations = await loadLocale(locale);
+    return translations;
+  }
+
   // Expose public API
   global.GZP_I18N = {
     init: initI18n,
@@ -250,6 +267,7 @@
     applyTranslations: applyTranslations,
     getTranslatedMessage: getTranslatedMessage,
     loadLocale: loadLocale,
+    reloadLocale: reloadLocale,
     SUPPORTED_LOCALES: SUPPORTED_LOCALES,
     DETECTED: detectBrowserLocale()
   };

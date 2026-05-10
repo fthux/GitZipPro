@@ -251,6 +251,13 @@
     "rate_us": "给我们评分"
   },
 
+  "download_btn": {
+    "idle": "下载",
+    "loading": "下载中…",
+    "done": "完成！",
+    "error": "错误"
+  },
+
   "context_menu": {
     "root": "GitZip Pro 下载",
     "checked_items": "已选项",
@@ -281,8 +288,21 @@
     "error_loading": "加载令牌设置时出错。"
   },
 
+  "checkbox": {
+    "select_for_download": "选择以下载"
+  },
+
   "languages": {
     "en": "English",
     "zh-CN": "简体中文"
+  },
+
+  "downloader": {
+    "scanning": "正在扫描…",
+    "files_progress": "{completed} / {total} 个文件",
+    "packing_zip": "正在打包 ZIP…",
+    "no_files_found": "未找到文件。",
+    "all_skipped": "所选项目全部被忽略规则跳过（已排除 {count} 项）。如果这不是您的本意，请检查忽略设置。",
+    "no_valid_items": "未选择有效的 GitHub 项目。"
   }
 }

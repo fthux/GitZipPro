@@ -23,6 +23,7 @@
       "matches": ["https://github.com/*"],
       "js": [
         "constants.js",
+        "i18n.js",
         "jszip.min.js",
         "downloader.js",
         "content.js"
@@ -49,7 +50,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["jszip.min.js", "constants.js", "locales/*"],
+      "resources": ["jszip.min.js", "constants.js", "i18n.js", "locales/*"],
       "matches": ["https://github.com/*"]
     }
   ]

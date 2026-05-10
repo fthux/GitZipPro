@@ -251,6 +251,13 @@
     "rate_us": "Rate Us"
   },
 
+  "download_btn": {
+    "idle": "Download",
+    "loading": "Downloading…",
+    "done": "Done!",
+    "error": "Error"
+  },
+
   "context_menu": {
     "root": "GitZip Pro Download",
     "checked_items": "Checked Item(s)",
@@ -281,8 +288,21 @@
     "error_loading": "Error loading token settings."
   },
 
+  "checkbox": {
+    "select_for_download": "Select for download"
+  },
+
   "languages": {
     "en": "English",
     "zh-CN": "简体中文"
+  },
+
+  "downloader": {
+    "scanning": "Scanning…",
+    "files_progress": "{completed} / {total} files",
+    "packing_zip": "Packing ZIP…",
+    "no_files_found": "No files found in selection.",
+    "all_skipped": "All selected items were skipped by ignore rules ({count} item(s) excluded). Check your ignore settings if this is not intended.",
+    "no_valid_items": "No valid GitHub items selected."
   }
 }

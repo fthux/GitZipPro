@@ -11,6 +11,7 @@
 
 importScripts('constants.js');
 importScripts('i18n.js');
+const { STORAGE_KEYS } = globalThis.GZP_CONSTANTS;
 const MENU_IDS = {
   ROOT: 'gitzip-pro-download',
   CHECKED: 'gitzip-pro-checked-items',
@@ -32,6 +33,7 @@ async function initBackgroundI18n() {
   const locale = await GZP_I18N.init();
   backgroundLocale = locale;
   backgroundTranslations = await GZP_I18N.loadLocale(locale);
+  ensureContextMenus();
 }
 initBackgroundI18n();
 
@@ -40,9 +42,10 @@ chrome.storage.onChanged.addListener((changes) => {
   const localeKey = STORAGE_KEYS.LANGUAGE;
   if (changes[localeKey]) {
     const newLocale = changes[localeKey].newValue;
+    backgroundLocale = newLocale;
     GZP_I18N.loadLocale(newLocale).then(translations => {
-      backgroundLocale = newLocale;
       backgroundTranslations = translations;
+      ensureContextMenus();
     });
   }
 });
@@ -67,39 +70,68 @@ function t(key, vars) {
   return value;
 }
 
-// Create context menu on installation
-chrome.runtime.onInstalled.addListener((details) => {
-  // Create parent menu item
+/** Ensure context menus exist with current translations. Create if missing, update if present. */
+function ensureContextMenus() {
+  try {
+    // Try to update first (menus already exist from a previous session)
+    chrome.contextMenus.update(MENU_IDS.ROOT, { title: t('context_menu.root') }, () => {
+      if (chrome.runtime.lastError) {
+        // Menu doesn't exist yet — create them now with translations loaded
+        createContextMenus();
+        return;
+      }
+      // Update the remaining menus
+      chrome.contextMenus.update(MENU_IDS.CHECKED, { title: t('context_menu.checked_items') });
+      chrome.contextMenus.update(MENU_IDS.SELECTED, { title: t('context_menu.selected_item', { name: '(none)' }) });
+    });
+  } catch (e) {
+    // Fallback: create them
+    createContextMenus();
+  }
+}
+
+function createContextMenus() {
   chrome.contextMenus.create({
     id: MENU_IDS.ROOT,
-    title: 'GitZip Pro Download',
+    title: t('context_menu.root'),
     contexts: ['page', 'link', 'selection']
   });
-
-  // Create disabled "Checked Item(s)" submenu
   chrome.contextMenus.create({
     id: MENU_IDS.CHECKED,
     parentId: MENU_IDS.ROOT,
-    title: 'Checked Item(s)',
+    title: t('context_menu.checked_items'),
     contexts: ['page', 'link', 'selection'],
     enabled: false
   });
-
-  // Create separator
   chrome.contextMenus.create({
     id: MENU_IDS.SEPARATOR,
     parentId: MENU_IDS.ROOT,
     type: 'separator',
     contexts: ['page', 'link', 'selection']
   });
-
-  // Create dynamic "Selected Folder" submenu (will be updated)
   chrome.contextMenus.create({
     id: MENU_IDS.SELECTED,
     parentId: MENU_IDS.ROOT,
-    title: 'Selected Folder - (none)',
+    title: t('context_menu.selected_item', { name: '(none)' }),
     contexts: ['page', 'link', 'selection']
   });
+}
+
+// Create context menu on installation
+chrome.runtime.onInstalled.addListener((details) => {
+  // Menus are created by ensureContextMenus() once translations load.
+  // On install/update, we also need to wait for translations to be ready.
+  // Since initBackgroundI18n() runs asynchronously on worker start,
+  // and contextMenus.create can be called multiple times safely,
+  // we just need to ensure context menus are created. ensureContextMenus()
+  // will handle both creation and updating after translations are ready.
+
+  // If translations are already loaded (unlikely at this point), create now
+  if (backgroundTranslations && Object.keys(backgroundTranslations).length > 0) {
+    createContextMenus();
+  }
+  // Otherwise, ensureContextMenus() called from initBackgroundI18n()
+  // will handle creation once translations are ready.
 
   // Check if this is a fresh install (not an update)
   if (details.reason === 'install') {
@@ -115,6 +147,8 @@ chrome.runtime.onInstalled.addListener((details) => {
     });
   }
 });
+
+
 
 // Update context menu when receiving right-click info from content script
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

@@ -24,6 +24,28 @@
   const STORAGE = C.STORAGE_KEYS;
   const DEFAULTS = C.DEFAULTS;
 
+  /**
+   * I18n helper — falls back to key if GZP_I18N not available,
+   * and falls back to English text if localization not loaded yet.
+   */
+  function t(key, vars) {
+    if (global.GZP_I18N) {
+      const result = global.GZP_I18N.t(key, vars);
+      // If the result equals the key (translation not found), use English fallback
+      if (result !== key) return result;
+    }
+    // Hardcoded English fallback for downloader messages
+    switch (key) {
+      case 'downloader.scanning': return 'Scanning…';
+      case 'downloader.files_progress': return `${vars ? vars.completed : 0} / ${vars ? vars.total : 0} files`;
+      case 'downloader.packing_zip': return 'Packing ZIP…';
+      case 'downloader.no_files_found': return 'No files found in selection.';
+      case 'downloader.all_skipped': return `All selected items were skipped by ignore rules (${vars ? vars.count : 0} item(s) excluded). Check your ignore settings if this is not intended.`;
+      case 'downloader.no_valid_items': return 'No valid GitHub items selected.';
+      default: return key;
+    }
+  }
+
   // ─── Config ───────────────────────────────────────────────────────────────
 
   const GITHUB_API_BASE = C.URLS.GITHUB_API_BASE;
@@ -254,7 +276,7 @@
     }
 
     if (parsed.length === 0) {
-      onError && onError(new Error('No valid GitHub items selected.'));
+      onError && onError(new Error(t('downloader.no_valid_items')));
       return abortCtrl;
     }
 
@@ -263,7 +285,7 @@
 
     try {
       // ③ Collect all files to download (traverse dirs recursively)
-      onProgress && onProgress(0, 0, 'Scanning…');
+      onProgress && onProgress(0, 0, t('downloader.scanning'));
 
       const fileList = []; // { path: string, fetch: fn }
       let totalIgnored = 0;
@@ -292,14 +314,14 @@
 
       if (fileList.length === 0) {
         if (totalIgnored > 0) {
-          throw new Error(`All selected items were skipped by ignore rules (${totalIgnored} item${totalIgnored > 1 ? 's' : ''} excluded). Check your ignore settings if this is not intended.`);
+          throw new Error(t('downloader.all_skipped', { count: totalIgnored }));
         } else {
-          throw new Error('No files found in selection.');
+          throw new Error(t('downloader.no_files_found'));
         }
       }
 
       const total = fileList.length;
-      onProgress && onProgress(0, total, `0 / ${total} files`);
+      onProgress && onProgress(0, total, t('downloader.files_progress', { completed: 0, total }));
 
       // ── ZIP mode (default) ────────────────────────────────────────────
       const zip = new JSZip();
@@ -312,12 +334,12 @@
         }
         zip.file(`${zipRoot}/${item.path}`, bytes);
         completed++;
-        onProgress && onProgress(completed, total, `${completed} / ${total} files`);
+        onProgress && onProgress(completed, total, t('downloader.files_progress', { completed, total }));
       });
 
       await withConcurrency(CONCURRENCY_LIMIT, tasks);
 
-      onProgress && onProgress(total, total, 'Packing ZIP…');
+      onProgress && onProgress(total, total, t('downloader.packing_zip'));
 
       const base64 = await zip.generateAsync({
         type: 'base64',

@@ -15,6 +15,11 @@
 
   const ROW_MARK = 'data-gzp-attached';
 
+  /** I18n helper - local alias for GZP_I18N.t() */
+  function t(key, vars) {
+    return globalThis.GZP_I18N ? globalThis.GZP_I18N.t(key, vars) : key;
+  }
+
   // ─── State ────────────────────────────────────────────────────────────────
 
   /** @type {Map<Element, string>} row element → file/folder href */
@@ -389,7 +394,7 @@
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.className = 'gzp-checkbox';
-    cb.setAttribute('aria-label', 'Select for download');
+    cb.setAttribute('aria-label', t('checkbox.select_for_download'));
     cb.checked = isChecked;
     cb.style.width = '16px';
     cb.style.height = '16px';
@@ -647,42 +652,50 @@
     ERROR: 'error',
   };
 
-  const BTN_HTML = {
-    [BTN_STATES.IDLE]: `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
-           stroke-linejoin="round" class="gzp-icon">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-        <polyline points="7 10 12 15 17 10"/>
-        <line x1="12" y1="15" x2="12" y2="3"/>
-      </svg>
-      <span class="gzp-btn-label">Download</span>
-      <span class="gzp-btn-badge"></span>`,
-    [BTN_STATES.LOADING]: `
-      <span class="gzp-spinner"></span>
-      <span class="gzp-btn-label">Downloading…</span>
-      <span class="gzp-btn-progress"></span>`,
-    [BTN_STATES.DONE]: `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-           stroke-linejoin="round" width="17" height="17">
-        <polyline points="20 6 9 17 4 12"/>
-      </svg>
-      <span class="gzp-btn-label">Done!</span>`,
-    [BTN_STATES.ERROR]: `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-           stroke-linejoin="round" width="17" height="17">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="15" y1="9" x2="9" y2="15"/>
-        <line x1="9" y1="9" x2="15" y2="15"/>
-      </svg>
-      <span class="gzp-btn-label">Error</span>`,
-  };
+  function getBtnHTML(state) {
+    switch (state) {
+      case BTN_STATES.IDLE:
+        return `
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+               stroke-linejoin="round" class="gzp-icon">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span class="gzp-btn-label">${t('download_btn.idle')}</span>
+          <span class="gzp-btn-badge"></span>`;
+      case BTN_STATES.LOADING:
+        return `
+          <span class="gzp-spinner"></span>
+          <span class="gzp-btn-label">${t('download_btn.loading')}</span>
+          <span class="gzp-btn-progress"></span>`;
+      case BTN_STATES.DONE:
+        return `
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+               stroke-linejoin="round" width="17" height="17">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          <span class="gzp-btn-label">${t('download_btn.done')}</span>`;
+      case BTN_STATES.ERROR:
+        return `
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+               stroke-linejoin="round" width="17" height="17">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+          </svg>
+          <span class="gzp-btn-label">${t('download_btn.error')}</span>`;
+      default:
+        return '';
+    }
+  }
 
   function setBtnState(state, label) {
     if (!downloadBtn) return;
-    downloadBtn.innerHTML = BTN_HTML[state] || BTN_HTML[BTN_STATES.IDLE];
+    downloadBtn.innerHTML = getBtnHTML(state);
     downloadBtn.dataset.state = state;
     downloadBtn.disabled = (state === BTN_STATES.LOADING);
 
@@ -710,7 +723,7 @@
     btn.id = 'gzp-download-btn';
     btn.className = 'gzp-download-btn gzp-download-btn--hidden';
     btn.dataset.state = BTN_STATES.IDLE;
-    btn.innerHTML = BTN_HTML[BTN_STATES.IDLE];
+    btn.innerHTML = getBtnHTML(BTN_STATES.IDLE);
 
     btn.addEventListener('click', async () => {
       if (btn.dataset.state === BTN_STATES.LOADING) return;
@@ -1116,6 +1129,28 @@
         if (changes[STORAGE.DOUBLE_CLICK_SELECT]) {
           doubleClickSelect = changes[STORAGE.DOUBLE_CLICK_SELECT].newValue !== false;
         }
+
+        if (changes[STORAGE.LANGUAGE]) {
+          const newLocale = changes[STORAGE.LANGUAGE].newValue || DEFAULTS.LANGUAGE;
+          // Reload translations and refresh UI text
+          if (window.GZP_I18N && typeof window.GZP_I18N.reloadLocale === 'function') {
+            window.GZP_I18N.reloadLocale(newLocale).then(() => {
+              // Refresh download button text if in idle state
+              if (downloadBtn && document.body.contains(downloadBtn)) {
+                const currentState = downloadBtn.dataset.state || BTN_STATES.IDLE;
+                if (currentState === BTN_STATES.IDLE) {
+                  downloadBtn.innerHTML = getBtnHTML(BTN_STATES.IDLE);
+                  const badge = downloadBtn.querySelector('.gzp-btn-badge');
+                  if (badge) badge.textContent = selectedItems.size || '';
+                }
+              }
+              // Refresh checkbox aria-labels
+              document.querySelectorAll('.gzp-checkbox').forEach(cb => {
+                cb.setAttribute('aria-label', t('checkbox.select_for_download'));
+              });
+            });
+          }
+        }
       }
     });
 
@@ -1124,6 +1159,11 @@
       subtree: true,
       attributes: false
     });
+
+    // Init i18n translations before creating UI elements
+    if (window.GZP_I18N && typeof window.GZP_I18N.init === 'function') {
+      await window.GZP_I18N.init();
+    }
 
     ensureDownloadButton();
 
@@ -1148,6 +1188,18 @@
 
     logDebug('Initialization complete');
   }
+
+  // Listen for locale changes from options page and refresh button text
+  document.addEventListener('gzp-locale-changed', () => {
+    if (downloadBtn && document.body.contains(downloadBtn)) {
+      const currentState = downloadBtn.dataset.state || BTN_STATES.IDLE;
+      if (currentState === BTN_STATES.IDLE) {
+        downloadBtn.innerHTML = getBtnHTML(BTN_STATES.IDLE);
+        const badge = downloadBtn.querySelector('.gzp-btn-badge');
+        if (badge) badge.textContent = selectedItems.size || '';
+      }
+    }
+  });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
