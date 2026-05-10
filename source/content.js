@@ -609,16 +609,36 @@
     const dummyElement = document.createElement('div');
     downloadMap.set(dummyElement, href);
 
+    // 确保下载按钮存在并显示加载状态
+    const btn = ensureDownloadButton();
+    btn.classList.remove('gzp-download-btn--hidden');
+    setBtnState(BTN_STATES.LOADING, '0 / ? files');
+
     // 开始下载
-    window.GZPDownloader.start(downloadMap, {
+    activeDownload = window.GZPDownloader.start(downloadMap, {
       onProgress: (current, total, label) => {
-        console.log(`Downloading via context menu: ${label}`);
+        if (btn.dataset.state !== BTN_STATES.LOADING) return;
+        const p = btn.querySelector('.gzp-btn-progress');
+        if (p) p.textContent = label;
       },
       onDone: () => {
-        console.log('Context menu download completed');
+        setBtnState(BTN_STATES.DONE);
+        setTimeout(resetBtnToIdle, 2500);
       },
       onError: (err) => {
-        console.error('Context menu download error:', err);
+        setBtnState(BTN_STATES.ERROR, err.message);
+
+        // 显示系统通知（受设置控制）
+        chrome.storage.sync.get([STORAGE.NOTIFY_SHOW], (res) => {
+          if (res[STORAGE.NOTIFY_SHOW] !== false) {
+            chrome.runtime.sendMessage({
+              type: 'GZP_SHOW_ERROR_NOTIFICATION',
+              message: err.message
+            });
+          }
+        });
+
+        setTimeout(resetBtnToIdle, 6000);
       },
     });
   }
