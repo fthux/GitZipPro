@@ -1464,7 +1464,7 @@ function renderHistory() {
 
       const filesLabel = filesCount === 1 ? GZP_I18N.t('history.file') : GZP_I18N.t('history.files');
       html += `
-        <div class="history-record" data-id="${record.id}">
+        <div class="history-record" data-id="${record.id}" title="${downloadName}">
           <div class="history-record-header">
             <div class="history-record-checkbox">
               <input type="checkbox" />
@@ -1473,6 +1473,7 @@ function renderHistory() {
               <div class="history-record-title">
                 <span class="history-record-repo">${ownerName}/${repoName}</span>
                 <span class="history-record-branch">${branchName}</span>
+                <span class="history-record-path">${path}</span>
                 <span class="history-record-type-badge ${typeInfo.type}" title="Download source type">${typeInfo.icon} ${typeInfo.label}</span>
               </div>
               <div class="history-record-meta">
