@@ -888,8 +888,8 @@ async function checkRateLimit() {
 // Load token settings
 async function loadTokenSettings() {
   try {
-  // Set loading state immediately to avoid empty display
-  rateLimitStatus.textContent = GZP_I18N.t('token.rate_limit_checking');
+    // Set loading state immediately to avoid empty display
+    rateLimitStatus.textContent = GZP_I18N.t('token.rate_limit_checking');
 
     const result = await chrome.storage.sync.get([TOKEN_STORAGE_KEY, TOKEN_MODE_KEY, TOKEN_SCOPE_KEY]);
 
@@ -958,8 +958,8 @@ function formatHistoryDate(timestamp) {
   const normYesterday = normalize(yesterday);
 
   // Get locale from current i18n setting for date formatting
-  const locale = GZP_I18N && GZP_I18N.getCurrentLocale ? 
-    (GZP_I18N.getCurrentLocale() === 'zh-CN' ? 'zh-CN' : 'en-US') : 
+  const locale = GZP_I18N && GZP_I18N.getCurrentLocale ?
+    (GZP_I18N.getCurrentLocale() === 'zh-CN' ? 'zh-CN' : 'en-US') :
     'en-US';
 
   // Format weekday, month day, year (e.g., "Friday, March 27, 2026")
@@ -1419,7 +1419,7 @@ function renderHistory() {
 
   // Show empty state if no history
   if (downloadHistory.length === 0) {
-      historyContent.innerHTML = `
+    historyContent.innerHTML = `
       <div class="history-empty-state">
         <h3>${GZP_I18N.t('history.empty_title')}</h3>
         <p>${GZP_I18N.t('history.empty_desc')}</p>
@@ -1445,7 +1445,7 @@ function renderHistory() {
   // Render groups
   let html = '';
   Object.entries(grouped).forEach(([dateLabel, records]) => {
-      html += `
+    html += `
         <div class="history-date-group">
           <div class="history-date-header">${dateLabel}</div>
     `;
@@ -1614,20 +1614,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize message listener for download completion events
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'GZP_DOWNLOAD_COMPLETE' && message.record) {
-      // If history/stats page is already initialized, add the record immediately
+      // Background.js now saves history to storage directly.
+      // Reload from storage to stay in sync (avoids duplicate saves).
       if (historyPageInitialized || statsPageInitialized) {
-        addHistoryRecord(message.record);
-        renderHistory(); // Re-render to show new record
-        if (statsPageInitialized) {
-          renderStatsFilterOptions();
-          renderStats();
-        }
-      } else {
-        // Store the record temporarily and add it when history page is initialized
-        if (!window.pendingHistoryRecords) {
-          window.pendingHistoryRecords = [];
-        }
-        window.pendingHistoryRecords.push(message.record);
+        loadHistory().then(() => {
+          renderHistory();
+          if (statsPageInitialized) {
+            renderStatsFilterOptions();
+            renderStats();
+          }
+        });
       }
     }
   });
@@ -1637,15 +1633,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (activeMenuItem && activeMenuItem.getAttribute('data-target') === 'history') {
     initHistoryPage();
     historyPageInitialized = true;
-
-    // Process any pending records
-    if (window.pendingHistoryRecords && window.pendingHistoryRecords.length > 0) {
-      window.pendingHistoryRecords.forEach(record => {
-        addHistoryRecord(record);
-      });
-      window.pendingHistoryRecords = [];
-      renderHistory();
-    }
   } else if (activeMenuItem && activeMenuItem.getAttribute('data-target') === 'stats') {
     initStatsPage();
   }

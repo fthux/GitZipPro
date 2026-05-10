@@ -290,32 +290,73 @@ chrome.downloads.onChanged.addListener((delta) => {
         }
       }
 
-      // Send download completion message to options page for history tracking
-      try {
-        // Use the full history record sent from downloader.js if available
-        const record = prefs.historyRecord || {
-          timestamp: Date.now(),
-          downloadName: prefs.filename || 'download.zip',
-          owner: 'unknown',
-          repo: 'Unknown repository',
-          branch: 'main',
-          fileCount: 0,
-          files: []
-        };
+      // Save history record to storage AND notify options page for live UI update
+      (async () => {
+        try {
+          // Use the full history record sent from downloader.js if available
+          const record = prefs.historyRecord || {
+            timestamp: Date.now(),
+            downloadName: prefs.filename || 'download.zip',
+            owner: 'unknown',
+            repo: 'Unknown repository',
+            branch: 'main',
+            fileCount: 0,
+            files: []
+          };
 
-        // Ensure record has required fields
-        if (!record.timestamp) record.timestamp = Date.now();
-        if (!record.downloadName) record.downloadName = prefs.filename || 'download.zip';
+          // Ensure record has required fields
+          if (!record.timestamp) record.timestamp = Date.now();
+          if (!record.downloadName) record.downloadName = prefs.filename || 'download.zip';
+          if (!record.id) record.id = 'h_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
-        chrome.runtime.sendMessage({
-          type: 'GZP_DOWNLOAD_COMPLETE',
-          record: record
-        });
-      } catch (e) {
-        console.warn('[GitZip Pro] Failed to send history record', e);
-      }
+          // Save to storage first, then notify (await ensures write completes before message)
+          await saveHistoryRecord(record);
+
+          // Notify options page for live UI update (best-effort, may fail if page is closed)
+          chrome.runtime.sendMessage({
+            type: 'GZP_DOWNLOAD_COMPLETE',
+            record: record
+          }).catch(() => {
+            // Options page not open — no problem, storage was already saved above
+          });
+        } catch (e) {
+          console.warn('[GitZip Pro] Failed to save history record', e);
+        }
+      })();
     } else if (delta.state && delta.state.current === 'interrupted') {
       activeDownloads.delete(delta.id);
     }
   }
 });
+
+/**
+ * Save a history record directly to chrome.storage.sync.
+ * This ensures history is persisted regardless of whether the options page is open.
+ */
+function saveHistoryRecord(record) {
+  return new Promise((resolve) => {
+    const HISTORY_STORAGE_KEY = STORAGE_KEYS.DOWNLOAD_HISTORY;
+    const MAX_RECORDS = 100;
+
+    chrome.storage.sync.get([HISTORY_STORAGE_KEY], (res) => {
+      let history = Array.isArray(res[HISTORY_STORAGE_KEY]) ? res[HISTORY_STORAGE_KEY] : [];
+
+      // Avoid duplicate records (same id)
+      if (record.id && history.some((r) => r.id === record.id)) {
+        resolve();
+        return;
+      }
+
+      history.unshift(record);
+
+      // Keep only the most recent records
+      if (history.length > MAX_RECORDS) {
+        history = history.slice(0, MAX_RECORDS);
+      }
+
+      chrome.storage.sync.set({ [HISTORY_STORAGE_KEY]: history }, () => {
+        resolve();
+      });
+    });
+  });
+}
