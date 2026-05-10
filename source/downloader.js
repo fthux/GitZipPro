@@ -175,14 +175,50 @@
    * Fetches a single file from GitHub API and returns its binary content.
    * The API returns the GitHub Contents API shape with base64 `content`.
    *
+   * Handles symlinks by resolving the target and re-fetching the actual file.
+   *
+   * @param {string} owner
+   * @param {string} repo
+   * @param {string} branch
+   * @param {string} path
+   * @param {AbortSignal} signal
+   * @param {string} githubToken
+   * @param {string} tokenAccessMode
+   * @param {number} symlinkDepth  Internal - tracks symlink resolution depth to prevent loops
    * @returns {Uint8Array}
    */
-  async function fetchFile(owner, repo, branch, path, signal, githubToken = '', tokenAccessMode = 'anonymous') {
+  async function fetchFile(owner, repo, branch, path, signal, githubToken = '', tokenAccessMode = 'anonymous', symlinkDepth = 0) {
+    if (symlinkDepth > 10) {
+      throw new Error(`Symlink resolution exceeded max depth for: ${path}`);
+    }
+
     const apiPath = `/repos/${owner}/${repo}/contents/${encodeURIFilePath(path)}?ref=${branch}`;
     const data = await githubFetch(apiPath, signal, githubToken, tokenAccessMode);
 
-    if (data.type !== 'file' || !data.content) {
-      throw new Error(`Unexpected response for file: ${path}`);
+    // Handle symlinks - resolve the target and fetch the actual file
+    if (data.type === 'symlink' && data.target) {
+      let target = data.target;
+      // If target is absolute (starts with /), it's relative to repo root
+      // If target is relative, it's relative to the directory containing the symlink
+      if (!target.startsWith('/')) {
+        const dir = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : '';
+        target = dir ? `${dir}/${target}` : target;
+      } else {
+        // Remove leading '/' for a clean repo-relative path
+        target = target.slice(1);
+      }
+      // Normalize 'foo/../bar' → 'bar' path segments
+      const normalizedTarget = normalizePath(target);
+      return fetchFile(owner, repo, branch, normalizedTarget, signal, githubToken, tokenAccessMode, symlinkDepth + 1);
+    }
+
+    if (data.type !== 'file') {
+      throw new Error(`Unexpected response for file: ${path} (type: ${data.type})`);
+    }
+
+    if (!data.content) {
+      // Empty file - return empty Uint8Array
+      return new Uint8Array(0);
     }
 
     // Decode base64 → binary
@@ -226,7 +262,7 @@
         continue;
       }
 
-      if (entry.type === 'file') {
+      if (entry.type === 'file' || entry.type === 'symlink') {
         const entryPath = entry.path;
         fileList.push({
           path: entryPath,
@@ -487,6 +523,24 @@
       bytes[i] = binary.charCodeAt(i);
     }
     return bytes;
+  }
+
+  /**
+   * Normalize a file path by resolving '.' and '..' segments.
+   * e.g. "foo/../bar/baz" → "bar/baz", "./a/./b" → "a/b"
+   */
+  function normalizePath(path) {
+    const parts = path.split('/');
+    const result = [];
+    for (const part of parts) {
+      if (part === '.' || part === '') continue;
+      if (part === '..') {
+        if (result.length > 0) result.pop();
+        continue;
+      }
+      result.push(part);
+    }
+    return result.join('/');
   }
 
   // ─── Auto Ignore Logic ────────────────────────────────────────────────────
