@@ -134,7 +134,7 @@ function applyTheme(theme) {
 themeSelect.addEventListener('change', (e) => {
   const theme = e.target.value;
   applyTheme(theme);
-  chrome.storage.sync.set({ [STORAGE.THEME]: theme });
+  chrome.storage.local.set({ [STORAGE.THEME]: theme });
 });
 
 // ─── Accent Color ─────────────────────────────────────────────────────────────
@@ -209,7 +209,7 @@ document.querySelectorAll('.color-preset').forEach(btn => {
   btn.addEventListener('click', () => {
     const color = btn.getAttribute('data-color');
     applyAccentColor(color);
-    chrome.storage.sync.set({ [STORAGE.ACCENT_COLOR]: color });
+    chrome.storage.local.set({ [STORAGE.ACCENT_COLOR]: color });
   });
 });
 
@@ -222,14 +222,14 @@ customColorPicker.addEventListener('input', (e) => {
 });
 
 customColorPicker.addEventListener('change', (e) => {
-  chrome.storage.sync.set({ [STORAGE.ACCENT_COLOR]: e.target.value });
+  chrome.storage.local.set({ [STORAGE.ACCENT_COLOR]: e.target.value });
 });
 
 // Language
 languageSelect.addEventListener('change', () => {
   const locale = languageSelect.value;
   GZP_I18N.setLocale(locale);
-  chrome.storage.sync.set({ [STORAGE.LANGUAGE]: locale });
+  chrome.storage.local.set({ [STORAGE.LANGUAGE]: locale });
 });
 
 // Listen for language changes to re-render dynamically translated content
@@ -259,35 +259,35 @@ document.addEventListener('gzp-locale-changed', () => {
 
 // Button Position
 buttonPositionSelect.addEventListener('change', () => {
-  chrome.storage.sync.set({ [STORAGE.BUTTON_POSITION]: buttonPositionSelect.value });
+  chrome.storage.local.set({ [STORAGE.BUTTON_POSITION]: buttonPositionSelect.value });
 });
 
 // Show File Sizes
 document.getElementById('showFileSizes').addEventListener('change', () => {
-  chrome.storage.sync.set({ [STORAGE.SHOW_FILE_SIZES]: document.getElementById('showFileSizes').checked });
+  chrome.storage.local.set({ [STORAGE.SHOW_FILE_SIZES]: document.getElementById('showFileSizes').checked });
 });
 
 // Double Click To Select
 document.getElementById('doubleClickSelect').addEventListener('change', () => {
-  chrome.storage.sync.set({ [STORAGE.DOUBLE_CLICK_SELECT]: document.getElementById('doubleClickSelect').checked });
+  chrome.storage.local.set({ [STORAGE.DOUBLE_CLICK_SELECT]: document.getElementById('doubleClickSelect').checked });
 });
 
 // ZIP Naming Rule
 namingPreset.addEventListener('change', () => {
-  chrome.storage.sync.set({ [STORAGE.NAMING_PRESET]: namingPreset.value });
+  chrome.storage.local.set({ [STORAGE.NAMING_PRESET]: namingPreset.value });
 });
 namingCustom.addEventListener('input', () => {
-  chrome.storage.sync.set({ [STORAGE.NAMING_CUSTOM]: namingCustom.value });
+  chrome.storage.local.set({ [STORAGE.NAMING_CUSTOM]: namingCustom.value });
 });
 
 // Notifications
-notifyShow.addEventListener('change', () => chrome.storage.sync.set({ [STORAGE.NOTIFY_SHOW]: notifyShow.checked }));
-notifySound.addEventListener('change', () => chrome.storage.sync.set({ [STORAGE.NOTIFY_SOUND]: notifySound.checked }));
-notifyOpen.addEventListener('change', () => chrome.storage.sync.set({ [STORAGE.NOTIFY_OPEN]: notifyOpen.checked }));
+notifyShow.addEventListener('change', () => chrome.storage.local.set({ [STORAGE.NOTIFY_SHOW]: notifyShow.checked }));
+notifySound.addEventListener('change', () => chrome.storage.local.set({ [STORAGE.NOTIFY_SOUND]: notifySound.checked }));
+notifyOpen.addEventListener('change', () => chrome.storage.local.set({ [STORAGE.NOTIFY_OPEN]: notifyOpen.checked }));
 
 // ─── Load All Saved Settings ──────────────────────────────────────────────────
 
-chrome.storage.sync.get(
+chrome.storage.local.get(
   [STORAGE.THEME, STORAGE.LANGUAGE, STORAGE.ACCENT_COLOR, STORAGE.BUTTON_POSITION, STORAGE.SHOW_FILE_SIZES, STORAGE.DOUBLE_CLICK_SELECT, STORAGE.NAMING_PRESET, STORAGE.NAMING_CUSTOM, STORAGE.NOTIFY_SHOW, STORAGE.NOTIFY_SOUND, STORAGE.NOTIFY_OPEN, STORAGE.IGNORE_LABELS, STORAGE.IGNORE_CUSTOM_VARS, STORAGE.GITHUB_TOKEN, STORAGE.TOKEN_ACCESS_MODE],
   (res) => {
     // Theme
@@ -382,7 +382,7 @@ let activeLabels = new Set();
 let customRules = [];
 
 function saveIgnoreSettings() {
-  chrome.storage.sync.set({
+  chrome.storage.local.set({
     [STORAGE.IGNORE_LABELS]: Array.from(activeLabels),
     [STORAGE.IGNORE_CUSTOM_VARS]: customRules
   });
@@ -539,11 +539,11 @@ githubToken.addEventListener('input', () => {
     const token = githubToken.value.trim();
 
     if (token && token.length > 0) {
-      await chrome.storage.sync.set({ [TOKEN_STORAGE_KEY]: token, [TOKEN_SCOPE_KEY]: 'unknown' });
+      await chrome.storage.local.set({ [TOKEN_STORAGE_KEY]: token, [TOKEN_SCOPE_KEY]: 'unknown' });
       renderTokenScopeStatus(tokenAccessMode.value, token, 'unknown');
       await checkRateLimit();
     } else {
-      await chrome.storage.sync.remove([TOKEN_STORAGE_KEY, TOKEN_SCOPE_KEY]);
+      await chrome.storage.local.remove([TOKEN_STORAGE_KEY, TOKEN_SCOPE_KEY]);
       renderTokenScopeStatus(tokenAccessMode.value, '', '');
     }
   }, 500);
@@ -551,7 +551,7 @@ githubToken.addEventListener('input', () => {
 
 // Copy token to clipboard
 copyToken.addEventListener('click', async () => {
-  const result = await chrome.storage.sync.get([TOKEN_STORAGE_KEY]);
+  const result = await chrome.storage.local.get([TOKEN_STORAGE_KEY]);
   const token = result[TOKEN_STORAGE_KEY];
 
   if (token) {
@@ -589,7 +589,7 @@ tokenAccessMode.addEventListener('change', () => {
   tokenInputSection.style.display = mode === 'custom' ? 'block' : 'none';
 
   // Save mode to storage
-  chrome.storage.sync.set({ [TOKEN_MODE_KEY]: mode });
+  chrome.storage.local.set({ [TOKEN_MODE_KEY]: mode });
 
   // Show warning when using anonymous access
   const anonymousWarning = document.getElementById('anonymousWarning');
@@ -601,7 +601,7 @@ tokenAccessMode.addEventListener('change', () => {
     anonymousWarning.style.display = 'none';
 
     // Restore saved token when switching back to custom mode
-    chrome.storage.sync.get([TOKEN_STORAGE_KEY, TOKEN_SCOPE_KEY], (result) => {
+    chrome.storage.local.get([TOKEN_STORAGE_KEY, TOKEN_SCOPE_KEY], (result) => {
       if (result[TOKEN_STORAGE_KEY]) {
         githubToken.value = result[TOKEN_STORAGE_KEY];
         githubToken.type = 'password';
@@ -734,7 +734,7 @@ async function startGitHubOAuth(scope) {
     if (authResult.accessToken) {
       // Save token to storage
       const storedScope = scope === 'repo' ? 'private' : 'public';
-      await chrome.storage.sync.set({ [TOKEN_STORAGE_KEY]: authResult.accessToken, [TOKEN_SCOPE_KEY]: storedScope });
+      await chrome.storage.local.set({ [TOKEN_STORAGE_KEY]: authResult.accessToken, [TOKEN_SCOPE_KEY]: storedScope });
 
       // Update UI
       githubToken.value = authResult.accessToken.substring(0, 4) + '•'.repeat(Math.min(authResult.accessToken.length - 8, 12)) + authResult.accessToken.substring(authResult.accessToken.length - 4);
@@ -782,7 +782,7 @@ async function checkRateLimit() {
     rateLimitStatus.textContent = GZP_I18N.t('token.rate_limit_checking');
 
     // Get token from storage
-    const result = await chrome.storage.sync.get([TOKEN_STORAGE_KEY, TOKEN_MODE_KEY, TOKEN_SCOPE_KEY]);
+    const result = await chrome.storage.local.get([TOKEN_STORAGE_KEY, TOKEN_MODE_KEY, TOKEN_SCOPE_KEY]);
     const token = result[TOKEN_STORAGE_KEY];
     const mode = result[TOKEN_MODE_KEY] || 'anonymous';
 
@@ -843,7 +843,7 @@ async function checkRateLimit() {
       }
 
       if (result[TOKEN_SCOPE_KEY] !== detectedScope) {
-        await chrome.storage.sync.set({ [TOKEN_SCOPE_KEY]: detectedScope });
+        await chrome.storage.local.set({ [TOKEN_SCOPE_KEY]: detectedScope });
       }
       renderTokenScopeStatus(mode, token, detectedScope);
     } else {
@@ -891,7 +891,7 @@ async function loadTokenSettings() {
     // Set loading state immediately to avoid empty display
     rateLimitStatus.textContent = GZP_I18N.t('token.rate_limit_checking');
 
-    const result = await chrome.storage.sync.get([TOKEN_STORAGE_KEY, TOKEN_MODE_KEY, TOKEN_SCOPE_KEY]);
+    const result = await chrome.storage.local.get([TOKEN_STORAGE_KEY, TOKEN_MODE_KEY, TOKEN_SCOPE_KEY]);
 
     // Load access mode
     const mode = result[TOKEN_MODE_KEY] || 'anonymous';
@@ -1325,7 +1325,7 @@ function buildHistoryTargetUrl(record) {
  */
 function saveHistory() {
   return new Promise((resolve) => {
-    chrome.storage.sync.set({ [HISTORY_STORAGE_KEY]: downloadHistory }, () => {
+    chrome.storage.local.set({ [HISTORY_STORAGE_KEY]: downloadHistory }, () => {
       resolve();
     });
   });
@@ -1336,7 +1336,7 @@ function saveHistory() {
  */
 function loadHistory() {
   return new Promise((resolve) => {
-    chrome.storage.sync.get([HISTORY_STORAGE_KEY], (res) => {
+    chrome.storage.local.get([HISTORY_STORAGE_KEY], (res) => {
       downloadHistory = Array.isArray(res[HISTORY_STORAGE_KEY]) ? res[HISTORY_STORAGE_KEY] : [];
       resolve(downloadHistory);
     });
@@ -1727,12 +1727,12 @@ starGithubBtn.addEventListener('click', () => {
 async function checkAndShowWelcomeModal() {
   try {
     // Check if we should show welcome modal
-    const result = await chrome.storage.sync.get(['gitzip-pro-show-welcome']);
+    const result = await chrome.storage.local.get(['gitzip-pro-show-welcome']);
     const shouldShowWelcome = result['gitzip-pro-show-welcome'] === true;
 
     if (shouldShowWelcome) {
       // Remove the flag so modal only shows once
-      await chrome.storage.sync.remove(['gitzip-pro-show-welcome']);
+      await chrome.storage.local.remove(['gitzip-pro-show-welcome']);
 
       // Navigate to token page
       activateMenu('token');

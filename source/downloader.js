@@ -467,7 +467,7 @@
 
   function getSettings() {
     return new Promise((resolve) => {
-      chrome.storage.sync.get(
+      chrome.storage.local.get(
         [STORAGE.NAMING_PRESET, STORAGE.NAMING_CUSTOM, STORAGE.NOTIFY_SHOW, STORAGE.NOTIFY_SOUND, STORAGE.NOTIFY_OPEN, STORAGE.IGNORE_LABELS, STORAGE.IGNORE_CUSTOM_VARS, STORAGE.GITHUB_TOKEN, STORAGE.TOKEN_ACCESS_MODE],
         (res) => {
           resolve({

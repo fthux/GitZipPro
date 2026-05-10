@@ -162,7 +162,7 @@
    */
   async function initI18n() {
     return new Promise((resolve) => {
-      chrome.storage.sync.get([LOCALE_STORAGE_KEY], async (result) => {
+      chrome.storage.local.get([LOCALE_STORAGE_KEY], async (result) => {
         let locale;
         if (result[LOCALE_STORAGE_KEY]) {
           locale = result[LOCALE_STORAGE_KEY];
@@ -170,7 +170,7 @@
           // First install: detect browser locale
           locale = detectBrowserLocale();
           // Save so it persists
-          chrome.storage.sync.set({ [LOCALE_STORAGE_KEY]: locale });
+          chrome.storage.local.set({ [LOCALE_STORAGE_KEY]: locale });
         }
 
         // Normalize
@@ -195,7 +195,7 @@
     }
     currentLocale = locale;
     translations = await loadLocale(locale);
-    chrome.storage.sync.set({ [LOCALE_STORAGE_KEY]: locale });
+    chrome.storage.local.set({ [LOCALE_STORAGE_KEY]: locale });
     applyTranslations();
 
     // Dispatch a custom event so other scripts can react

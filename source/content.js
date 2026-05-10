@@ -149,7 +149,7 @@
 
     // 获取保存的token设置
     const tokenResult = await new Promise((resolve) => {
-      chrome.storage.sync.get([STORAGE.GITHUB_TOKEN, STORAGE.TOKEN_ACCESS_MODE], resolve);
+      chrome.storage.local.get([STORAGE.GITHUB_TOKEN, STORAGE.TOKEN_ACCESS_MODE], resolve);
     });
 
     const token = tokenResult[STORAGE.GITHUB_TOKEN];
@@ -629,7 +629,7 @@
         setBtnState(BTN_STATES.ERROR, err.message);
 
         // 显示系统通知（受设置控制）
-        chrome.storage.sync.get([STORAGE.NOTIFY_SHOW], (res) => {
+        chrome.storage.local.get([STORAGE.NOTIFY_SHOW], (res) => {
           if (res[STORAGE.NOTIFY_SHOW] !== false) {
             chrome.runtime.sendMessage({
               type: 'GZP_SHOW_ERROR_NOTIFICATION',
@@ -769,7 +769,7 @@
           setBtnState(BTN_STATES.ERROR, err.message);
 
           // 显示系统通知（受设置控制）
-          chrome.storage.sync.get([STORAGE.NOTIFY_SHOW], (res) => {
+          chrome.storage.local.get([STORAGE.NOTIFY_SHOW], (res) => {
             if (res[STORAGE.NOTIFY_SHOW] !== false) {
               chrome.runtime.sendMessage({
                 type: 'GZP_SHOW_ERROR_NOTIFICATION',
@@ -1074,7 +1074,7 @@
   });
 
   // Load saved accent color on page load
-  chrome.storage.sync.get([STORAGE.ACCENT_COLOR], (res) => {
+  chrome.storage.local.get([STORAGE.ACCENT_COLOR], (res) => {
     if (res[STORAGE.ACCENT_COLOR]) {
       applyAccentColor(res[STORAGE.ACCENT_COLOR]);
     }
@@ -1100,7 +1100,7 @@
 
   function loadSettings() {
     return new Promise((resolve) => {
-      chrome.storage.sync.get([STORAGE.BUTTON_POSITION, STORAGE.SHOW_FILE_SIZES, STORAGE.DOUBLE_CLICK_SELECT], (res) => {
+      chrome.storage.local.get([STORAGE.BUTTON_POSITION, STORAGE.SHOW_FILE_SIZES, STORAGE.DOUBLE_CLICK_SELECT], (res) => {
         const savedPosition = res[STORAGE.BUTTON_POSITION] || DEFAULTS.BUTTON_POSITION;
         if (buttonPosition !== savedPosition) {
           buttonPosition = savedPosition;

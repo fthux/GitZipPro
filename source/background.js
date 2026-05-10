@@ -136,7 +136,7 @@ chrome.runtime.onInstalled.addListener((details) => {
   // Check if this is a fresh install (not an update)
   if (details.reason === 'install') {
     // Set a flag to show welcome modal
-    chrome.storage.sync.set({
+    chrome.storage.local.set({
       'gitzip-pro-show-welcome': true
     }, () => {
       // Open options page to token section
@@ -330,7 +330,7 @@ chrome.downloads.onChanged.addListener((delta) => {
 });
 
 /**
- * Save a history record directly to chrome.storage.sync.
+ * Save a history record directly to chrome.storage.local.
  * This ensures history is persisted regardless of whether the options page is open.
  */
 function saveHistoryRecord(record) {
@@ -338,7 +338,7 @@ function saveHistoryRecord(record) {
     const HISTORY_STORAGE_KEY = STORAGE_KEYS.DOWNLOAD_HISTORY;
     const MAX_RECORDS = 100;
 
-    chrome.storage.sync.get([HISTORY_STORAGE_KEY], (res) => {
+    chrome.storage.local.get([HISTORY_STORAGE_KEY], (res) => {
       let history = Array.isArray(res[HISTORY_STORAGE_KEY]) ? res[HISTORY_STORAGE_KEY] : [];
 
       // Avoid duplicate records (same id)
@@ -354,7 +354,7 @@ function saveHistoryRecord(record) {
         history = history.slice(0, MAX_RECORDS);
       }
 
-      chrome.storage.sync.set({ [HISTORY_STORAGE_KEY]: history }, () => {
+      chrome.storage.local.set({ [HISTORY_STORAGE_KEY]: history }, () => {
         resolve();
       });
     });

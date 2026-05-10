@@ -17,7 +17,7 @@ function applyTheme(theme) {
   const DEFAULTS = C.DEFAULTS;
   const URLS = C.URLS;
   // Apply theme first
-  const result = await chrome.storage.sync.get([STORAGE.THEME]);
+  const result = await chrome.storage.local.get([STORAGE.THEME]);
   const theme = result[STORAGE.THEME] || DEFAULTS.THEME;
   applyTheme(theme);
 
