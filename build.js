@@ -145,7 +145,7 @@ function processHTML(srcPath, destPath) {
     const minified = htmlMinifier.minify(html, {
       collapseWhitespace: true,
       removeComments: true,
-      removeRedundantAttributes: true,
+      removeRedundantAttributes: false,
       removeScriptTypeAttributes: true,
       removeStyleLinkTypeAttributes: true,
       useShortDoctype: true,
