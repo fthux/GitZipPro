@@ -103,3 +103,4 @@ desktop.ini
 # Note: package-lock.json should be committed for npm projects
 yarn.lock
 pnpm-lock.yaml
+memory-bank
