@@ -23,7 +23,7 @@
   left: 4px !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
-  z-index: 9999 !important;
+  z-index: 1 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
