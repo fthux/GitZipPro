@@ -25,6 +25,9 @@ function applyTheme(theme) {
   await GZP_I18N.init();
   GZP_I18N.applyTranslations();
 
+  // Set version from manifest
+  document.querySelector('.version').textContent = 'v' + chrome.runtime.getManifest().version;
+
   const dot = document.getElementById('status-dot');
   const statusText = document.getElementById('status-text');
 
