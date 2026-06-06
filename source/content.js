@@ -70,7 +70,9 @@
     for (const selector of selectors) {
       const rows = document.querySelectorAll(selector);
       if (rows.length > 0) {
-        return Array.from(rows);
+        // Filter out rows inside rendered markdown areas (e.g. README tables)
+        // to prevent injecting checkboxes into non-repo-file-listing content.
+        return Array.from(rows).filter(row => !row.closest('.markdown-body'));
       }
     }
 
