@@ -1845,11 +1845,14 @@ starGithubBtn.addEventListener('click', () => {
 async function checkAndShowWelcomeModal() {
   try {
     // Check if we should show welcome modal
-    const result = await chrome.storage.local.get(['gitzip-pro-show-welcome']);
+    const result = await chrome.storage.local.get(['gitzip-pro-show-welcome', 'gitzip-pro-welcome-seen']);
     const shouldShowWelcome = result['gitzip-pro-show-welcome'] === true;
+    const hasSeenWelcome = result['gitzip-pro-welcome-seen'] === true;
 
-    if (shouldShowWelcome) {
-      // Remove the flag so modal only shows once
+    if (shouldShowWelcome || !hasSeenWelcome) {
+      // Persist a seen flag so Firefox temporary installs still show the modal once
+      // even when runtime.onInstalled does not open the options page reliably.
+      await chrome.storage.local.set({ 'gitzip-pro-welcome-seen': true });
       await chrome.storage.local.remove(['gitzip-pro-show-welcome']);
 
       // Navigate to token page
