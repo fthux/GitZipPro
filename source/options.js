@@ -650,6 +650,170 @@ async function generateCodeChallenge(codeVerifier) {
     .replace(/=/g, '');
 }
 
+function getOAuthRedirectUrl() {
+  if (chrome.identity && chrome.identity.getRedirectURL) {
+    return chrome.identity.getRedirectURL('github-auth');
+  }
+  return null;
+}
+
+function parseOAuthResult(data) {
+  if (!data) {
+    throw new Error('Authorization completed without a response.');
+  }
+
+  if (typeof data === 'object') {
+    if (data.type === 'OAUTH_ERROR') {
+      throw new Error(data.message || data.error || 'Authorization failed');
+    }
+    if (data.type === 'OAUTH_SUCCESS' && data.accessToken) {
+      return data;
+    }
+  }
+
+  const resultUrl = new URL(String(data));
+  const params = new URLSearchParams(resultUrl.search);
+  const hash = resultUrl.hash.startsWith('#') ? resultUrl.hash.slice(1) : resultUrl.hash;
+  const hashParams = new URLSearchParams(hash);
+
+  const error = params.get('error') || hashParams.get('error');
+  if (error) {
+    throw new Error(params.get('error_description') || hashParams.get('error_description') || error);
+  }
+
+  const accessToken =
+    params.get('access_token') ||
+    hashParams.get('access_token') ||
+    params.get('token') ||
+    hashParams.get('token');
+
+  if (!accessToken) {
+    throw new Error('Authorization response did not include an access token.');
+  }
+
+  return { type: 'OAUTH_SUCCESS', accessToken };
+}
+
+function launchIdentityWebAuthFlow(authUrl) {
+  return new Promise((resolve, reject) => {
+    if (!chrome.identity || !chrome.identity.launchWebAuthFlow) {
+      reject(new Error('Extension identity API is not available.'));
+      return;
+    }
+
+    chrome.identity.launchWebAuthFlow(
+      { url: authUrl, interactive: true },
+      (responseUrl) => {
+        const lastError = chrome.runtime.lastError;
+        if (lastError) {
+          reject(new Error(lastError.message));
+          return;
+        }
+        resolve(parseOAuthResult(responseUrl));
+      }
+    );
+  });
+}
+
+function launchPopupOAuthFlow(authUrl) {
+  // Open authorization window
+  const authWindow = window.open(
+    authUrl,
+    'GitHub Authorization',
+    'width=600,height=700,scrollbars=yes,resizable=yes,status=no,menubar=no,toolbar=no,location=no'
+  );
+
+  if (!authWindow) {
+    throw new Error('Failed to open authorization window. Please check browser popup blocker settings.');
+  }
+
+  // Create promise to handle authorization result
+  return new Promise((resolve, reject) => {
+    let isSettled = false;
+    let authTimeout = null;
+    let authWindowCloseCheck = null;
+    let authWindowClosedAt = null;
+    const AUTH_CLOSE_GRACE_MS = 3000;
+
+    function isAuthWindowClosed() {
+      try {
+        return authWindow.closed;
+      } catch (error) {
+        // Firefox can throw "can't access dead object" after a cross-origin popup closes.
+        return true;
+      }
+    }
+
+    function closeAuthWindow() {
+      try {
+        if (!isAuthWindowClosed()) {
+          authWindow.close();
+        }
+      } catch (error) {
+        // Ignore stale popup references in Firefox.
+      }
+    }
+
+    function cleanup() {
+      window.removeEventListener('message', messageHandler);
+      if (authTimeout) {
+        clearTimeout(authTimeout);
+        authTimeout = null;
+      }
+      if (authWindowCloseCheck) {
+        clearInterval(authWindowCloseCheck);
+        authWindowCloseCheck = null;
+      }
+    }
+
+    function finish(action, value, shouldCloseWindow = true) {
+      if (isSettled) return;
+      isSettled = true;
+      cleanup();
+      if (shouldCloseWindow) {
+        closeAuthWindow();
+      }
+      action(value);
+    }
+
+    const messageHandler = (event) => {
+      // Security: only accept messages from our worker domain
+      if (event.origin !== new URL(OAUTH_WORKER_ENDPOINT).origin) return;
+
+      try {
+        finish(resolve, parseOAuthResult(event.data));
+      } catch (error) {
+        finish(reject, error);
+      }
+    };
+
+    // Listen for postMessage from worker
+    window.addEventListener('message', messageHandler);
+
+    // Set timeout for authorization
+    authTimeout = setTimeout(() => {
+      finish(reject, new Error('Authorization timed out. Please try again.'));
+    }, 5 * 60 * 1000); // 5 minutes timeout
+
+    // Monitor authorization window close event
+    authWindowCloseCheck = setInterval(() => {
+      if (!isAuthWindowClosed()) {
+        authWindowClosedAt = null;
+        return;
+      }
+
+      if (!authWindowClosedAt) {
+        authWindowClosedAt = Date.now();
+        return;
+      }
+
+      if (Date.now() - authWindowClosedAt >= AUTH_CLOSE_GRACE_MS) {
+        finish(reject, new Error('Authorization cancelled by user.'), false);
+      }
+    }, 500);
+  });
+}
+
 /**
  * Start GitHub OAuth authorization flow
  * @param {string} scope - 'public_repo' or 'repo'
@@ -675,60 +839,14 @@ async function startGitHubOAuth(scope) {
     authUrl.searchParams.set('code_verifier', codeVerifier);
     authUrl.searchParams.set('code_challenge', codeChallenge);
     authUrl.searchParams.set('scope', scope);
-
-    // Open authorization window
-    const authWindow = window.open(
-      authUrl.toString(),
-      'GitHub Authorization',
-      'width=600,height=700,scrollbars=yes,resizable=yes,status=no,menubar=no,toolbar=no,location=no'
-    );
-
-    if (!authWindow) {
-      throw new Error('Failed to open authorization window. Please check browser popup blocker settings.');
+    const redirectUrl = getOAuthRedirectUrl();
+    if (redirectUrl) {
+      authUrl.searchParams.set('redirect_uri', redirectUrl);
     }
 
-    // Create promise to handle authorization result
-    const authResult = await new Promise((resolve, reject) => {
-      const messageHandler = (event) => {
-        // Security: only accept messages from our worker domain
-        if (event.origin !== new URL(OAUTH_WORKER_ENDPOINT).origin) return;
-
-        // Cleanup
-        window.removeEventListener('message', messageHandler);
-
-        // Close window if still open
-        if (!authWindow.closed) {
-          authWindow.close();
-        }
-
-        const data = event.data;
-
-        if (data.type === 'OAUTH_SUCCESS') {
-          resolve(data);
-        } else if (data.type === 'OAUTH_ERROR') {
-          reject(new Error(data.message || 'Authorization failed'));
-        }
-      };
-
-      // Listen for postMessage from worker
-      window.addEventListener('message', messageHandler);
-
-      // Set timeout for authorization
-      setTimeout(() => {
-        window.removeEventListener('message', messageHandler);
-        if (!authWindow.closed) authWindow.close();
-        reject(new Error('Authorization timed out. Please try again.'));
-      }, 5 * 60 * 1000); // 5 minutes timeout
-
-      // Monitor authorization window close event
-      const authWindowCloseCheck = setInterval(() => {
-        if (authWindow.closed) {
-          clearInterval(authWindowCloseCheck);
-          window.removeEventListener('message', messageHandler);
-          reject(new Error('Authorization cancelled by user.'));
-        }
-      }, 500);
-    });
+    const authResult = redirectUrl
+      ? await launchIdentityWebAuthFlow(authUrl.toString())
+      : await launchPopupOAuthFlow(authUrl.toString());
 
     // Authorization successful - save token
     if (authResult.accessToken) {
@@ -924,7 +1042,6 @@ async function loadTokenSettings() {
     }
   } catch (error) {
     console.error('Failed to load token settings:', error);
-    updateTokenStatus('Error loading token settings.', 'error');
   }
 }
 

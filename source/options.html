@@ -1485,20 +1485,20 @@ input[type="checkbox"] {
           <div class="setting-row">
             <div class="setting-info">
               <div class="setting-title" data-i18n="token.api_access">GitHub API Access</div>
-              <div class="setting-desc" data-i18n-html="token.api_access_desc">
-                Choose how GitZip Pro accesses GitHub API:
+              <div class="setting-desc">
+                <span data-i18n="token.api_access_desc">Choose how GitZip Pro accesses GitHub API:</span>
                 <ul>
-                  <li><strong>Anonymous Access:</strong> Uses public API without authentication (rate limited to 60 requests per hour)</li>
-                  <li><strong>Custom Token:</strong> Use your personal GitHub token for higher rate limits and access to private repositories</li>
+                  <li data-i18n-html="token.api_access_desc_li_1"><strong>Anonymous Access:</strong> Uses public API without authentication (rate limited to 60 requests per hour)</li>
+                  <li data-i18n-html="token.api_access_desc_li_2"><strong>Custom Token:</strong> Use your personal GitHub token for higher rate limits and access to private repositories</li>
                 </ul>
                 
                 <div id="anonymousWarning" style="display: none; margin-top: 16px; padding: 12px; background: rgba(244, 67, 54, 0.1); border-left: 4px solid #f44336; border-radius: 4px;">
-                  <strong style="color: #d32f2f;">⚠️ Anonymous Mode Limitation</strong>
-                  <p style="margin: 8px 0 0 0; color: var(--text-main);">
+                  <strong style="color: #d32f2f;">⚠️ <span data-i18n="token.anonymous_warning_title">Anonymous Mode Limitation</span></strong>
+                  <p style="margin: 8px 0 0 0; color: var(--text-main);" data-i18n-html="token.anonymous_warning_limitation">
                     <strong>Limitations:</strong> Only 60 requests per hour shared with all other users on your network.
                     This is very likely to be exhausted quickly.
                   </p>
-                  <p style="margin: 6px 0 0 0; color: var(--text-main);">
+                  <p style="margin: 6px 0 0 0; color: var(--text-main);" data-i18n-html="token.anonymous_warning_recommendation">
                     <strong>Recommendation:</strong> Create a free Personal Access Token
                     to get 5000 requests per hour, and access your private repositories.
                   </p>
@@ -1677,12 +1677,7 @@ input[type="checkbox"] {
 
   <script src="constants.js"></script>
   <script src="i18n.js"></script>
-  <script>
-  (async function initOptionsPage() {
-    await GZP_I18N.init();
-    GZP_I18N.applyTranslations();
-  })();
-  </script>
+  <script src="options_init.js"></script>
   <script src="options.js"></script>
 </body>
 </html>
