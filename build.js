@@ -15,6 +15,7 @@ const BUILD_ROOT_DIR = 'build';
 const IGNORE_FILES = ['README.md'];
 const STORE_CHANNEL_PLACEHOLDER = '__GZP_STORE_CHANNEL__';
 const VALID_STORE_CHANNELS = new Set(['chrome', 'firefox', 'edge']);
+const CHROME_LIKE_STORE_CHANNELS = new Set(['chrome', 'edge']);
 
 function resolveStoreChannel() {
   const channelArg = process.argv.find(arg => arg.startsWith('--channel='));
@@ -195,7 +196,17 @@ function processJSON(srcPath, destPath) {
     const jsonContent = fs.readFileSync(srcPath, 'utf8');
     const json = JSON.parse(jsonContent);
 
-    // 对于manifest.json，我们可以确保格式正确
+    if (
+      path.basename(srcPath) === 'manifest.json' &&
+      json.manifest_version === 3 &&
+      json.background &&
+      CHROME_LIKE_STORE_CHANNELS.has(STORE_CHANNEL)
+    ) {
+      delete json.background.scripts;
+      console.log(`Removed background.scripts for ${STORE_CHANNEL} MV3 package`);
+    }
+
+    // 对于JSON文件，我们可以确保格式正确
     const formatted = JSON.stringify(json, null, 2);
     fs.writeFileSync(destPath, formatted);
     console.log(`Processed JSON: ${path.relative(BUILD_DIR, destPath)}`);
