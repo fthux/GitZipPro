@@ -104,3 +104,4 @@ desktop.ini
 yarn.lock
 pnpm-lock.yaml
 memory-bank
+.codegraph/
