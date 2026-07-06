@@ -77,7 +77,7 @@ function applyTheme(theme) {
 
   if (rateBtn) {
     rateBtn.addEventListener('click', () => {
-      chrome.tabs.create({ url: C.CHROME_WEBSTORE.URL });
+      chrome.tabs.create({ url: C.EXTENSION_STORE.URL });
       moreMenu.classList.remove('active');
     });
   }

@@ -11,16 +11,32 @@ const htmlMinifier = require('html-minifier');
 
 // 配置
 const SOURCE_DIR = 'source';
-const BUILD_DIR = 'build';
+const BUILD_ROOT_DIR = 'build';
 const IGNORE_FILES = ['README.md'];
+const STORE_CHANNEL_PLACEHOLDER = '__GZP_STORE_CHANNEL__';
+const VALID_STORE_CHANNELS = new Set(['chrome', 'firefox', 'edge']);
 
-// 先清空旧的build目录（跨平台兼容)
-if (fs.existsSync(BUILD_DIR)) {
-  fs.rmSync(BUILD_DIR, { recursive: true, force: true });
-  console.log('Cleaned existing build directory');
+function resolveStoreChannel() {
+  const channelArg = process.argv.find(arg => arg.startsWith('--channel='));
+  const channel = (channelArg ? channelArg.split('=')[1] : process.env.GZP_STORE_CHANNEL || 'chrome').toLowerCase();
+
+  if (!VALID_STORE_CHANNELS.has(channel)) {
+    throw new Error(`Invalid store channel "${channel}". Expected one of: ${Array.from(VALID_STORE_CHANNELS).join(', ')}`);
+  }
+
+  return channel;
 }
 
-// 创建新的build目录
+const STORE_CHANNEL = resolveStoreChannel();
+const BUILD_DIR = path.join(BUILD_ROOT_DIR, STORE_CHANNEL);
+
+// 先清空当前渠道的build目录（跨平台兼容)
+if (fs.existsSync(BUILD_DIR)) {
+  fs.rmSync(BUILD_DIR, { recursive: true, force: true });
+  console.log(`Cleaned existing build directory: ${BUILD_DIR}`);
+}
+
+// 创建新的渠道build目录
 fs.mkdirSync(BUILD_DIR, { recursive: true });
 
 // 复制icons目录
@@ -53,7 +69,7 @@ function processFile(filePath, relativePath) {
 
   // 根据文件类型处理
   if (ext === '.js') {
-    processJavaScript(filePath, destPath);
+    return processJavaScript(filePath, destPath, relativePath);
   } else if (ext === '.css') {
     processCSS(filePath, destPath);
   } else if (ext === '.html') {
@@ -65,18 +81,29 @@ function processFile(filePath, relativePath) {
     fs.copyFileSync(filePath, destPath);
     console.log(`Copied: ${relativePath}`);
   }
+
+  return Promise.resolve();
 }
 
 // 处理JavaScript文件
-async function processJavaScript(srcPath, destPath) {
+async function processJavaScript(srcPath, destPath, relativePath) {
   try {
-    const code = fs.readFileSync(srcPath, 'utf8');
+    let code = fs.readFileSync(srcPath, 'utf8');
 
     // 如果是jszip.min.js，已经是压缩过的，直接复制
     if (path.basename(srcPath) === 'jszip.min.js') {
       fs.copyFileSync(srcPath, destPath);
       console.log(`Copied (minified): ${path.relative(BUILD_DIR, destPath)}`);
       return;
+    }
+
+    if (relativePath === 'constants.js') {
+      if (!code.includes(STORE_CHANNEL_PLACEHOLDER)) {
+        throw new Error(`Missing store channel placeholder in ${srcPath}`);
+      }
+
+      code = code.replaceAll(STORE_CHANNEL_PLACEHOLDER, STORE_CHANNEL);
+      console.log(`Injected store channel: ${STORE_CHANNEL}`);
     }
 
     // 使用terser压缩
@@ -210,12 +237,15 @@ async function main() {
   console.log('Starting build process...');
   console.log(`Source: ${SOURCE_DIR}`);
   console.log(`Build: ${BUILD_DIR}`);
+  console.log(`Store channel: ${STORE_CHANNEL}`);
   console.log('---');
 
   // 遍历并处理所有文件
+  const tasks = [];
   walkDir(SOURCE_DIR, (filePath, relativePath) => {
-    processFile(filePath, relativePath);
+    tasks.push(processFile(filePath, relativePath));
   });
+  await Promise.all(tasks);
 
   console.log('---');
   console.log('Build completed!');

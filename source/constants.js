@@ -48,8 +48,28 @@
   };
 
   const CHROME_WEBSTORE = {
-    EXTENSION_ID: 'abcdefghijklmnopqrstuvwxyz',
-    URL: 'https://chrome.google.com/webstore/detail/abcdefghijklmnopqrstuvwxyz'
+    EXTENSION_ID: 'lpjpkopdlnpgcifigibaelbbkmigjjnp',
+    URL: 'https://chromewebstore.google.com/detail/gitzip-pro/lpjpkopdlnpgcifigibaelbbkmigjjnp'
+  };
+
+  const STORE_CHANNEL = '__GZP_STORE_CHANNEL__';
+  const EXTENSION_STORES = {
+    chrome: CHROME_WEBSTORE,
+    firefox: {
+      EXTENSION_ID: 'gitzippro@fthux.com',
+      URL: 'https://addons.mozilla.org/en-US/firefox/addon/gitzip-pro/'
+    },
+    edge: {
+      EXTENSION_ID: 'nhhmnccepdfgnekfhhchnbagljpifikg',
+      URL: 'https://microsoftedge.microsoft.com/addons/detail/gitzip-pro/nhhmnccepdfgnekfhhchnbagljpifikg'
+    }
+  };
+  const CURRENT_STORE_CHANNEL = Object.prototype.hasOwnProperty.call(EXTENSION_STORES, STORE_CHANNEL)
+    ? STORE_CHANNEL
+    : 'chrome';
+  const EXTENSION_STORE = {
+    CHANNEL: CURRENT_STORE_CHANNEL,
+    ...EXTENSION_STORES[CURRENT_STORE_CHANNEL]
   };
 
   const DOWNLOAD = {
@@ -75,6 +95,9 @@
     DEFAULTS,
     URLS,
     CHROME_WEBSTORE,
+    STORE_CHANNEL: CURRENT_STORE_CHANNEL,
+    EXTENSION_STORES,
+    EXTENSION_STORE,
     DOWNLOAD,
     UI
   };

@@ -5,6 +5,9 @@
   "main": "build.js",
   "scripts": {
     "build": "node build.js",
+    "build:chrome": "node build.js --channel=chrome",
+    "build:firefox": "node build.js --channel=firefox",
+    "build:edge": "node build.js --channel=edge",
     "clean": "node -e \"fs.rmSync('build', { recursive: true, force: true })\""
   },
   "keywords": [

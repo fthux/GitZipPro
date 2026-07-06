@@ -1770,7 +1770,7 @@ const starGithubBtn = document.getElementById('starGithubBtn');
 // Constants
 const GITHUB_REPO_URL = URLS.REPO;
 const CHROME_EXTENSION_ID = C.CHROME_WEBSTORE.EXTENSION_ID;
-const CHROME_WEBSTORE_URL = C.CHROME_WEBSTORE.URL;
+const EXTENSION_STORE_URL = C.EXTENSION_STORE.URL;
 
 // Set current version on page load
 document.addEventListener('DOMContentLoaded', () => {
@@ -1829,7 +1829,7 @@ reportIssueBtn.addEventListener('click', () => {
 
 // Rate us button
 rateUsBtn.addEventListener('click', () => {
-  window.open(CHROME_WEBSTORE_URL, '_blank');
+  window.open(EXTENSION_STORE_URL, '_blank');
 });
 
 // Star on GitHub button
