@@ -1471,7 +1471,7 @@ async function addHistoryRecord(record) {
 
   // Add id if not present
   if (!record.id) {
-    record.id = 'h_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    record.id = `h_${Date.now()}_${crypto.randomUUID()}`;
   }
 
   downloadHistory.unshift(record); // Add to beginning (most recent first)
@@ -1893,7 +1893,11 @@ function showWelcomeModal() {
   if (learnMoreBtn) {
     learnMoreBtn.addEventListener('click', () => {
       // Open GitHub documentation about personal access tokens
-      window.open('https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens', '_blank');
+      window.open(
+        'https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens',
+        '_blank',
+        'noopener,noreferrer'
+      );
     });
   }
 

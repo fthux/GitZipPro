@@ -307,7 +307,7 @@ chrome.downloads.onChanged.addListener((delta) => {
           // Ensure record has required fields
           if (!record.timestamp) record.timestamp = Date.now();
           if (!record.downloadName) record.downloadName = prefs.filename || 'download.zip';
-          if (!record.id) record.id = 'h_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+          if (!record.id) record.id = `h_${Date.now()}_${crypto.randomUUID()}`;
 
           // Save to storage first, then notify (await ensures write completes before message)
           await saveHistoryRecord(record);
