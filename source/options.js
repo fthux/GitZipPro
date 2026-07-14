@@ -422,10 +422,10 @@ function renderIgnoreTags() {
 }
 
 function updatePresetButtons() {
-  const activeArr = Array.from(activeLabels).sort();
+  const activeArr = Array.from(activeLabels).sort((a, b) => a.localeCompare(b));
   document.querySelectorAll('.gzp-preset-chk').forEach(chk => {
     const presetId = chk.value;
-    const combo = [...PRESET_COMBOS[presetId]].sort();
+    const combo = [...PRESET_COMBOS[presetId]].sort((a, b) => a.localeCompare(b));
     const isMatch = activeArr.length === combo.length && activeArr.every((v, i) => v === combo[i]);
     chk.checked = isMatch;
   });
@@ -1260,9 +1260,9 @@ function renderStatsFilterOptions() {
   });
 
   const repoOptions = [`<option value="all">${GZP_I18N.t('stats.repo_all')}</option>`]
-    .concat(Array.from(repoSet).sort().map(v => `<option value="${v}">${v}</option>`));
+    .concat(Array.from(repoSet).sort((a, b) => a.localeCompare(b)).map(v => `<option value="${v}">${v}</option>`));
   const branchOptions = [`<option value="all">${GZP_I18N.t('stats.branch_all')}</option>`]
-    .concat(Array.from(branchSet).sort().map(v => `<option value="${v}">${v}</option>`));
+    .concat(Array.from(branchSet).sort((a, b) => a.localeCompare(b)).map(v => `<option value="${v}">${v}</option>`));
 
   statsRepoFilter.innerHTML = repoOptions.join('');
   statsBranchFilter.innerHTML = branchOptions.join('');
