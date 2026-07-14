@@ -147,6 +147,13 @@
       }
     });
 
+    document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+      const key = el.getAttribute('data-i18n-aria-label');
+      if (key) {
+        el.setAttribute('aria-label', t(key));
+      }
+    });
+
     document.querySelectorAll('[data-i18n-value]').forEach(el => {
       const key = el.getAttribute('data-i18n-value');
       if (key && el.tagName === 'OPTION') {

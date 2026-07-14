@@ -258,6 +258,7 @@
     }
 
     .setting-title {
+      display: block;
       font-size: 13px;
       color: var(--text-main);
       margin-bottom: 4px;
@@ -1125,7 +1126,7 @@ input[type="checkbox"] {
          <div class="card">
            <div class="setting-row">
              <div class="setting-info">
-                <div class="setting-title" data-i18n="general.theme">Theme</div>
+                <label class="setting-title" for="themeSelect" data-i18n="general.theme">Theme</label>
                 <div class="setting-desc" data-i18n="general.theme_desc">Choose the preferred color theme for the extension interface.</div>
              </div>
              <div class="setting-control">
@@ -1139,7 +1140,7 @@ input[type="checkbox"] {
            
             <div class="setting-row">
               <div class="setting-info">
-                <div class="setting-title" data-i18n="general.accent_color">Accent Color</div>
+                <label class="setting-title" for="customColorPicker" data-i18n="general.accent_color">Accent Color</label>
                 <div class="setting-desc" data-i18n="general.accent_color_desc">Customize the primary theme color used throughout the interface. Choose a preset or pick your own color.</div>
               </div>
              <div class="setting-control" style="flex-direction: column; gap: 12px; align-items: flex-end;">
@@ -1160,7 +1161,7 @@ input[type="checkbox"] {
           <!-- Language -->
           <div class="setting-row">
             <div class="setting-info">
-              <div class="setting-title" data-i18n="general.language">Language</div>
+              <label class="setting-title" for="languageSelect" data-i18n="general.language">Language</label>
               <div class="setting-desc" data-i18n="general.language_desc">Select the display language for the extension interface.</div>
             </div>
             <div class="setting-control">
@@ -1176,7 +1177,7 @@ input[type="checkbox"] {
         <div class="card">
           <div class="setting-row">
             <div class="setting-info">
-                <div class="setting-title" data-i18n="general.button_position">Download Button Position</div>
+                <label class="setting-title" for="buttonPositionSelect" data-i18n="general.button_position">Download Button Position</label>
                 <div class="setting-desc" data-i18n="general.button_position_desc">Choose where the download button appears on GitHub repository pages.</div>
             </div>
             <div class="setting-control">
@@ -1198,7 +1199,7 @@ input[type="checkbox"] {
           <div class="card">
             <div class="setting-row">
               <div class="setting-info">
-                <div class="setting-title" data-i18n="general.show_file_sizes">Show File Sizes</div>
+                <label class="setting-title" for="showFileSizes" data-i18n="general.show_file_sizes">Show File Sizes</label>
                 <div class="setting-desc" data-i18n="general.show_file_sizes_desc">Display file size information next to each file in repository listings.</div>
               </div>
               <div class="setting-control">
@@ -1211,7 +1212,7 @@ input[type="checkbox"] {
             
             <div class="setting-row">
               <div class="setting-info">
-                <div class="setting-title" data-i18n="general.double_click_select">Double Click To Select</div>
+                <label class="setting-title" for="doubleClickSelect" data-i18n="general.double_click_select">Double Click To Select</label>
                 <div class="setting-desc" data-i18n="general.double_click_select_desc">Enable double-clicking on file or folder rows to toggle selection.</div>
               </div>
               <div class="setting-control">
@@ -1233,7 +1234,7 @@ input[type="checkbox"] {
         <div class="card">
           <div class="setting-row">
             <div class="setting-info">
-              <div class="setting-title" data-i18n="download.zip_naming_rule">ZIP Naming Rule</div>
+              <label class="setting-title" for="namingPreset" data-i18n="download.zip_naming_rule">ZIP Naming Rule</label>
               <div class="setting-desc" data-i18n-html="download.zip_naming_rule_desc">Define the filename format for the downloaded ZIP archive. You can choose a preset or type a custom name.<br><br>
                  Available variables:
                  <ul>
@@ -1258,7 +1259,7 @@ input[type="checkbox"] {
                 <option value="{repo}_{datetime}">{repo}_{datetime}.zip</option>
                 <option value="{repo}-{branch}-{path}_{ts}" selected>{repo}-{branch}-{path}_{ts}.zip</option>
               </select>
-              <input type="text" id="namingCustom" data-i18n-placeholder="download.naming_custom_placeholder" placeholder="Or type custom format..." style="width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-hover); color: var(--text-main); font-family: monospace; font-size: 13px;" />
+              <input type="text" id="namingCustom" aria-label="Custom ZIP naming format" data-i18n-aria-label="download.naming_custom_label" data-i18n-placeholder="download.naming_custom_placeholder" placeholder="Or type custom format..." style="width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-hover); color: var(--text-main); font-family: monospace; font-size: 13px;" />
             </div>
           </div>
         </div>
@@ -1316,7 +1317,7 @@ input[type="checkbox"] {
           <!-- Custom Rules -->
           <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 12px;">
             <div class="setting-info" style="margin-bottom: 4px;">
-              <div class="setting-title" data-i18n="download.custom_rules">Custom Rules</div>
+              <label class="setting-title" for="customRuleInput" data-i18n="download.custom_rules">Custom Rules</label>
               <div class="setting-desc" data-i18n-html="download.custom_rules_desc">Add your own wildcard patterns. E.g., <code>*.log</code> for files, <code>temp_data/</code> for folders.</div>
             </div>
             
@@ -1335,7 +1336,7 @@ input[type="checkbox"] {
         <div class="card">
           <div class="setting-row">
             <div class="setting-info">
-              <div class="setting-title" data-i18n="download.show_notification">Show Notification</div>
+              <label class="setting-title" for="notifyShow" data-i18n="download.show_notification">Show Notification</label>
               <div class="setting-desc" data-i18n="download.show_notification_desc">Display a browser popup when the download completes.</div>
             </div>
             <div class="setting-control">
@@ -1347,7 +1348,7 @@ input[type="checkbox"] {
           </div>
           <div class="setting-row">
             <div class="setting-info">
-              <div class="setting-title" data-i18n="download.play_sound">Play Sound</div>
+              <label class="setting-title" for="notifySound" data-i18n="download.play_sound">Play Sound</label>
               <div class="setting-desc" data-i18n="download.play_sound_desc">Play a short "ding" chime when the download completes.</div>
             </div>
             <div class="setting-control">
@@ -1359,7 +1360,7 @@ input[type="checkbox"] {
           </div>
           <div class="setting-row">
             <div class="setting-info">
-              <div class="setting-title" data-i18n="download.open_folder">Open Folder</div>
+              <label class="setting-title" for="notifyOpen" data-i18n="download.open_folder">Open Folder</label>
               <div class="setting-desc" data-i18n="download.open_folder_desc">Automatically open the OS save folder when the download completes.</div>
             </div>
             <div class="setting-control">
@@ -1484,7 +1485,7 @@ input[type="checkbox"] {
         <div class="card">
           <div class="setting-row">
             <div class="setting-info">
-              <div class="setting-title" data-i18n="token.api_access">GitHub API Access</div>
+              <label class="setting-title" for="tokenAccessMode" data-i18n="token.api_access">GitHub API Access</label>
               <div class="setting-desc">
                 <span data-i18n="token.api_access_desc">Choose how GitZip Pro accesses GitHub API:</span>
                 <ul>
@@ -1524,7 +1525,7 @@ input[type="checkbox"] {
            <div id="tokenInputSection" style="display: none;">
              <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 16px;">
                <div class="setting-info" style="padding-right: 0; margin-bottom: 8px;">
-                 <div class="setting-title" data-i18n="token.token_input_title">GitHub Personal Access Token</div>
+                 <label class="setting-title" for="githubToken" data-i18n="token.token_input_title">GitHub Personal Access Token</label>
                  <div class="setting-desc" data-i18n-html="token.token_input_desc">
                    You can either manually enter your GitHub Personal Access Token, or click the authorization buttons below to get a token automatically via OAuth.
                    <br><br>

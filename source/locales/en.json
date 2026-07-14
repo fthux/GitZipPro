@@ -57,6 +57,7 @@
     "zip_naming_rule_datetime": "Full timestamp (YYYYMMDD-HHMMSS)",
     "zip_naming_rule_ts": "Short date (YYYYMMDD)",
     "naming_custom_placeholder": "Or type custom format...",
+    "naming_custom_label": "Custom ZIP naming format",
     "auto_ignore": "Auto-Ignore Files",
     "quick_presets": "Quick Presets",
     "quick_presets_desc": "Instantly load predefined filter combinations for different scenarios.",
@@ -85,6 +86,7 @@
   "history": {
     "page_title": "Download History",
     "selected": "Selected",
+    "select_record": "Select download record",
     "delete_selected": "Delete Selected",
     "clear_all": "Clear All History",
     "empty_title": "No downloads yet",

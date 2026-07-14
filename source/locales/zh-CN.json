@@ -57,6 +57,7 @@
     "zip_naming_rule_datetime": "完整时间戳 (YYYYMMDD-HHMMSS)",
     "zip_naming_rule_ts": "短日期 (YYYYMMDD)",
     "naming_custom_placeholder": "或输入自定义格式...",
+    "naming_custom_label": "自定义 ZIP 命名格式",
     "auto_ignore": "自动忽略文件",
     "quick_presets": "快速预设",
     "quick_presets_desc": "即时加载适用于不同场景的预定义过滤器组合。",
@@ -85,6 +86,7 @@
   "history": {
     "page_title": "下载历史",
     "selected": "已选",
+    "select_record": "选择下载记录",
     "delete_selected": "删除选中项",
     "clear_all": "清空所有历史",
     "empty_title": "暂无下载记录",

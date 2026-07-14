@@ -401,7 +401,7 @@ function renderIgnoreTags() {
     div.className = `gzp-ignore-tag ${isActive ? 'active' : ''}`;
     div.innerHTML = `
       <div class="tag-header" style="gap: 6px;">
-        <input type="checkbox" style="margin: 0; pointer-events: none;" ${isActive ? 'checked' : ''} />
+        <input type="checkbox" aria-label="${item.name}" style="margin: 0; pointer-events: none;" ${isActive ? 'checked' : ''} />
         <span class="tag-icon">${item.icon}</span>
         <span class="tag-name">${item.name}</span>
       </div>
@@ -1584,7 +1584,7 @@ function renderHistory() {
         <div class="history-record" data-id="${record.id}" title="${downloadName}">
           <div class="history-record-header">
             <div class="history-record-checkbox">
-              <input type="checkbox" />
+              <input type="checkbox" aria-label="${GZP_I18N.t('history.select_record')}" />
             </div>
             <div class="history-record-content">
               <div class="history-record-title">
