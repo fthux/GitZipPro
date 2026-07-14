@@ -1,6 +1,28 @@
+<div align="center">
+
+<img src="source/icons/icon128.png" alt="GitZip Pro" width="120" />
+
 # GitZip Pro
 
+English | [简体中文](./README.zh-CN.md)
+
 GitZip Pro is a Chrome extension inspired by **GitZip for GitHub**, with additional UX and workflow enhancements for downloading selected GitHub files and folders as ZIP archives.
+
+[![GitHub top language](https://img.shields.io/github/languages/top/fthux/GitZipPro?logo=github)](https://github.com/fthux/GitZipPro/commits/master/)
+[![GitHub License](https://img.shields.io/github/license/fthux/GitZipPro?logo=github)](LICENSE)
+[![Security](https://sonarcloud.io/api/project_badges/measure?project=fthux_GitZipPro&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=fthux_GitZipPro)
+
+[![Reliability](https://sonarcloud.io/api/project_badges/measure?project=fthux_GitZipPro&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=fthux_GitZipPro)
+[![Maintainability](https://sonarcloud.io/api/project_badges/measure?project=fthux_GitZipPro&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=fthux_GitZipPro)
+<!-- [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=fthux_GitZipPro&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=fthux_GitZipPro) -->
+
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=fthux_GitZipPro&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=fthux_GitZipPro)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=fthux_GitZipPro&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=fthux_GitZipPro)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/fthux/GitZipPro)
+
+<img width="512" src="screenshots/cover_6.png" alt="GitZip Pro" />
+
+</div>
 
 ## Install
 
