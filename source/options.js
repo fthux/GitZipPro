@@ -1780,47 +1780,51 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Check for updates
-checkUpdateBtn.addEventListener('click', async () => {
-  checkUpdateBtn.disabled = true;
-  checkUpdateBtn.textContent = GZP_I18N.t('about.checking_updates');
-  updateStatusRow.style.display = 'flex';
-  updateStatusText.textContent = GZP_I18N.t('about.loading');
+if (C.STORE_CHANNEL === 'firefox') {
+  checkUpdateBtn.hidden = true;
+} else {
+  checkUpdateBtn.addEventListener('click', async () => {
+    checkUpdateBtn.disabled = true;
+    checkUpdateBtn.textContent = GZP_I18N.t('about.checking_updates');
+    updateStatusRow.style.display = 'flex';
+    updateStatusText.textContent = GZP_I18N.t('about.loading');
 
-  try {
-    if (chrome.runtime && chrome.runtime.requestUpdateCheck) {
-      chrome.runtime.requestUpdateCheck((status, details) => {
+    try {
+      if (chrome.runtime && chrome.runtime.requestUpdateCheck) {
+        chrome.runtime.requestUpdateCheck((status, details) => {
+          checkUpdateBtn.disabled = false;
+          checkUpdateBtn.textContent = GZP_I18N.t('about.check_updates');
+
+          if (status === 'update_available') {
+            updateStatusText.textContent = GZP_I18N.t('about.update_available').replace('{version}', details.version);
+            updateStatusText.style.color = '#0b8043';
+
+            // Chrome will automatically download and install the update
+            chrome.runtime.onUpdateAvailable.addListener(() => {
+              updateStatusText.textContent = GZP_I18N.t('about.update_downloaded');
+            });
+          } else if (status === 'no_update') {
+            updateStatusText.textContent = GZP_I18N.t('about.latest_version');
+            updateStatusText.style.color = 'var(--text-scnd)';
+          } else if (status === 'throttled') {
+            updateStatusText.textContent = GZP_I18N.t('about.update_throttled');
+            updateStatusText.style.color = '#f29900';
+          }
+        });
+      } else {
+        updateStatusText.textContent = GZP_I18N.t('about.update_dev_mode');
+        updateStatusText.style.color = 'var(--text-scnd)';
         checkUpdateBtn.disabled = false;
         checkUpdateBtn.textContent = GZP_I18N.t('about.check_updates');
-
-        if (status === 'update_available') {
-          updateStatusText.textContent = GZP_I18N.t('about.update_available').replace('{version}', details.version);
-          updateStatusText.style.color = '#0b8043';
-
-          // Chrome will automatically download and install the update
-          chrome.runtime.onUpdateAvailable.addListener(() => {
-            updateStatusText.textContent = GZP_I18N.t('about.update_downloaded');
-          });
-        } else if (status === 'no_update') {
-          updateStatusText.textContent = GZP_I18N.t('about.latest_version');
-          updateStatusText.style.color = 'var(--text-scnd)';
-        } else if (status === 'throttled') {
-          updateStatusText.textContent = GZP_I18N.t('about.update_throttled');
-          updateStatusText.style.color = '#f29900';
-        }
-      });
-    } else {
-      updateStatusText.textContent = GZP_I18N.t('about.update_dev_mode');
-      updateStatusText.style.color = 'var(--text-scnd)';
+      }
+    } catch (error) {
+      updateStatusText.textContent = GZP_I18N.t('about.update_error').replace('{message}', error.message);
+      updateStatusText.style.color = '#d93025';
       checkUpdateBtn.disabled = false;
       checkUpdateBtn.textContent = GZP_I18N.t('about.check_updates');
     }
-  } catch (error) {
-    updateStatusText.textContent = GZP_I18N.t('about.update_error').replace('{message}', error.message);
-    updateStatusText.style.color = '#d93025';
-    checkUpdateBtn.disabled = false;
-    checkUpdateBtn.textContent = GZP_I18N.t('about.check_updates');
-  }
-});
+  });
+}
 
 // Report issue button
 reportIssueBtn.addEventListener('click', () => {
