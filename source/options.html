@@ -206,6 +206,33 @@
       margin-bottom: 24px;
       margin-top: 16px;
     }
+
+    .download-limit-notice {
+      padding: 12px 16px;
+      margin-bottom: 24px;
+      border: 1px solid rgba(217, 119, 6, 0.45);
+      border-left: 4px solid #d97706;
+      border-radius: 6px;
+      background: rgba(217, 119, 6, 0.08);
+    }
+
+    .download-limit-notice-title {
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .download-limit-notice-desc {
+      color: var(--text-scnd);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .download-limit-notice a {
+      color: var(--primary-color);
+      font-weight: 500;
+    }
     
     .section-title {
       font-size: 13px;
@@ -1229,6 +1256,14 @@ input[type="checkbox"] {
       <!-- Download Page -->
       <div id="download" class="page">
         <h1 class="page-title" data-i18n="download.page_title">Download</h1>
+
+        <div class="download-limit-notice" role="note">
+          <div class="download-limit-notice-title" data-i18n="download.file_size_limit_title">GitHub file size limit</div>
+          <div class="download-limit-notice-desc">
+            <span data-i18n="download.file_size_limit_desc">Files larger than 100 MB cannot be downloaded because GitHub's Contents API does not support them.</span>
+            <a href="https://docs.github.com/rest/repos/contents#get-repository-content" target="_blank" rel="noopener noreferrer" data-i18n="download.file_size_limit_link">View GitHub's official documentation</a>
+          </div>
+        </div>
 
         <h2 class="section-title" data-i18n="download.file_storage">File Storage</h2>
         <div class="card">

@@ -45,6 +45,9 @@
 
   "download": {
     "page_title": "下载",
+    "file_size_limit_title": "GitHub 文件大小限制",
+    "file_size_limit_desc": "由于 GitHub Contents API 不支持大于 100 MB 的文件，因此无法下载此类文件。",
+    "file_size_limit_link": "查看 GitHub 官方文档",
     "file_storage": "文件存储",
     "zip_naming_rule": "ZIP 命名规则",
     "zip_naming_rule_desc": "定义下载的 ZIP 压缩包的文件名格式。您可以选择预设格式或输入自定义名称。",
@@ -305,6 +308,9 @@
     "packing_zip": "正在打包 ZIP…",
     "no_files_found": "未找到文件。",
     "all_skipped": "所选项目全部被忽略规则跳过（已排除 {count} 项）。如果这不是您的本意，请检查忽略设置。",
-    "no_valid_items": "未选择有效的 GitHub 项目。"
+    "no_valid_items": "未选择有效的 GitHub 项目。",
+    "file_too_large": "{path} 超过 GitHub API 的 100 MB 下载限制。",
+    "file_content_unavailable": "GitHub 未提供可下载的文件内容：{path}",
+    "file_size_mismatch": "{path} 下载字节数不一致：预期 {expected} 字节，实际 {actual} 字节。"
   }
 }

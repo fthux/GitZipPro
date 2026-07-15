@@ -42,6 +42,9 @@
       case 'downloader.no_files_found': return 'No files found in selection.';
       case 'downloader.all_skipped': return `All selected items were skipped by ignore rules (${vars ? vars.count : 0} item(s) excluded). Check your ignore settings if this is not intended.`;
       case 'downloader.no_valid_items': return 'No valid GitHub items selected.';
+      case 'downloader.file_too_large': return `${vars ? vars.path : 'File'} exceeds GitHub's 100 MB API download limit.`;
+      case 'downloader.file_content_unavailable': return `GitHub did not provide downloadable content for: ${vars ? vars.path : 'unknown file'}`;
+      case 'downloader.file_size_mismatch': return `Downloaded size mismatch for ${vars ? vars.path : 'file'}: expected ${vars ? vars.expected : '?'} bytes, received ${vars ? vars.actual : '?'} bytes.`;
       default: return key;
     }
   }
@@ -51,6 +54,7 @@
   const GITHUB_API_BASE = C.URLS.GITHUB_API_BASE;
   const CONCURRENCY_LIMIT = C.DOWNLOAD.CONCURRENCY_LIMIT;
   const MAX_FILE_COUNT = C.DOWNLOAD.MAX_FILE_COUNT;
+  const MAX_GITHUB_FILE_SIZE = 100 * 1024 * 1024;
 
   // ─── URL Parser ───────────────────────────────────────────────────────────
 
@@ -126,9 +130,9 @@
   /**
    * Builds request headers for GitHub API
    */
-  function buildHeaders(githubToken = '', tokenAccessMode = 'anonymous') {
+  function buildHeaders(githubToken = '', tokenAccessMode = 'anonymous', accept = 'application/vnd.github.v3+json') {
     const headers = {
-      'Accept': 'application/vnd.github.v3+json'
+      'Accept': accept
     };
 
     // Add authentication header if using custom token mode with valid token
@@ -142,9 +146,9 @@
   /**
    * Fetches from GitHub API with retries on 429 (rate-limit) and 403 (rate-limit).
    */
-  async function githubFetch(apiPath, signal, githubToken = '', tokenAccessMode = 'anonymous', attempt = 0) {
+  async function githubFetchResponse(apiPath, signal, githubToken = '', tokenAccessMode = 'anonymous', accept = 'application/vnd.github.v3+json', attempt = 0) {
     const fullUrl = `${GITHUB_API_BASE}${apiPath}`;
-    const headers = buildHeaders(githubToken, tokenAccessMode);
+    const headers = buildHeaders(githubToken, tokenAccessMode, accept);
 
     let resp;
     try {
@@ -160,7 +164,7 @@
       const retryAfter = resp.headers.get('Retry-After');
       const wait = retryAfter ? parseInt(retryAfter) * 1000 : (attempt + 1) * 2000;
       await new Promise(r => setTimeout(r, wait));
-      return githubFetch(apiPath, signal, githubToken, tokenAccessMode, attempt + 1);
+      return githubFetchResponse(apiPath, signal, githubToken, tokenAccessMode, accept, attempt + 1);
     }
 
     if (!resp.ok) {
@@ -168,12 +172,40 @@
       throw new Error(`GitHub API ${resp.status}: ${text.slice(0, 120)}`);
     }
 
+    return resp;
+  }
+
+  async function githubFetch(apiPath, signal, githubToken = '', tokenAccessMode = 'anonymous', accept = 'application/vnd.github.v3+json') {
+    const resp = await githubFetchResponse(apiPath, signal, githubToken, tokenAccessMode, accept);
     return resp.json();
+  }
+
+  async function githubFetchBinary(apiPath, signal, githubToken = '', tokenAccessMode = 'anonymous') {
+    const resp = await githubFetchResponse(
+      apiPath,
+      signal,
+      githubToken,
+      tokenAccessMode,
+      'application/vnd.github.raw+json'
+    );
+    return new Uint8Array(await resp.arrayBuffer());
+  }
+
+  function validateFileSize(path, bytes, expectedSize) {
+    if (Number.isFinite(expectedSize) && bytes.length !== expectedSize) {
+      throw new Error(t('downloader.file_size_mismatch', {
+        path,
+        expected: expectedSize,
+        actual: bytes.length,
+      }));
+    }
+    return bytes;
   }
 
   /**
    * Fetches a single file from GitHub API and returns its binary content.
-   * The API returns the GitHub Contents API shape with base64 `content`.
+   * Small files use the Contents API's base64 content. Larger files fall back
+   * to the Git Blobs API's raw media type when Contents omits content.
    *
    * Handles symlinks by resolving the target and re-fetching the actual file.
    *
@@ -193,7 +225,13 @@
     }
 
     const apiPath = `/repos/${owner}/${repo}/contents/${encodeURIFilePath(path)}?ref=${branch}`;
-    const data = await githubFetch(apiPath, signal, githubToken, tokenAccessMode);
+    const data = await githubFetch(
+      apiPath,
+      signal,
+      githubToken,
+      tokenAccessMode,
+      'application/vnd.github.object+json'
+    );
 
     // Handle symlinks - resolve the target and fetch the actual file
     if (data.type === 'symlink' && data.target) {
@@ -216,14 +254,27 @@
       throw new Error(`Unexpected response for file: ${path} (type: ${data.type})`);
     }
 
-    if (!data.content) {
-      // Empty file - return empty Uint8Array
+    const expectedSize = Number.isFinite(data.size) ? data.size : null;
+    if (expectedSize !== null && expectedSize > MAX_GITHUB_FILE_SIZE) {
+      throw new Error(t('downloader.file_too_large', { path }));
+    }
+
+    if (data.encoding === 'base64' && typeof data.content === 'string') {
+      const b64 = data.content.replace(/\s/g, '');
+      return validateFileSize(path, base64ToUint8Array(b64), expectedSize);
+    }
+
+    if (expectedSize === 0) {
       return new Uint8Array(0);
     }
 
-    // Decode base64 → binary
-    const b64 = data.content.replace(/\s/g, '');
-    return base64ToUint8Array(b64);
+    if (!data.sha) {
+      throw new Error(t('downloader.file_content_unavailable', { path }));
+    }
+
+    const blobPath = `/repos/${owner}/${repo}/git/blobs/${encodeURIComponent(data.sha)}`;
+    const bytes = await githubFetchBinary(blobPath, signal, githubToken, tokenAccessMode);
+    return validateFileSize(path, bytes, expectedSize);
   }
 
   /**
@@ -364,10 +415,11 @@
       let completed = 0;
 
       const tasks = fileList.map(item => async () => {
-        const bytes = await item.fetch();
-        if (item.sizeBytes == null) {
-          item.sizeBytes = bytes.length;
+        if (Number.isFinite(item.sizeBytes) && item.sizeBytes > MAX_GITHUB_FILE_SIZE) {
+          throw new Error(t('downloader.file_too_large', { path: item.path }));
         }
+        const bytes = await item.fetch();
+        item.sizeBytes = bytes.length;
         zip.file(`${zipRoot}/${item.path}`, bytes);
         completed++;
         onProgress && onProgress(completed, total, t('downloader.files_progress', { completed, total }));

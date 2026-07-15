@@ -45,6 +45,9 @@
 
   "download": {
     "page_title": "Download",
+    "file_size_limit_title": "GitHub file size limit",
+    "file_size_limit_desc": "Files larger than 100 MB cannot be downloaded because GitHub's Contents API does not support them.",
+    "file_size_limit_link": "View GitHub's official documentation",
     "file_storage": "File Storage",
     "zip_naming_rule": "ZIP Naming Rule",
     "zip_naming_rule_desc": "Define the filename format for the downloaded ZIP archive. You can choose a preset or type a custom name.",
@@ -305,6 +308,9 @@
     "packing_zip": "Packing ZIP…",
     "no_files_found": "No files found in selection.",
     "all_skipped": "All selected items were skipped by ignore rules ({count} item(s) excluded). Check your ignore settings if this is not intended.",
-    "no_valid_items": "No valid GitHub items selected."
+    "no_valid_items": "No valid GitHub items selected.",
+    "file_too_large": "{path} exceeds GitHub's 100 MB API download limit.",
+    "file_content_unavailable": "GitHub did not provide downloadable content for: {path}",
+    "file_size_mismatch": "Downloaded size mismatch for {path}: expected {expected} bytes, received {actual} bytes."
   }
 }
