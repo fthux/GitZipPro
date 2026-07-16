@@ -13,6 +13,8 @@
  * Requires jszip.min.js to be loaded before this script.
  *
  * GitHub API endpoints used:
+ *   GET /repos/{owner}/{repo}/git/matching-refs/heads/{ref}
+ *   GET /repos/{owner}/{repo}/git/matching-refs/tags/{ref}
  *   GET /repos/{owner}/{repo}/git/trees/{tree_sha}[?recursive=1]
  *   GET /repos/{owner}/{repo}/git/blobs/{sha}
  *   GET /repos/{owner}/{repo}/contents/{path}?ref={branch} (compatibility fallback)
@@ -59,18 +61,19 @@
 
   // ─── URL Parser ───────────────────────────────────────────────────────────
 
+  function decodeUrlPart(part) {
+    try {
+      return decodeURIComponent(part);
+    } catch {
+      return part;
+    }
+  }
+
   /**
-   * Parses a full GitHub URL into its components.
-   *
-   * Supported patterns:
-   *   https://github.com/owner/repo                        → tree root
-   *   https://github.com/owner/repo/tree/branch[/path]    → directory
-   *   https://github.com/owner/repo/blob/branch/path      → file
-   *
-   * @param {string} href  Full URL or pathname from the row element.
-   * @returns {{ owner, repo, branch, path, type: 'file'|'dir' } | null}
+   * Parses the structural URL segments without deciding where a ref ends.
+   * Slash-containing refs are resolved asynchronously by resolveGitHubUrl().
    */
-  function parseGitHubUrl(href) {
+  function parseGitHubUrlParts(href) {
     // Normalise — might be a relative pathname like /owner/repo/tree/main/...
     let url;
     try {
@@ -82,7 +85,11 @@
     if (url.hostname !== 'github.com') return null;
 
     // Remove leading slash and split
-    const parts = url.pathname.replace(/^\//, '').split('/').filter(Boolean);
+    const parts = url.pathname
+      .replace(/^\//, '')
+      .split('/')
+      .filter(Boolean)
+      .map(decodeUrlPart);
     // parts[0] = owner, parts[1] = repo, parts[2] = 'tree'|'blob'|undefined
     if (parts.length < 2) return null;
 
@@ -90,19 +97,125 @@
     const repo = parts[1];
     const seg3 = parts[2]; // 'tree', 'blob', or undefined
 
-    if (!seg3 || seg3 === 'tree') {
-      const branch = parts[3] || 'HEAD';
-      const path = parts.slice(4).join('/');
-      return { owner, repo, branch, path, type: 'dir' };
+    if (!seg3) return { owner, repo, refParts: [], type: 'dir' };
+    if (seg3 !== 'tree' && seg3 !== 'blob') return null;
+
+    const refParts = parts.slice(3).flatMap(part => part.split('/')).filter(Boolean);
+    return { owner, repo, refParts, type: seg3 === 'blob' ? 'file' : 'dir' };
+  }
+
+  /**
+   * Synchronous compatibility parser. Call resolveGitHubUrl() when the ref
+   * must be distinguished from a repository path.
+   */
+  function parseGitHubUrl(href) {
+    const parsed = parseGitHubUrlParts(href);
+    if (!parsed) return null;
+
+    const branch = parsed.refParts[0] || 'HEAD';
+    const path = parsed.refParts.slice(1).join('/');
+    return { owner: parsed.owner, repo: parsed.repo, branch, path, type: parsed.type };
+  }
+
+  function selectLongestMatchingRef(refNames, refParts, type) {
+    const fullPath = refParts.join('/');
+    return refNames
+      .filter(refName => fullPath === refName || fullPath.startsWith(`${refName}/`))
+      .filter(refName => type !== 'file' || fullPath.length > refName.length)
+      .sort((a, b) => b.length - a.length)[0] || null;
+  }
+
+  async function getMatchingRefNames(owner, repo, namespace, firstPart, signal, githubToken, tokenAccessMode, cache) {
+    const cacheKey = `${owner}/${repo}:${namespace}:${firstPart}`;
+    let pending = cache && cache.get(cacheKey);
+
+    if (!pending) {
+      const matchingPath = encodeURIFilePath(`${namespace}/${firstPart}`);
+      pending = githubFetch(
+        `/repos/${owner}/${repo}/git/matching-refs/${matchingPath}`,
+        signal,
+        githubToken,
+        tokenAccessMode
+      ).then(data => {
+        if (!Array.isArray(data)) {
+          throw new Error(`Expected matching Git refs for: ${firstPart}`);
+        }
+
+        const prefix = `refs/${namespace}/`;
+        return data
+          .map(item => item && typeof item.ref === 'string' ? item.ref : '')
+          .filter(ref => ref.startsWith(prefix))
+          .map(ref => ref.slice(prefix.length));
+      });
+
+      if (cache) cache.set(cacheKey, pending);
     }
 
-    if (seg3 === 'blob') {
-      const branch = parts[3] || 'HEAD';
-      const path = parts.slice(4).join('/');
-      return { owner, repo, branch, path, type: 'file' };
+    try {
+      return await pending;
+    } catch (error) {
+      if (cache && cache.get(cacheKey) === pending) cache.delete(cacheKey);
+      throw error;
+    }
+  }
+
+  async function resolveGitHubUrl(href, signal, githubToken = '', tokenAccessMode = 'anonymous', cache = null) {
+    const parsed = parseGitHubUrlParts(href);
+    if (!parsed) return null;
+
+    const { owner, repo, refParts, type } = parsed;
+    const fallback = {
+      owner,
+      repo,
+      branch: refParts[0] || 'HEAD',
+      path: refParts.slice(1).join('/'),
+      type,
+    };
+
+    if (refParts.length === 0 || fallback.branch === 'HEAD' || /^[0-9a-f]{7,40}$/i.test(fallback.branch)) {
+      return fallback;
     }
 
-    return null;
+    const branchRefs = await getMatchingRefNames(
+      owner,
+      repo,
+      'heads',
+      refParts[0],
+      signal,
+      githubToken,
+      tokenAccessMode,
+      cache
+    );
+    let matchedRef = selectLongestMatchingRef(branchRefs, refParts, type);
+
+    if (!matchedRef) {
+      const tagRefs = await getMatchingRefNames(
+        owner,
+        repo,
+        'tags',
+        refParts[0],
+        signal,
+        githubToken,
+        tokenAccessMode,
+        cache
+      );
+      matchedRef = selectLongestMatchingRef(tagRefs, refParts, type);
+    }
+
+    if (!matchedRef) return fallback;
+
+    const fullPath = refParts.join('/');
+    return {
+      owner,
+      repo,
+      branch: matchedRef,
+      path: fullPath.slice(matchedRef.length).replace(/^\//, ''),
+      type,
+    };
+  }
+
+  function sanitizeRefForPath(ref) {
+    return String(ref || 'HEAD').replace(/[\\/]+/g, '-');
   }
 
   // ─── Concurrency limiter ──────────────────────────────────────────────────
@@ -235,7 +348,7 @@
       throw new Error(`Symlink resolution exceeded max depth for: ${path}`);
     }
 
-    const apiPath = `/repos/${owner}/${repo}/contents/${encodeURIFilePath(path)}?ref=${branch}`;
+    const apiPath = `/repos/${owner}/${repo}/contents/${encodeURIFilePath(path)}?ref=${encodeURIComponent(branch)}`;
     const data = await githubFetch(
       apiPath,
       signal,
@@ -293,7 +406,7 @@
    * @returns {Array<{ type, name, path }>}
    */
   async function listDir(owner, repo, branch, path, signal, githubToken = '', tokenAccessMode = 'anonymous') {
-    const apiPath = `/repos/${owner}/${repo}/contents/${encodeURIFilePath(path)}?ref=${branch}`;
+    const apiPath = `/repos/${owner}/${repo}/contents/${encodeURIFilePath(path)}?ref=${encodeURIComponent(branch)}`;
     const data = await githubFetch(apiPath, signal, githubToken, tokenAccessMode);
 
     if (!Array.isArray(data)) {
@@ -613,22 +726,24 @@
 
     const compiledIgnoreRules = compileIgnoreRules(ignoreLabels || [], ignoreCustomVars || []);
 
-    // ② Parse all selected URLs
-    const parsed = [];
-    for (const [, href] of selectedItems) {
-      const info = parseGitHubUrl(href);
-      if (info) parsed.push(info);
-    }
-
-    if (parsed.length === 0) {
-      onError && onError(new Error(t('downloader.no_valid_items')));
-      return abortCtrl;
-    }
-
-    const { owner, repo, branch } = parsed[0];
-    const zipRoot = `${repo}-${branch}`;
-
     try {
+      // ② Parse all selected URLs and resolve the longest matching Git ref.
+      const parsed = [];
+      const refCache = new Map();
+      for (const [, href] of selectedItems) {
+        const info = await resolveGitHubUrl(href, signal, githubToken, tokenAccessMode, refCache);
+        if (info) parsed.push(info);
+      }
+
+      if (parsed.length === 0) {
+        onError && onError(new Error(t('downloader.no_valid_items')));
+        return abortCtrl;
+      }
+
+      const { owner, repo, branch } = parsed[0];
+      const safeBranchPath = sanitizeRefForPath(branch);
+      const zipRoot = `${repo}-${safeBranchPath}`;
+
       // ③ Scan and validate the complete selection before fetching file contents
       onProgress && onProgress(0, 0, t('downloader.scanning'));
 
@@ -714,7 +829,7 @@
       let zipName = template
         .replace(/{owner}/g, owner)
         .replace(/{repo}/g, repo)
-        .replace(/{branch}/g, branch)
+        .replace(/{branch}/g, safeBranchPath)
         .replace(/{path}/g, pathName)
         .replace(/{date}/g, date)
         .replace(/{datetime}/g, datetime)
@@ -928,6 +1043,6 @@
 
   // ─── Export ───────────────────────────────────────────────────────────────
 
-  global.GZPDownloader = { start, parseGitHubUrl };
+  global.GZPDownloader = { start, parseGitHubUrl, resolveGitHubUrl };
 
 })(window);

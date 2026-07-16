@@ -27,6 +27,7 @@
 
   /** 文件大小缓存 {path: sizeString} */
   const fileSizeCache = new Map();
+  const fileSizeRefCache = new Map();
 
   let downloadBtn = null;
   let cleanupTimeout = null;
@@ -125,29 +126,15 @@
   /**
    * 通过GitHub API获取文件大小
    */
-  async function fetchFileSize(filePath) {
-    if (fileSizeCache.has(filePath)) {
-      return fileSizeCache.get(filePath);
+  async function fetchFileSize(fileHref) {
+    if (fileSizeCache.has(fileHref)) {
+      return fileSizeCache.get(fileHref);
     }
 
     // 如果已经关闭文件大小显示 直接返回空 不发起请求
     if (!showFileSizes) {
       return '';
     }
-
-    // 解析仓库信息
-    const pathParts = location.pathname.replace(/^\//, '').split('/').filter(Boolean);
-    const owner = pathParts[0];
-    const repo = pathParts[1];
-
-    // 查找分支名
-    let branch = 'main';
-    const treeIndex = pathParts.indexOf('tree');
-    if (treeIndex !== -1 && treeIndex + 1 < pathParts.length) {
-      branch = pathParts[treeIndex + 1];
-    }
-
-    const apiUrl = `${C.URLS.GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${filePath}`;
 
     // 获取保存的token设置
     const tokenResult = await new Promise((resolve) => {
@@ -169,16 +156,30 @@
 
     // 创建AbortController用于取消请求
     const abortController = new AbortController();
-    fileSizeAbortControllers.set(filePath, abortController);
+    fileSizeAbortControllers.set(fileHref, abortController);
 
     try {
+      const info = await globalThis.GZPDownloader.resolveGitHubUrl(
+        fileHref,
+        abortController.signal,
+        token,
+        mode,
+        fileSizeRefCache
+      );
+      if (!info || info.type !== 'file' || !info.path) {
+        fileSizeCache.set(fileHref, '');
+        return '';
+      }
+
+      const encodedPath = info.path.split('/').map(encodeURIComponent).join('/');
+      const apiUrl = `${C.URLS.GITHUB_API_BASE}/repos/${info.owner}/${info.repo}/contents/${encodedPath}?ref=${encodeURIComponent(info.branch)}`;
       const response = await fetch(apiUrl, {
         headers,
         signal: abortController.signal
       });
 
       if (!response.ok) {
-        fileSizeCache.set(filePath, '');
+        fileSizeCache.set(fileHref, '');
         return '';
       }
 
@@ -186,20 +187,20 @@
 
       if (data && data.size !== undefined) {
         const sizeStr = formatSize(data.size);
-        fileSizeCache.set(filePath, sizeStr);
+        fileSizeCache.set(fileHref, sizeStr);
         return sizeStr;
       }
 
-      fileSizeCache.set(filePath, '');
+      fileSizeCache.set(fileHref, '');
       return '';
     } catch (e) {
       // 如果是请求被取消 则不缓存
       if (e.name !== 'AbortError') {
-        fileSizeCache.set(filePath, '');
+        fileSizeCache.set(fileHref, '');
       }
       return '';
     } finally {
-      fileSizeAbortControllers.delete(filePath);
+      fileSizeAbortControllers.delete(fileHref);
     }
   }
 
@@ -312,16 +313,8 @@
       return;
     }
 
-    const hrefParts = fileLink.getAttribute('href').split('/blob/');
-    if (hrefParts.length < 2) {
-      sizeCell.textContent = '';
-      return;
-    }
-
-    const filePath = hrefParts[1].split('/').slice(1).join('/');
-
     // 异步获取大小
-    const size = await fetchFileSize(filePath);
+    const size = await fetchFileSize(fileLink.getAttribute('href'));
     sizeCell.textContent = size || '';
   }
 
