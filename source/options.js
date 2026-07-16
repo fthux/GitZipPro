@@ -1415,26 +1415,31 @@ function getHistoryTypeInfo(record) {
     : { type: 'folder', label: GZP_I18N.t('history.type_folder'), icon: '📁' };
 }
 
+function encodeGitHubRefPath(ref) {
+  return String(ref).split('/').map(encodeURIComponent).join('/');
+}
+
 function buildHistoryTargetUrl(record) {
   const ownerName = record.owner || 'unknown';
   const repoName = record.repo || 'Unknown repository';
   const branchName = record.branch || 'main';
   const path = (record.path || '').replace(/^\/+|\/+$/g, '');
   const typeInfo = getHistoryTypeInfo(record);
+  const encodedBranch = encodeGitHubRefPath(branchName);
 
   const base = `${URLS.GITHUB_BASE}/${ownerName}/${repoName}`;
   if (!path) {
-    return `${base}/tree/${encodeURIComponent(branchName)}`;
+    return `${base}/tree/${encodedBranch}`;
   }
 
   if (typeInfo.type === 'file') {
     const folderPath = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
     return folderPath
-      ? `${base}/tree/${encodeURIComponent(branchName)}/${folderPath}`
-      : `${base}/tree/${encodeURIComponent(branchName)}`;
+      ? `${base}/tree/${encodedBranch}/${folderPath}`
+      : `${base}/tree/${encodedBranch}`;
   }
 
-  return `${base}/tree/${encodeURIComponent(branchName)}/${path}`;
+  return `${base}/tree/${encodedBranch}/${path}`;
 }
 
 /**

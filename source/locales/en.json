@@ -259,8 +259,42 @@
   "download_btn": {
     "idle": "Download",
     "loading": "Downloading…",
+    "cancelling": "Cancelling…",
     "done": "Done!",
-    "error": "Error"
+    "error": "Error",
+    "cancelled": "Cancelled"
+  },
+
+  "download_progress": {
+    "title": "GitZip Pro",
+    "phase_scan": "Scan",
+    "phase_download": "Download",
+    "phase_compress": "Compress",
+    "phase_save": "Save",
+    "files": "files",
+    "at_least": "at least ",
+    "source_size": "Source size",
+    "zip_size": "ZIP size",
+    "unknown_size": "Unknown size",
+    "cancel": "Cancel",
+    "retry": "Retry",
+    "close": "Close",
+    "expand": "Expand download result",
+    "collapse": "Collapse download panel",
+    "clear_result": "Clear result",
+    "download_again": "Download again",
+    "copy_details": "Copy details",
+    "last_download": "Last download",
+    "completed": "Completed",
+    "failed": "Download failed",
+    "cancelled": "Cancelled",
+    "result_filename": "Saved file",
+    "result_file_count": "File count",
+    "error_phase": "Phase",
+    "error_code": "Error code",
+    "error_file": "File",
+    "error_request": "Request",
+    "error_reason": "Reason"
   },
 
   "context_menu": {
@@ -306,11 +340,14 @@
     "scanning": "Scanning…",
     "files_progress": "{completed} / {total} files",
     "packing_zip": "Packing ZIP…",
+    "cancelled": "Download cancelled.",
+    "save_interrupted": "The browser interrupted saving the ZIP file.",
     "no_files_found": "No files found in selection.",
     "all_skipped": "All selected items were skipped by ignore rules ({count} item(s) excluded). Check your ignore settings if this is not intended.",
     "no_valid_items": "No valid GitHub items selected.",
     "file_too_large": "{path} exceeds GitHub's 100 MB API download limit.",
     "file_content_unavailable": "GitHub did not provide downloadable content for: {path}",
-    "file_size_mismatch": "Downloaded size mismatch for {path}: expected {expected} bytes, received {actual} bytes."
+    "file_size_mismatch": "Downloaded size mismatch for {path}: expected {expected} bytes, received {actual} bytes.",
+    "too_many_files": "The selection contains more than {limit} files. Download cancelled. Please select a smaller folder."
   }
 }

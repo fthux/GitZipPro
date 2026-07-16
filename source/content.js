@@ -27,8 +27,12 @@
 
   /** 文件大小缓存 {path: sizeString} */
   const fileSizeCache = new Map();
+  const fileSizeRefCache = new Map();
 
+  let downloadControl = null;
   let downloadBtn = null;
+  let resultToggleBtn = null;
+  let downloadPanel = null;
   let cleanupTimeout = null;
   let isNavigating = false;  // 防止重复清除
   let buttonPosition = DEFAULTS.BUTTON_POSITION;
@@ -125,29 +129,15 @@
   /**
    * 通过GitHub API获取文件大小
    */
-  async function fetchFileSize(filePath) {
-    if (fileSizeCache.has(filePath)) {
-      return fileSizeCache.get(filePath);
+  async function fetchFileSize(fileHref) {
+    if (fileSizeCache.has(fileHref)) {
+      return fileSizeCache.get(fileHref);
     }
 
     // 如果已经关闭文件大小显示 直接返回空 不发起请求
     if (!showFileSizes) {
       return '';
     }
-
-    // 解析仓库信息
-    const pathParts = location.pathname.replace(/^\//, '').split('/').filter(Boolean);
-    const owner = pathParts[0];
-    const repo = pathParts[1];
-
-    // 查找分支名
-    let branch = 'main';
-    const treeIndex = pathParts.indexOf('tree');
-    if (treeIndex !== -1 && treeIndex + 1 < pathParts.length) {
-      branch = pathParts[treeIndex + 1];
-    }
-
-    const apiUrl = `${C.URLS.GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${filePath}`;
 
     // 获取保存的token设置
     const tokenResult = await new Promise((resolve) => {
@@ -169,16 +159,30 @@
 
     // 创建AbortController用于取消请求
     const abortController = new AbortController();
-    fileSizeAbortControllers.set(filePath, abortController);
+    fileSizeAbortControllers.set(fileHref, abortController);
 
     try {
+      const info = await globalThis.GZPDownloader.resolveGitHubUrl(
+        fileHref,
+        abortController.signal,
+        token,
+        mode,
+        fileSizeRefCache
+      );
+      if (!info || info.type !== 'file' || !info.path) {
+        fileSizeCache.set(fileHref, '');
+        return '';
+      }
+
+      const encodedPath = info.path.split('/').map(encodeURIComponent).join('/');
+      const apiUrl = `${C.URLS.GITHUB_API_BASE}/repos/${info.owner}/${info.repo}/contents/${encodedPath}?ref=${encodeURIComponent(info.branch)}`;
       const response = await fetch(apiUrl, {
         headers,
         signal: abortController.signal
       });
 
       if (!response.ok) {
-        fileSizeCache.set(filePath, '');
+        fileSizeCache.set(fileHref, '');
         return '';
       }
 
@@ -186,20 +190,20 @@
 
       if (data && data.size !== undefined) {
         const sizeStr = formatSize(data.size);
-        fileSizeCache.set(filePath, sizeStr);
+        fileSizeCache.set(fileHref, sizeStr);
         return sizeStr;
       }
 
-      fileSizeCache.set(filePath, '');
+      fileSizeCache.set(fileHref, '');
       return '';
     } catch (e) {
       // 如果是请求被取消 则不缓存
       if (e.name !== 'AbortError') {
-        fileSizeCache.set(filePath, '');
+        fileSizeCache.set(fileHref, '');
       }
       return '';
     } finally {
-      fileSizeAbortControllers.delete(filePath);
+      fileSizeAbortControllers.delete(fileHref);
     }
   }
 
@@ -312,16 +316,8 @@
       return;
     }
 
-    const hrefParts = fileLink.getAttribute('href').split('/blob/');
-    if (hrefParts.length < 2) {
-      sizeCell.textContent = '';
-      return;
-    }
-
-    const filePath = hrefParts[1].split('/').slice(1).join('/');
-
     // 异步获取大小
-    const size = await fetchFileSize(filePath);
+    const size = await fetchFileSize(fileLink.getAttribute('href'));
     sizeCell.textContent = size || '';
   }
 
@@ -605,44 +601,9 @@
       return;
     }
 
-    // 创建一个 Map 包含单个项目
     const downloadMap = new Map();
-    // 使用虚拟元素作为键，因为 GZPDownloader 期望 Map<Element, string>
-    const dummyElement = document.createElement('div');
-    downloadMap.set(dummyElement, href);
-
-    // 确保下载按钮存在并显示加载状态
-    const btn = ensureDownloadButton();
-    btn.classList.remove('gzp-download-btn--hidden');
-    setBtnState(BTN_STATES.LOADING, '0 / ? files');
-
-    // 开始下载
-    activeDownload = window.GZPDownloader.start(downloadMap, {
-      onProgress: (current, total, label) => {
-        if (btn.dataset.state !== BTN_STATES.LOADING) return;
-        const p = btn.querySelector('.gzp-btn-progress');
-        if (p) p.textContent = label;
-      },
-      onDone: () => {
-        setBtnState(BTN_STATES.DONE);
-        setTimeout(resetBtnToIdle, 2500);
-      },
-      onError: (err) => {
-        setBtnState(BTN_STATES.ERROR, err.message);
-
-        // 显示系统通知（受设置控制）
-        chrome.storage.local.get([STORAGE.NOTIFY_SHOW], (res) => {
-          if (res[STORAGE.NOTIFY_SHOW] !== false) {
-            chrome.runtime.sendMessage({
-              type: 'GZP_SHOW_ERROR_NOTIFICATION',
-              message: err.message
-            });
-          }
-        });
-
-        setTimeout(resetBtnToIdle, 6000);
-      },
-    });
+    downloadMap.set(document.createElement('div'), href);
+    startDownload(downloadMap);
   }
 
   function attachAllRows() {
@@ -664,15 +625,123 @@
 
   // ─── Download button ──────────────────────────────────────────────────────
 
-  /** Stores the AbortController for any in-progress download */
+  /** Stores the current cancellable download task. */
   let activeDownload = null;
+  let lastDownloadItems = null;
+  let lastProgress = null;
+  let lastError = null;
+  let lastResult = null;
+  let isCancelling = false;
+  let panelCollapsed = false;
+  let panelState = 'idle';
+  let extensionTheme = DEFAULTS.THEME;
+  const systemThemeQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 
   const BTN_STATES = {
     IDLE: 'idle',
     LOADING: 'loading',
     DONE: 'done',
     ERROR: 'error',
+    CANCELLED: 'cancelled',
   };
+
+  const DOWNLOAD_PHASES = ['scan', 'download', 'compress', 'save'];
+
+  function resolveDownloadTheme(theme) {
+    if (theme === 'dark' || theme === 'light') return theme;
+    return systemThemeQuery && systemThemeQuery.matches ? 'dark' : 'light';
+  }
+
+  function applyDownloadTheme(theme) {
+    extensionTheme = theme || DEFAULTS.THEME;
+    const resolvedTheme = resolveDownloadTheme(extensionTheme);
+    [downloadControl, downloadBtn, resultToggleBtn, downloadPanel].filter(Boolean).forEach(element => {
+      element.dataset.gzpTheme = resolvedTheme;
+    });
+  }
+
+  if (systemThemeQuery) {
+    const handleSystemThemeChange = () => {
+      if (extensionTheme === 'system') applyDownloadTheme(extensionTheme);
+    };
+    if (typeof systemThemeQuery.addEventListener === 'function') {
+      systemThemeQuery.addEventListener('change', handleSystemThemeChange);
+    } else if (typeof systemThemeQuery.addListener === 'function') {
+      systemThemeQuery.addListener(handleSystemThemeChange);
+    }
+  }
+
+  function escapeHTML(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function formatBytes(bytes) {
+    if (!Number.isFinite(bytes) || bytes < 0) return t('download_progress.unknown_size');
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let value = bytes;
+    let index = 0;
+    while (value >= 1024 && index < units.length - 1) {
+      value /= 1024;
+      index++;
+    }
+    const digits = value >= 10 || index === 0 ? 0 : 1;
+    return `${value.toFixed(digits)} ${units[index]}`;
+  }
+
+  function getPhaseLabel(phase) {
+    return t(`download_progress.phase_${phase}`);
+  }
+
+  function getProgressLabel(progress) {
+    if (!progress) return '';
+    if (progress.phase === 'scan') {
+      const count = Number.isFinite(progress.totalFiles) ? progress.totalFiles : 0;
+      const size = Number.isFinite(progress.totalBytes) && progress.totalBytes > 0
+        ? ` · ${progress.totalBytesKnown ? '' : t('download_progress.at_least')}${formatBytes(progress.totalBytes)}`
+        : '';
+      return `${count} ${t('download_progress.files')}${size}`;
+    }
+    if (progress.phase === 'download') {
+      const files = `${progress.completedFiles || 0} / ${progress.totalFiles || 0}`;
+      const bytes = Number.isFinite(progress.totalBytes) && progress.totalBytes > 0
+        ? ` · ${formatBytes(progress.completedBytes || 0)} / ${progress.totalBytesKnown ? '' : t('download_progress.at_least')}${formatBytes(progress.totalBytes)}`
+        : '';
+      return `${files} ${t('download_progress.files')}${bytes}`;
+    }
+    if (progress.phase === 'compress') {
+      return `${t('download_progress.source_size')} ${formatBytes(progress.totalBytes)}`;
+    }
+    if (progress.phase === 'save') {
+      const total = Number.isFinite(progress.zipSizeBytes) ? progress.zipSizeBytes : progress.totalBytes;
+      if (Number.isFinite(progress.completedBytes) && progress.completedBytes > 0 && Number.isFinite(total)) {
+        return `${formatBytes(progress.completedBytes)} / ${formatBytes(total)}`;
+      }
+      return `${t('download_progress.zip_size')} ${formatBytes(total)}`;
+    }
+    return '';
+  }
+
+  function getBtnProgressText() {
+    if (!lastProgress) return '';
+    if (Number.isFinite(lastProgress.phaseProgress)) {
+      return `${Math.round(lastProgress.phaseProgress * 100)}%`;
+    }
+    return getPhaseLabel(lastProgress.phase);
+  }
+
+  function getChevronIconHTML(expanded) {
+    return `
+      <svg class="gzp-chevron-icon${expanded ? ' gzp-chevron-icon--expanded' : ''}" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+           stroke-linejoin="round" aria-hidden="true">
+        <path d="m6 9 6 6 6-6"/>
+      </svg>`;
+  }
 
   function getBtnHTML(state) {
     switch (state) {
@@ -690,112 +759,353 @@
       case BTN_STATES.LOADING:
         return `
           <span class="gzp-spinner"></span>
-          <span class="gzp-btn-label">${t('download_btn.loading')}</span>
-          <span class="gzp-btn-progress"></span>`;
-      case BTN_STATES.DONE:
-        return `
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-               stroke-linejoin="round" width="17" height="17">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-          <span class="gzp-btn-label">${t('download_btn.done')}</span>`;
-      case BTN_STATES.ERROR:
-        return `
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-               stroke-linejoin="round" width="17" height="17">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="15" y1="9" x2="9" y2="15"/>
-            <line x1="9" y1="9" x2="15" y2="15"/>
-          </svg>
-          <span class="gzp-btn-label">${t('download_btn.error')}</span>`;
+          <span class="gzp-btn-label">${isCancelling ? t('download_btn.cancelling') : t('download_btn.loading')}</span>
+          <span class="gzp-btn-progress">${escapeHTML(getBtnProgressText())}</span>`;
       default:
         return '';
     }
   }
 
-  function setBtnState(state, label) {
+  function getResultToggleHTML() {
+    const hasTerminalStatus = [BTN_STATES.DONE, BTN_STATES.ERROR, BTN_STATES.CANCELLED].includes(panelState);
+    const statusDot = hasTerminalStatus ? '<span class="gzp-result-status-dot" aria-hidden="true"></span>' : '';
+    return `${statusDot}${getChevronIconHTML(!panelCollapsed)}`;
+  }
+
+  function syncDownloadControlState() {
+    if (!downloadControl || !downloadBtn || !resultToggleBtn) return;
+    const downloadHidden = downloadBtn.classList.contains('gzp-download-btn--hidden');
+    const toggleHidden = resultToggleBtn.classList.contains('gzp-result-toggle--hidden');
+    downloadControl.classList.toggle('gzp-download-control--has-toggle', !toggleHidden);
+    downloadControl.classList.toggle('gzp-download-control--hidden', downloadHidden && toggleHidden);
+  }
+
+  function renderResultToggle() {
+    if (!resultToggleBtn) return;
+    const hasDetails = panelState !== BTN_STATES.IDLE;
+    resultToggleBtn.classList.toggle('gzp-result-toggle--hidden', !hasDetails);
+    if (!hasDetails) {
+      syncDownloadControlState();
+      return;
+    }
+    resultToggleBtn.dataset.state = panelState;
+    resultToggleBtn.innerHTML = getResultToggleHTML();
+    const actionLabel = t(panelCollapsed ? 'download_progress.expand' : 'download_progress.collapse');
+    const stateLabel = panelState === BTN_STATES.DONE
+      ? t('download_progress.last_download')
+      : panelState === BTN_STATES.ERROR
+        ? t('download_progress.failed')
+        : panelState === BTN_STATES.CANCELLED
+          ? t('download_progress.cancelled')
+          : '';
+    const accessibleLabel = stateLabel ? `${stateLabel}: ${actionLabel}` : actionLabel;
+    resultToggleBtn.title = accessibleLabel;
+    resultToggleBtn.setAttribute('aria-label', accessibleLabel);
+    resultToggleBtn.setAttribute('aria-expanded', String(!panelCollapsed));
+    syncDownloadControlState();
+  }
+
+  function setBtnState(state) {
     if (!downloadBtn) return;
     downloadBtn.innerHTML = getBtnHTML(state);
     downloadBtn.dataset.state = state;
-    downloadBtn.disabled = (state === BTN_STATES.LOADING);
-
-    if (state === BTN_STATES.LOADING && label) {
-      const p = downloadBtn.querySelector('.gzp-btn-progress');
-      if (p) p.textContent = label;
-    }
+    downloadBtn.disabled = state === BTN_STATES.LOADING;
+    downloadBtn.setAttribute('aria-busy', String(state === BTN_STATES.LOADING));
+    downloadBtn.title = '';
   }
 
   function resetBtnToIdle() {
+    activeDownload = null;
+    lastProgress = null;
+    lastError = null;
+    lastResult = null;
+    isCancelling = false;
+    panelCollapsed = false;
+    panelState = BTN_STATES.IDLE;
     setBtnState(BTN_STATES.IDLE);
+    renderResultToggle();
+    if (downloadPanel) downloadPanel.classList.add('gzp-download-panel--hidden');
     // Restore badge count
     const badge = downloadBtn && downloadBtn.querySelector('.gzp-btn-badge');
     if (badge) badge.textContent = selectedItems.size || '';
+    updateDownloadButton();
+  }
+
+  function getErrorDetails(error) {
+    if (!error) return '';
+    return [
+      `${t('download_progress.error_phase')}: ${getPhaseLabel(error.phase || (lastProgress && lastProgress.phase) || 'download')}`,
+      `${t('download_progress.error_code')}: ${error.code || 'DOWNLOAD_FAILED'}`,
+      error.path ? `${t('download_progress.error_file')}: ${error.path}` : '',
+      Number.isFinite(error.httpStatus) ? `HTTP: ${error.httpStatus}` : '',
+      error.requestPath ? `${t('download_progress.error_request')}: ${error.requestPath}` : '',
+      `${t('download_progress.error_reason')}: ${error.message || String(error)}`,
+    ].filter(Boolean).join('\n');
+  }
+
+  function copyErrorDetails() {
+    const details = getErrorDetails(lastError);
+    if (!details) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(details).catch(() => {});
+      return;
+    }
+    const textarea = document.createElement('textarea');
+    textarea.value = details;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    textarea.remove();
+  }
+
+  function getStageState(phase, buttonState) {
+    const activeIndex = lastProgress ? DOWNLOAD_PHASES.indexOf(lastProgress.phase) : -1;
+    const phaseIndex = DOWNLOAD_PHASES.indexOf(phase);
+    if (buttonState === BTN_STATES.DONE) return 'done';
+    if (phaseIndex < activeIndex) return 'done';
+    if (phaseIndex === activeIndex) {
+      if (buttonState === BTN_STATES.ERROR) return 'error';
+      if (buttonState === BTN_STATES.CANCELLED) return 'cancelled';
+      return 'active';
+    }
+    return 'pending';
+  }
+
+  function setPanelCollapsed(collapsed) {
+    panelCollapsed = Boolean(collapsed);
+    if (activeDownload) setBtnState(BTN_STATES.LOADING);
+    renderResultToggle();
+    renderProgressPanel();
+  }
+
+  function renderProgressPanel() {
+    if (!downloadPanel) return;
+    const buttonState = panelState;
+    if (buttonState === BTN_STATES.IDLE || panelCollapsed) {
+      downloadPanel.classList.add('gzp-download-panel--hidden');
+      return;
+    }
+
+    downloadPanel.classList.remove('gzp-download-panel--hidden');
+    const progressPercent = lastProgress && Number.isFinite(lastProgress.phaseProgress)
+      ? Math.max(0, Math.min(100, Math.round(lastProgress.phaseProgress * 100)))
+      : null;
+    const stages = DOWNLOAD_PHASES.map((phase) => {
+      const stageState = getStageState(phase, buttonState);
+      const isCurrent = lastProgress && lastProgress.phase === phase;
+      const meta = isCurrent ? getProgressLabel(lastProgress) : '';
+      const icon = stageState === 'done' ? '&#10003;' : stageState === 'error' ? '!' : stageState === 'cancelled' ? '&#8211;' : stageState === 'active' ? '&#9679;' : '&#9675;';
+      return `
+        <div class="gzp-progress-stage" data-stage-state="${stageState}">
+          <span class="gzp-stage-icon">${icon}</span>
+          <span class="gzp-stage-name">${escapeHTML(getPhaseLabel(phase))}</span>
+          <span class="gzp-stage-meta">${escapeHTML(meta)}</span>
+        </div>`;
+    }).join('');
+
+    const errorBlock = buttonState === BTN_STATES.ERROR && lastError ? `
+      <div class="gzp-error-detail">
+        <strong>${escapeHTML(lastError.message || String(lastError))}</strong>
+        <span>${escapeHTML(getErrorDetails(lastError))}</span>
+      </div>` : '';
+    const resultBlock = buttonState === BTN_STATES.DONE && lastResult ? `
+      <div class="gzp-result-detail">
+        <div><span>${escapeHTML(t('download_progress.result_filename'))}</span><strong>${escapeHTML(lastResult.filename || '')}</strong></div>
+        <div><span>${escapeHTML(t('download_progress.result_file_count'))}</span><strong>${escapeHTML(lastResult.fileCount || 0)}</strong></div>
+        <div><span>${escapeHTML(t('download_progress.source_size'))}</span><strong>${escapeHTML(formatBytes(lastResult.sourceSizeBytes))}</strong></div>
+        <div><span>${escapeHTML(t('download_progress.zip_size'))}</span><strong>${escapeHTML(formatBytes(lastResult.zipSizeBytes))}</strong></div>
+      </div>` : '';
+    const currentPath = lastProgress && lastProgress.currentPath && buttonState === BTN_STATES.LOADING
+      ? `<div class="gzp-current-path">${escapeHTML(lastProgress.currentPath)}</div>`
+      : '';
+    const footer = buttonState === BTN_STATES.LOADING
+      ? `<button type="button" class="gzp-panel-action gzp-cancel-download" ${isCancelling ? 'disabled' : ''}>${escapeHTML(isCancelling ? t('download_btn.cancelling') : t('download_progress.cancel'))}</button>`
+      : buttonState === BTN_STATES.ERROR
+        ? `<button type="button" class="gzp-panel-action gzp-copy-error">${escapeHTML(t('download_progress.copy_details'))}</button>
+           <button type="button" class="gzp-panel-action gzp-retry-download">${escapeHTML(t('download_progress.retry'))}</button>
+           <button type="button" class="gzp-panel-action gzp-clear-result">${escapeHTML(t('download_progress.clear_result'))}</button>`
+        : `<button type="button" class="gzp-panel-action gzp-new-download">${escapeHTML(t('download_progress.download_again'))}</button>
+           <button type="button" class="gzp-panel-action gzp-clear-result">${escapeHTML(t('download_progress.clear_result'))}</button>`;
+
+    const terminalStatus = buttonState === BTN_STATES.DONE
+      ? t('download_progress.completed')
+      : buttonState === BTN_STATES.ERROR
+        ? t('download_progress.failed')
+        : buttonState === BTN_STATES.CANCELLED
+          ? t('download_progress.cancelled')
+          : '';
+
+    downloadPanel.innerHTML = `
+      <div class="gzp-panel-header">
+        <div class="gzp-panel-heading">
+          <strong>${escapeHTML(t('download_progress.title'))}</strong>
+          <span>${escapeHTML(terminalStatus)}</span>
+        </div>
+        <button type="button" class="gzp-panel-toggle" title="${escapeHTML(t('download_progress.collapse'))}" aria-label="${escapeHTML(t('download_progress.collapse'))}">${getChevronIconHTML(true)}</button>
+      </div>
+      <div class="gzp-stage-list">${stages}</div>
+      <div class="gzp-progress-track ${progressPercent === null && buttonState === BTN_STATES.LOADING ? 'gzp-progress-track--indeterminate' : ''}">
+        <span style="width: ${progressPercent === null ? 100 : progressPercent}%"></span>
+      </div>
+      ${currentPath}
+      ${resultBlock}
+      ${errorBlock}
+      <div class="gzp-panel-footer">${footer}</div>`;
+
+    const cancelButton = downloadPanel.querySelector('.gzp-cancel-download');
+    if (cancelButton) {
+      cancelButton.addEventListener('click', () => {
+        if (!activeDownload || isCancelling) return;
+        isCancelling = true;
+        setBtnState(BTN_STATES.LOADING);
+        renderProgressPanel();
+        activeDownload.cancel();
+      });
+    }
+    const copyButton = downloadPanel.querySelector('.gzp-copy-error');
+    if (copyButton) copyButton.addEventListener('click', copyErrorDetails);
+    const retryButton = downloadPanel.querySelector('.gzp-retry-download');
+    if (retryButton) retryButton.addEventListener('click', () => startDownload(lastDownloadItems));
+    const newDownloadButton = downloadPanel.querySelector('.gzp-new-download');
+    if (newDownloadButton) {
+      newDownloadButton.addEventListener('click', () => startDownload(selectedItems.size > 0 ? selectedItems : lastDownloadItems));
+    }
+    const clearButton = downloadPanel.querySelector('.gzp-clear-result');
+    if (clearButton) clearButton.addEventListener('click', resetBtnToIdle);
+    const toggleButton = downloadPanel.querySelector('.gzp-panel-toggle');
+    if (toggleButton) toggleButton.addEventListener('click', () => setPanelCollapsed(true));
+  }
+
+  function showErrorNotification(error) {
+    chrome.storage.local.get([STORAGE.NOTIFY_SHOW], (res) => {
+      if (res[STORAGE.NOTIFY_SHOW] !== false) {
+        chrome.runtime.sendMessage({
+          type: 'GZP_SHOW_ERROR_NOTIFICATION',
+          message: error.message,
+        });
+      }
+    });
+  }
+
+  function startDownload(items) {
+    if (!items || items.size === 0 || !window.GZPDownloader) return;
+    if (activeDownload && downloadBtn && downloadBtn.dataset.state === BTN_STATES.LOADING) return;
+
+    lastDownloadItems = new Map(items);
+    lastProgress = { phase: 'scan', phaseProgress: null, totalFiles: 0, totalBytes: 0 };
+    lastError = null;
+    lastResult = null;
+    isCancelling = false;
+    panelCollapsed = false;
+    panelState = BTN_STATES.LOADING;
+
+    const btn = ensureDownloadButton();
+    btn.classList.remove('gzp-download-btn--hidden');
+    setBtnState(BTN_STATES.LOADING);
+    renderResultToggle();
+    renderProgressPanel();
+
+    activeDownload = window.GZPDownloader.start(lastDownloadItems, {
+      onProgress: (progress) => {
+        if (!downloadBtn || downloadBtn.dataset.state !== BTN_STATES.LOADING) return;
+        lastProgress = progress;
+        setBtnState(BTN_STATES.LOADING);
+        renderProgressPanel();
+      },
+      onDone: (result) => {
+        activeDownload = null;
+        lastResult = result;
+        lastProgress = { ...lastProgress, phase: 'save', phaseProgress: 1 };
+        panelState = BTN_STATES.DONE;
+        setBtnState(BTN_STATES.IDLE);
+        updateDownloadButton();
+        renderResultToggle();
+        renderProgressPanel();
+      },
+      onCancel: () => {
+        activeDownload = null;
+        isCancelling = false;
+        panelState = BTN_STATES.CANCELLED;
+        setBtnState(BTN_STATES.IDLE);
+        updateDownloadButton();
+        renderResultToggle();
+        renderProgressPanel();
+      },
+      onError: (error) => {
+        activeDownload = null;
+        isCancelling = false;
+        lastError = error;
+        panelState = BTN_STATES.ERROR;
+        setBtnState(BTN_STATES.IDLE);
+        updateDownloadButton();
+        renderResultToggle();
+        renderProgressPanel();
+        showErrorNotification(error);
+      },
+    });
   }
 
   function ensureDownloadButton() {
-    if (downloadBtn && document.body.contains(downloadBtn)) {
+    if (downloadControl && downloadBtn && document.body.contains(downloadControl)) {
       // Ensure button has correct position class
       updateButtonPosition();
       return downloadBtn;
     }
 
+    const control = document.createElement('div');
+    control.id = 'gzp-download-control';
+    control.className = 'gzp-download-control gzp-download-control--hidden';
+
     const btn = document.createElement('button');
+    btn.type = 'button';
     btn.id = 'gzp-download-btn';
     btn.className = 'gzp-download-btn gzp-download-btn--hidden';
     btn.dataset.state = BTN_STATES.IDLE;
     btn.innerHTML = getBtnHTML(BTN_STATES.IDLE);
 
-    btn.addEventListener('click', async () => {
-      if (btn.dataset.state === BTN_STATES.LOADING) return;
+    btn.addEventListener('click', () => {
+      const state = btn.dataset.state || BTN_STATES.IDLE;
+      if (state !== BTN_STATES.IDLE) return;
 
       if (!window.GZPDownloader) {
         alert('GitZip Pro: downloader not loaded. Please reload the page.');
         return;
       }
 
-      setBtnState(BTN_STATES.LOADING, '0 / ? files');
-
-      activeDownload = await window.GZPDownloader.start(selectedItems, {
-        onProgress: (current, total, label) => {
-          if (btn.dataset.state !== BTN_STATES.LOADING) return;
-          const p = btn.querySelector('.gzp-btn-progress');
-          if (p) p.textContent = label;
-        },
-        onDone: () => {
-          setBtnState(BTN_STATES.DONE);
-          setTimeout(resetBtnToIdle, 2500);
-        },
-        onError: (err) => {
-          setBtnState(BTN_STATES.ERROR, err.message);
-
-          // 显示系统通知（受设置控制）
-          chrome.storage.local.get([STORAGE.NOTIFY_SHOW], (res) => {
-            if (res[STORAGE.NOTIFY_SHOW] !== false) {
-              chrome.runtime.sendMessage({
-                type: 'GZP_SHOW_ERROR_NOTIFICATION',
-                message: err.message
-              });
-            }
-          });
-
-          setTimeout(resetBtnToIdle, 6000);
-        },
-      });
+      startDownload(selectedItems);
     });
 
-    document.body.appendChild(btn);
+    const resultButton = document.createElement('button');
+    resultButton.type = 'button';
+    resultButton.id = 'gzp-download-result-toggle';
+    resultButton.className = 'gzp-download-result-toggle gzp-result-toggle--hidden';
+    resultButton.setAttribute('aria-controls', 'gzp-download-panel');
+    resultButton.addEventListener('click', () => setPanelCollapsed(!panelCollapsed));
+    control.appendChild(btn);
+    control.appendChild(resultButton);
+    document.body.appendChild(control);
+    const panel = document.createElement('section');
+    panel.id = 'gzp-download-panel';
+    panel.className = 'gzp-download-panel gzp-download-panel--hidden';
+    panel.setAttribute('aria-live', 'polite');
+    document.body.appendChild(panel);
+    downloadControl = control;
     downloadBtn = btn;
+    resultToggleBtn = resultButton;
+    downloadPanel = panel;
+    applyDownloadTheme(extensionTheme);
     updateButtonPosition();
     return btn;
   }
 
   function updateButtonPosition() {
-    if (!downloadBtn) return;
+    if (!downloadControl) return;
 
     // Remove existing position classes
-    downloadBtn.classList.remove(
+    const positionedElements = [downloadControl, downloadPanel].filter(Boolean);
+    positionedElements.forEach(element => element.classList.remove(
       'gzp-pos-bottom-right',
       'gzp-pos-top-left',
       'gzp-pos-top-right',
@@ -804,10 +1114,10 @@
       'gzp-pos-bottom-center',
       'gzp-pos-left-center',
       'gzp-pos-right-center'
-    );
+    ));
 
     // Add new position class
-    downloadBtn.classList.add(`gzp-pos-${buttonPosition}`);
+    positionedElements.forEach(element => element.classList.add(`gzp-pos-${buttonPosition}`));
   }
 
   function updateDownloadButton() {
@@ -823,6 +1133,7 @@
     } else if (btn.dataset.state === BTN_STATES.IDLE) {
       btn.classList.add('gzp-download-btn--hidden');
     }
+    syncDownloadControlState();
   }
 
   // ─── 清除所有选中状态（页面跳转时调用）────────────────────────────────
@@ -1102,7 +1413,8 @@
 
   function loadSettings() {
     return new Promise((resolve) => {
-      chrome.storage.local.get([STORAGE.BUTTON_POSITION, STORAGE.SHOW_FILE_SIZES, STORAGE.DOUBLE_CLICK_SELECT], (res) => {
+      chrome.storage.local.get([STORAGE.THEME, STORAGE.BUTTON_POSITION, STORAGE.SHOW_FILE_SIZES, STORAGE.DOUBLE_CLICK_SELECT], (res) => {
+        applyDownloadTheme(res[STORAGE.THEME] || DEFAULTS.THEME);
         const savedPosition = res[STORAGE.BUTTON_POSITION] || DEFAULTS.BUTTON_POSITION;
         if (buttonPosition !== savedPosition) {
           buttonPosition = savedPosition;
@@ -1127,7 +1439,11 @@
 
     // Listen for storage changes (when user updates settings)
     chrome.storage.onChanged.addListener((changes, namespace) => {
-      if (namespace === 'sync') {
+      if (namespace === 'local' || namespace === 'sync') {
+        if (changes[STORAGE.THEME]) {
+          applyDownloadTheme(changes[STORAGE.THEME].newValue || DEFAULTS.THEME);
+        }
+
         if (changes[STORAGE.BUTTON_POSITION]) {
           buttonPosition = changes[STORAGE.BUTTON_POSITION].newValue || DEFAULTS.BUTTON_POSITION;
           updateButtonPosition();
@@ -1160,11 +1476,13 @@
               // Refresh download button text if in idle state
               if (downloadBtn && document.body.contains(downloadBtn)) {
                 const currentState = downloadBtn.dataset.state || BTN_STATES.IDLE;
+                setBtnState(currentState);
                 if (currentState === BTN_STATES.IDLE) {
-                  downloadBtn.innerHTML = getBtnHTML(BTN_STATES.IDLE);
                   const badge = downloadBtn.querySelector('.gzp-btn-badge');
                   if (badge) badge.textContent = selectedItems.size || '';
                 }
+                renderResultToggle();
+                renderProgressPanel();
               }
               // Refresh checkbox aria-labels
               document.querySelectorAll('.gzp-checkbox').forEach(cb => {
@@ -1215,11 +1533,13 @@
   document.addEventListener('gzp-locale-changed', () => {
     if (downloadBtn && document.body.contains(downloadBtn)) {
       const currentState = downloadBtn.dataset.state || BTN_STATES.IDLE;
+      setBtnState(currentState);
       if (currentState === BTN_STATES.IDLE) {
-        downloadBtn.innerHTML = getBtnHTML(BTN_STATES.IDLE);
         const badge = downloadBtn.querySelector('.gzp-btn-badge');
         if (badge) badge.textContent = selectedItems.size || '';
       }
+      renderResultToggle();
+      renderProgressPanel();
     }
   });
 

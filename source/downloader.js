@@ -4,7 +4,7 @@
  * Handles:
  *  1. Parsing GitHub file/folder URLs into { owner, repo, branch, path, type }
  *  2. Fetching file contents via GitHub API directly
- *  3. Recursively traversing directories
+ *  3. Scanning repository trees before downloading file contents
  *  4. Building a JSZip archive preserving the original tree structure
  *  5. Triggering the browser download
  *
@@ -13,9 +13,11 @@
  * Requires jszip.min.js to be loaded before this script.
  *
  * GitHub API endpoints used:
- *   GET https://api.github.com/repos/{owner}/{repo}/contents/{path}?ref={branch}
- *   → File:  { type:"file", name, path, content:<base64>, encoding:"base64" }
- *   → Dir:   [ { type:"file"|"dir", name, path, ... }, ... ]
+ *   GET /repos/{owner}/{repo}/git/matching-refs/heads/{ref}
+ *   GET /repos/{owner}/{repo}/git/matching-refs/tags/{ref}
+ *   GET /repos/{owner}/{repo}/git/trees/{tree_sha}[?recursive=1]
+ *   GET /repos/{owner}/{repo}/git/blobs/{sha}
+ *   GET /repos/{owner}/{repo}/contents/{path}?ref={branch} (compatibility fallback)
  */
 
 (function (global) {
@@ -45,6 +47,7 @@
       case 'downloader.file_too_large': return `${vars ? vars.path : 'File'} exceeds GitHub's 100 MB API download limit.`;
       case 'downloader.file_content_unavailable': return `GitHub did not provide downloadable content for: ${vars ? vars.path : 'unknown file'}`;
       case 'downloader.file_size_mismatch': return `Downloaded size mismatch for ${vars ? vars.path : 'file'}: expected ${vars ? vars.expected : '?'} bytes, received ${vars ? vars.actual : '?'} bytes.`;
+      case 'downloader.too_many_files': return `The selection contains more than ${vars ? vars.limit : MAX_FILE_COUNT} files. Download cancelled. Please select a smaller folder.`;
       default: return key;
     }
   }
@@ -58,18 +61,19 @@
 
   // ─── URL Parser ───────────────────────────────────────────────────────────
 
+  function decodeUrlPart(part) {
+    try {
+      return decodeURIComponent(part);
+    } catch {
+      return part;
+    }
+  }
+
   /**
-   * Parses a full GitHub URL into its components.
-   *
-   * Supported patterns:
-   *   https://github.com/owner/repo                        → tree root
-   *   https://github.com/owner/repo/tree/branch[/path]    → directory
-   *   https://github.com/owner/repo/blob/branch/path      → file
-   *
-   * @param {string} href  Full URL or pathname from the row element.
-   * @returns {{ owner, repo, branch, path, type: 'file'|'dir' } | null}
+   * Parses the structural URL segments without deciding where a ref ends.
+   * Slash-containing refs are resolved asynchronously by resolveGitHubUrl().
    */
-  function parseGitHubUrl(href) {
+  function parseGitHubUrlParts(href) {
     // Normalise — might be a relative pathname like /owner/repo/tree/main/...
     let url;
     try {
@@ -81,7 +85,11 @@
     if (url.hostname !== 'github.com') return null;
 
     // Remove leading slash and split
-    const parts = url.pathname.replace(/^\//, '').split('/').filter(Boolean);
+    const parts = url.pathname
+      .replace(/^\//, '')
+      .split('/')
+      .filter(Boolean)
+      .map(decodeUrlPart);
     // parts[0] = owner, parts[1] = repo, parts[2] = 'tree'|'blob'|undefined
     if (parts.length < 2) return null;
 
@@ -89,19 +97,125 @@
     const repo = parts[1];
     const seg3 = parts[2]; // 'tree', 'blob', or undefined
 
-    if (!seg3 || seg3 === 'tree') {
-      const branch = parts[3] || 'HEAD';
-      const path = parts.slice(4).join('/');
-      return { owner, repo, branch, path, type: 'dir' };
+    if (!seg3) return { owner, repo, refParts: [], type: 'dir' };
+    if (seg3 !== 'tree' && seg3 !== 'blob') return null;
+
+    const refParts = parts.slice(3).flatMap(part => part.split('/')).filter(Boolean);
+    return { owner, repo, refParts, type: seg3 === 'blob' ? 'file' : 'dir' };
+  }
+
+  /**
+   * Synchronous compatibility parser. Call resolveGitHubUrl() when the ref
+   * must be distinguished from a repository path.
+   */
+  function parseGitHubUrl(href) {
+    const parsed = parseGitHubUrlParts(href);
+    if (!parsed) return null;
+
+    const branch = parsed.refParts[0] || 'HEAD';
+    const path = parsed.refParts.slice(1).join('/');
+    return { owner: parsed.owner, repo: parsed.repo, branch, path, type: parsed.type };
+  }
+
+  function selectLongestMatchingRef(refNames, refParts, type) {
+    const fullPath = refParts.join('/');
+    return refNames
+      .filter(refName => fullPath === refName || fullPath.startsWith(`${refName}/`))
+      .filter(refName => type !== 'file' || fullPath.length > refName.length)
+      .sort((a, b) => b.length - a.length)[0] || null;
+  }
+
+  async function getMatchingRefNames(owner, repo, namespace, firstPart, signal, githubToken, tokenAccessMode, cache) {
+    const cacheKey = `${owner}/${repo}:${namespace}:${firstPart}`;
+    let pending = cache && cache.get(cacheKey);
+
+    if (!pending) {
+      const matchingPath = encodeURIFilePath(`${namespace}/${firstPart}`);
+      pending = githubFetch(
+        `/repos/${owner}/${repo}/git/matching-refs/${matchingPath}`,
+        signal,
+        githubToken,
+        tokenAccessMode
+      ).then(data => {
+        if (!Array.isArray(data)) {
+          throw new Error(`Expected matching Git refs for: ${firstPart}`);
+        }
+
+        const prefix = `refs/${namespace}/`;
+        return data
+          .map(item => item && typeof item.ref === 'string' ? item.ref : '')
+          .filter(ref => ref.startsWith(prefix))
+          .map(ref => ref.slice(prefix.length));
+      });
+
+      if (cache) cache.set(cacheKey, pending);
     }
 
-    if (seg3 === 'blob') {
-      const branch = parts[3] || 'HEAD';
-      const path = parts.slice(4).join('/');
-      return { owner, repo, branch, path, type: 'file' };
+    try {
+      return await pending;
+    } catch (error) {
+      if (cache && cache.get(cacheKey) === pending) cache.delete(cacheKey);
+      throw error;
+    }
+  }
+
+  async function resolveGitHubUrl(href, signal, githubToken = '', tokenAccessMode = 'anonymous', cache = null) {
+    const parsed = parseGitHubUrlParts(href);
+    if (!parsed) return null;
+
+    const { owner, repo, refParts, type } = parsed;
+    const fallback = {
+      owner,
+      repo,
+      branch: refParts[0] || 'HEAD',
+      path: refParts.slice(1).join('/'),
+      type,
+    };
+
+    if (refParts.length === 0 || fallback.branch === 'HEAD' || /^[0-9a-f]{7,40}$/i.test(fallback.branch)) {
+      return fallback;
     }
 
-    return null;
+    const branchRefs = await getMatchingRefNames(
+      owner,
+      repo,
+      'heads',
+      refParts[0],
+      signal,
+      githubToken,
+      tokenAccessMode,
+      cache
+    );
+    let matchedRef = selectLongestMatchingRef(branchRefs, refParts, type);
+
+    if (!matchedRef) {
+      const tagRefs = await getMatchingRefNames(
+        owner,
+        repo,
+        'tags',
+        refParts[0],
+        signal,
+        githubToken,
+        tokenAccessMode,
+        cache
+      );
+      matchedRef = selectLongestMatchingRef(tagRefs, refParts, type);
+    }
+
+    if (!matchedRef) return fallback;
+
+    const fullPath = refParts.join('/');
+    return {
+      owner,
+      repo,
+      branch: matchedRef,
+      path: fullPath.slice(matchedRef.length).replace(/^\//, ''),
+      type,
+    };
+  }
+
+  function sanitizeRefForPath(ref) {
+    return String(ref || 'HEAD').replace(/[\\/]+/g, '-');
   }
 
   // ─── Concurrency limiter ──────────────────────────────────────────────────
@@ -169,7 +283,12 @@
 
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
-      throw new Error(`GitHub API ${resp.status}: ${text.slice(0, 120)}`);
+      const error = new Error(`GitHub API ${resp.status}: ${text.slice(0, 120)}`);
+      error.code = resp.status === 403 || resp.status === 429 ? 'RATE_LIMITED' : 'GITHUB_API_ERROR';
+      error.httpStatus = resp.status;
+      error.requestPath = apiPath;
+      error.retryable = resp.status === 403 || resp.status === 429 || resp.status >= 500;
+      throw error;
     }
 
     return resp;
@@ -193,13 +312,31 @@
 
   function validateFileSize(path, bytes, expectedSize) {
     if (Number.isFinite(expectedSize) && bytes.length !== expectedSize) {
-      throw new Error(t('downloader.file_size_mismatch', {
+      const error = new Error(t('downloader.file_size_mismatch', {
         path,
         expected: expectedSize,
         actual: bytes.length,
       }));
+      error.code = 'SIZE_MISMATCH';
+      error.path = path;
+      error.retryable = true;
+      throw error;
     }
     return bytes;
+  }
+
+  async function fetchBlob(owner, repo, sha, path, expectedSize, signal, githubToken = '', tokenAccessMode = 'anonymous') {
+    if (Number.isFinite(expectedSize) && expectedSize > MAX_GITHUB_FILE_SIZE) {
+      const error = new Error(t('downloader.file_too_large', { path }));
+      error.code = 'FILE_TOO_LARGE';
+      error.path = path;
+      error.retryable = false;
+      throw error;
+    }
+
+    const blobPath = `/repos/${owner}/${repo}/git/blobs/${encodeURIComponent(sha)}`;
+    const bytes = await githubFetchBinary(blobPath, signal, githubToken, tokenAccessMode);
+    return validateFileSize(path, bytes, expectedSize);
   }
 
   /**
@@ -224,7 +361,7 @@
       throw new Error(`Symlink resolution exceeded max depth for: ${path}`);
     }
 
-    const apiPath = `/repos/${owner}/${repo}/contents/${encodeURIFilePath(path)}?ref=${branch}`;
+    const apiPath = `/repos/${owner}/${repo}/contents/${encodeURIFilePath(path)}?ref=${encodeURIComponent(branch)}`;
     const data = await githubFetch(
       apiPath,
       signal,
@@ -256,7 +393,11 @@
 
     const expectedSize = Number.isFinite(data.size) ? data.size : null;
     if (expectedSize !== null && expectedSize > MAX_GITHUB_FILE_SIZE) {
-      throw new Error(t('downloader.file_too_large', { path }));
+      const error = new Error(t('downloader.file_too_large', { path }));
+      error.code = 'FILE_TOO_LARGE';
+      error.path = path;
+      error.retryable = false;
+      throw error;
     }
 
     if (data.encoding === 'base64' && typeof data.content === 'string') {
@@ -269,7 +410,11 @@
     }
 
     if (!data.sha) {
-      throw new Error(t('downloader.file_content_unavailable', { path }));
+      const error = new Error(t('downloader.file_content_unavailable', { path }));
+      error.code = 'FILE_CONTENT_UNAVAILABLE';
+      error.path = path;
+      error.retryable = true;
+      throw error;
     }
 
     const blobPath = `/repos/${owner}/${repo}/git/blobs/${encodeURIComponent(data.sha)}`;
@@ -282,7 +427,7 @@
    * @returns {Array<{ type, name, path }>}
    */
   async function listDir(owner, repo, branch, path, signal, githubToken = '', tokenAccessMode = 'anonymous') {
-    const apiPath = `/repos/${owner}/${repo}/contents/${encodeURIFilePath(path)}?ref=${branch}`;
+    const apiPath = `/repos/${owner}/${repo}/contents/${encodeURIFilePath(path)}?ref=${encodeURIComponent(branch)}`;
     const data = await githubFetch(apiPath, signal, githubToken, tokenAccessMode);
 
     if (!Array.isArray(data)) {
@@ -291,61 +436,459 @@
     return data;
   }
 
-  // ─── Recursive traversal ──────────────────────────────────────────────────
+  // ─── Repository scanning ──────────────────────────────────────────────────
 
-  /**
-   * Recursively collects all files under a directory.
-   * Populates `fileList` with { path: string, fetch: () => Promise<Uint8Array> }.
-   * Tracks ignored files in stats.ignoredCount and stats.ignoredFiles.
-   */
-  async function collectFiles(owner, repo, branch, dirPath, fileList, signal, depth = 0, ignoreRules = [], stats = { ignoredCount: 0, ignoredFiles: [] }, githubToken = '', tokenAccessMode = 'anonymous') {
-    if (depth > 20) throw new Error(`Max depth exceeded at: ${dirPath}`);
-    if (fileList.length >= MAX_FILE_COUNT) return;
+  function createScanState(onChange = null) {
+    return {
+      files: [],
+      fileKeys: new Set(),
+      ignoredCount: 0,
+      ignoredFiles: [],
+      ignoredKeys: new Set(),
+      limitExceeded: false,
+      onChange,
+    };
+  }
 
-    const entries = await listDir(owner, repo, branch, dirPath, signal, githubToken, tokenAccessMode);
+  function notifyScanState(state) {
+    if (typeof state.onChange === 'function') state.onChange(state);
+  }
 
-    for (const entry of entries) {
-      if (fileList.length >= MAX_FILE_COUNT) break;
+  function scopedPathKey(owner, repo, branch, path) {
+    return `${owner}/${repo}@${branch}:${path}`;
+  }
 
-      if (isIgnored(entry.path, entry.type, ignoreRules)) {
-        stats.ignoredCount++;
-        stats.ignoredFiles.push(entry.path);
+  function recordIgnored(state, owner, repo, branch, path) {
+    const key = scopedPathKey(owner, repo, branch, path);
+    if (state.ignoredKeys.has(key)) return;
+    state.ignoredKeys.add(key);
+    state.ignoredCount++;
+    state.ignoredFiles.push(path);
+    notifyScanState(state);
+  }
+
+  function addFileCandidate(state, candidate) {
+    if (state.limitExceeded) return false;
+
+    const normalizedPath = normalizePath(candidate.path);
+    const key = scopedPathKey(candidate.owner, candidate.repo, candidate.branch, normalizedPath);
+    if (state.fileKeys.has(key)) return true;
+
+    if (state.files.length >= MAX_FILE_COUNT) {
+      state.limitExceeded = true;
+      notifyScanState(state);
+      return false;
+    }
+
+    state.fileKeys.add(key);
+    state.files.push({ ...candidate, path: normalizedPath });
+    notifyScanState(state);
+    return true;
+  }
+
+  function createTreeFileCandidate(group, entry, path, signal, githubToken, tokenAccessMode) {
+    const isSymlink = entry.mode === '120000';
+    const sizeBytes = !isSymlink && Number.isFinite(entry.size) ? entry.size : null;
+
+    return {
+      owner: group.owner,
+      repo: group.repo,
+      branch: group.branch,
+      path,
+      sizeBytes,
+      fetch: isSymlink
+        ? () => fetchFile(group.owner, group.repo, group.branch, path, signal, githubToken, tokenAccessMode)
+        : () => fetchBlob(group.owner, group.repo, entry.sha, path, sizeBytes, signal, githubToken, tokenAccessMode),
+    };
+  }
+
+  function createContentsFileCandidate(group, path, sizeBytes, signal, githubToken, tokenAccessMode) {
+    return {
+      owner: group.owner,
+      repo: group.repo,
+      branch: group.branch,
+      path,
+      sizeBytes: Number.isFinite(sizeBytes) ? sizeBytes : null,
+      fetch: () => fetchFile(group.owner, group.repo, group.branch, path, signal, githubToken, tokenAccessMode),
+    };
+  }
+
+  function isPathSelected(path, entryType, selectedItems) {
+    return selectedItems.some(item => {
+      if (item.type === 'file') return entryType === 'blob' && path === item.path;
+      if (!item.path) return true;
+      return path === item.path || path.startsWith(`${item.path}/`);
+    });
+  }
+
+  async function getGitTree(group, treeish, recursive, signal, githubToken, tokenAccessMode, cache = null) {
+    const cacheKey = recursive ? null : treeish;
+    if (cacheKey && cache && cache.has(cacheKey)) return cache.get(cacheKey);
+
+    const query = recursive ? '?recursive=1' : '';
+    const apiPath = `/repos/${group.owner}/${group.repo}/git/trees/${encodeURIComponent(treeish)}${query}`;
+    const data = await githubFetch(apiPath, signal, githubToken, tokenAccessMode);
+    if (!data || !Array.isArray(data.tree)) {
+      throw new Error(`Expected Git tree for: ${treeish}`);
+    }
+
+    if (cacheKey && cache) cache.set(cacheKey, data);
+    return data;
+  }
+
+  function collectFromRecursiveTree(group, tree, state, ignoreRules, signal, githubToken, tokenAccessMode) {
+    const relevantEntries = tree.filter(entry =>
+      entry && typeof entry.path === 'string' && isPathSelected(entry.path, entry.type, group.items)
+    );
+
+    const ignoredDirPrefixes = [];
+    const relevantDirs = relevantEntries
+      .filter(entry => entry.type === 'tree')
+      .sort((a, b) => a.path.split('/').length - b.path.split('/').length);
+
+    for (const entry of relevantDirs) {
+      if (ignoredDirPrefixes.some(prefix => entry.path.startsWith(prefix))) continue;
+      if (isIgnored(entry.path, 'dir', ignoreRules)) {
+        recordIgnored(state, group.owner, group.repo, group.branch, entry.path);
+        ignoredDirPrefixes.push(`${entry.path}/`);
+      }
+    }
+
+    const matchedSelectedFiles = new Set();
+    for (const entry of relevantEntries) {
+      if (state.limitExceeded) break;
+      if (entry.type !== 'blob') continue;
+
+      const path = entry.path;
+      if (ignoredDirPrefixes.some(prefix => path.startsWith(prefix))) continue;
+      if (isIgnored(path, 'file', ignoreRules)) {
+        recordIgnored(state, group.owner, group.repo, group.branch, path);
         continue;
       }
 
-      if (entry.type === 'file' || entry.type === 'symlink') {
-        const entryPath = entry.path;
-        fileList.push({
-          path: entryPath,
-          sizeBytes: Number.isFinite(entry.size) ? entry.size : null,
-          fetch: () => fetchFile(owner, repo, branch, entryPath, signal, githubToken, tokenAccessMode),
-        });
-      } else if (entry.type === 'dir') {
-        // Recurse synchronously to keep depth-first ordering
-        await collectFiles(owner, repo, branch, entry.path, fileList, signal, depth + 1, ignoreRules, stats, githubToken, tokenAccessMode);
+      if (group.items.some(item => item.type === 'file' && item.path === path)) {
+        matchedSelectedFiles.add(path);
+      }
+      addFileCandidate(
+        state,
+        createTreeFileCandidate(group, entry, path, signal, githubToken, tokenAccessMode)
+      );
+    }
+
+    for (const item of group.items) {
+      if (state.limitExceeded) break;
+      if (item.type !== 'file' || matchedSelectedFiles.has(item.path)) continue;
+      addFileCandidate(
+        state,
+        createContentsFileCandidate(group, item.path, null, signal, githubToken, tokenAccessMode)
+      );
+    }
+  }
+
+  async function resolveDirectoryTreeish(group, dirPath, treeCache, signal, githubToken, tokenAccessMode) {
+    let treeish = group.branch;
+    if (!dirPath) return treeish;
+
+    for (const segment of dirPath.split('/').filter(Boolean)) {
+      const data = await getGitTree(group, treeish, false, signal, githubToken, tokenAccessMode, treeCache);
+      if (data.truncated === true) throw new Error(`Non-recursive Git tree was truncated: ${dirPath}`);
+      const next = data.tree.find(entry => entry.type === 'tree' && entry.path === segment);
+      if (!next || !next.sha) return null;
+      treeish = next.sha;
+    }
+
+    return treeish;
+  }
+
+  async function collectTreeWalk(group, treeish, basePath, state, ignoreRules, treeCache, signal, githubToken, tokenAccessMode, depth = 0) {
+    if (depth > 20) throw new Error(`Max depth exceeded at: ${basePath}`);
+    if (state.limitExceeded) return;
+
+    const data = await getGitTree(group, treeish, false, signal, githubToken, tokenAccessMode, treeCache);
+    if (data.truncated === true) throw new Error(`Non-recursive Git tree was truncated: ${basePath || group.branch}`);
+
+    for (const entry of data.tree) {
+      if (state.limitExceeded) break;
+      if (!entry || typeof entry.path !== 'string') continue;
+
+      const path = basePath ? `${basePath}/${entry.path}` : entry.path;
+      if (entry.type === 'tree') {
+        if (isIgnored(path, 'dir', ignoreRules)) {
+          recordIgnored(state, group.owner, group.repo, group.branch, path);
+          continue;
+        }
+        await collectTreeWalk(group, entry.sha, path, state, ignoreRules, treeCache, signal, githubToken, tokenAccessMode, depth + 1);
+      } else if (entry.type === 'blob') {
+        if (isIgnored(path, 'file', ignoreRules)) {
+          recordIgnored(state, group.owner, group.repo, group.branch, path);
+          continue;
+        }
+        addFileCandidate(
+          state,
+          createTreeFileCandidate(group, entry, path, signal, githubToken, tokenAccessMode)
+        );
       }
     }
   }
 
+  async function collectFileFromTreeWalk(group, item, state, ignoreRules, treeCache, signal, githubToken, tokenAccessMode) {
+    const parts = item.path.split('/').filter(Boolean);
+    const filename = parts.pop();
+    const parentPath = parts.join('/');
+    const treeish = await resolveDirectoryTreeish(group, parentPath, treeCache, signal, githubToken, tokenAccessMode);
+    if (!treeish) return false;
+
+    const data = await getGitTree(group, treeish, false, signal, githubToken, tokenAccessMode, treeCache);
+    if (data.truncated === true) throw new Error(`Non-recursive Git tree was truncated: ${parentPath}`);
+    const entry = data.tree.find(candidate => candidate.type === 'blob' && candidate.path === filename);
+    if (!entry) return false;
+
+    if (isIgnored(item.path, 'file', ignoreRules)) {
+      recordIgnored(state, group.owner, group.repo, group.branch, item.path);
+      return true;
+    }
+
+    addFileCandidate(
+      state,
+      createTreeFileCandidate(group, entry, item.path, signal, githubToken, tokenAccessMode)
+    );
+    return true;
+  }
+
+  async function collectGroupWithTreeWalk(group, state, ignoreRules, signal, githubToken, tokenAccessMode) {
+    const treeCache = new Map();
+
+    for (const item of group.items) {
+      if (state.limitExceeded) break;
+      if (item.type === 'file') {
+        const found = await collectFileFromTreeWalk(group, item, state, ignoreRules, treeCache, signal, githubToken, tokenAccessMode);
+        if (!found) throw new Error(`Git tree path not found: ${item.path}`);
+        continue;
+      }
+
+      const treeish = await resolveDirectoryTreeish(group, item.path, treeCache, signal, githubToken, tokenAccessMode);
+      if (!treeish) throw new Error(`Git tree path not found: ${item.path}`);
+      await collectTreeWalk(group, treeish, item.path, state, ignoreRules, treeCache, signal, githubToken, tokenAccessMode);
+    }
+  }
+
+  async function collectContentsDirectory(group, dirPath, state, ignoreRules, signal, githubToken, tokenAccessMode, depth = 0) {
+    if (depth > 20) throw new Error(`Max depth exceeded at: ${dirPath}`);
+    if (state.limitExceeded) return;
+
+    const entries = await listDir(group.owner, group.repo, group.branch, dirPath, signal, githubToken, tokenAccessMode);
+    for (const entry of entries) {
+      if (state.limitExceeded) break;
+
+      const ignoreType = entry.type === 'dir' ? 'dir' : 'file';
+      if (isIgnored(entry.path, ignoreType, ignoreRules)) {
+        recordIgnored(state, group.owner, group.repo, group.branch, entry.path);
+        continue;
+      }
+
+      if (entry.type === 'file' || entry.type === 'symlink') {
+        addFileCandidate(
+          state,
+          createContentsFileCandidate(group, entry.path, entry.size, signal, githubToken, tokenAccessMode)
+        );
+      } else if (entry.type === 'dir') {
+        await collectContentsDirectory(group, entry.path, state, ignoreRules, signal, githubToken, tokenAccessMode, depth + 1);
+      }
+    }
+  }
+
+  async function collectGroupWithContents(group, state, ignoreRules, signal, githubToken, tokenAccessMode) {
+    for (const item of group.items) {
+      if (state.limitExceeded) break;
+      if (item.type === 'file') {
+        addFileCandidate(
+          state,
+          createContentsFileCandidate(group, item.path, null, signal, githubToken, tokenAccessMode)
+        );
+      } else {
+        await collectContentsDirectory(group, item.path, state, ignoreRules, signal, githubToken, tokenAccessMode);
+      }
+    }
+  }
+
+  async function scanGroup(group, state, ignoreRules, signal, githubToken, tokenAccessMode) {
+    try {
+      const recursiveTree = await getGitTree(group, group.branch, true, signal, githubToken, tokenAccessMode);
+      if (recursiveTree.truncated === true) {
+        await collectGroupWithTreeWalk(group, state, ignoreRules, signal, githubToken, tokenAccessMode);
+      } else {
+        collectFromRecursiveTree(group, recursiveTree.tree, state, ignoreRules, signal, githubToken, tokenAccessMode);
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') throw err;
+      if (state.limitExceeded) return;
+      console.warn('[GitZip Pro] Git Trees API scan failed; falling back to Contents API:', err);
+      await collectGroupWithContents(group, state, ignoreRules, signal, githubToken, tokenAccessMode);
+    }
+  }
+
   // ─── Main download entry point ────────────────────────────────────────────
+
+  function createAbortError() {
+    const error = new Error(t('downloader.cancelled'));
+    error.name = 'AbortError';
+    error.code = 'CANCELLED';
+    error.retryable = true;
+    return error;
+  }
+
+  function getBase64ByteLength(base64) {
+    const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
+    return Math.max(0, Math.floor(base64.length * 3 / 4) - padding);
+  }
+
+  function enrichDownloadError(error, phase) {
+    const normalized = error instanceof Error
+      ? error
+      : new Error(error && error.message ? error.message : String(error));
+    if (error && error !== normalized) {
+      ['name', 'code', 'path', 'requestPath', 'httpStatus', 'retryable'].forEach((key) => {
+        if (error[key] !== undefined) normalized[key] = error[key];
+      });
+    }
+    if (!normalized.phase) normalized.phase = phase;
+    if (!normalized.code) {
+      if (normalized.name === 'AbortError') normalized.code = 'CANCELLED';
+      else if (/rate limit/i.test(normalized.message)) normalized.code = 'RATE_LIMITED';
+      else if (/100 MB|too large/i.test(normalized.message)) normalized.code = 'FILE_TOO_LARGE';
+      else if (/size mismatch/i.test(normalized.message)) normalized.code = 'SIZE_MISMATCH';
+      else if (phase === 'scan') normalized.code = 'SCAN_FAILED';
+      else if (phase === 'download') normalized.code = 'DOWNLOAD_FAILED';
+      else if (phase === 'compress') normalized.code = 'ZIP_FAILED';
+      else if (phase === 'save') normalized.code = 'SAVE_FAILED';
+      else normalized.code = 'DOWNLOAD_FAILED';
+    }
+    if (typeof normalized.retryable !== 'boolean') {
+      normalized.retryable = !['FILE_TOO_LARGE', 'SIZE_MISMATCH'].includes(normalized.code);
+    }
+    return normalized;
+  }
+
+  function waitForSaveCompletion(taskId, signal, emitProgress, getDownloadId) {
+    if (!chrome.runtime.onMessage || typeof chrome.runtime.onMessage.addListener !== 'function') {
+      return Promise.resolve({ status: 'complete' });
+    }
+
+    let cancelWaiter = null;
+    const promise = new Promise((resolve, reject) => {
+      let settled = false;
+
+      const cleanup = () => {
+        chrome.runtime.onMessage.removeListener(listener);
+        signal.removeEventListener('abort', onAbort);
+      };
+
+      const finish = (action, value) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        action(value);
+      };
+
+      const listener = (message) => {
+        if (!message || message.type !== 'GZP_DOWNLOAD_STATUS' || message.taskId !== taskId) return;
+
+        if (message.status === 'progress' || message.status === 'started') {
+          emitProgress({
+            phase: 'save',
+            phaseProgress: Number.isFinite(message.progress) ? message.progress : null,
+            completedBytes: Number.isFinite(message.bytesReceived) ? message.bytesReceived : 0,
+            totalBytes: Number.isFinite(message.totalBytes) ? message.totalBytes : null,
+            zipSizeBytes: Number.isFinite(message.zipSizeBytes) ? message.zipSizeBytes : null,
+          });
+          return;
+        }
+
+        if (message.status === 'complete') {
+          finish(resolve, message);
+          return;
+        }
+
+        if (message.status === 'cancelled') {
+          finish(reject, createAbortError());
+          return;
+        }
+
+        if (message.status === 'interrupted') {
+          const error = new Error(message.message || t('downloader.save_interrupted'));
+          error.code = message.code || 'SAVE_INTERRUPTED';
+          error.phase = 'save';
+          error.retryable = true;
+          finish(reject, error);
+        }
+      };
+
+      const onAbort = () => {
+        const downloadId = getDownloadId();
+        if (downloadId != null) {
+          chrome.runtime.sendMessage({ type: 'GZP_CANCEL_DOWNLOAD', taskId, downloadId }, () => {
+            void chrome.runtime.lastError;
+          });
+        }
+        finish(reject, createAbortError());
+      };
+
+      chrome.runtime.onMessage.addListener(listener);
+      signal.addEventListener('abort', onAbort, { once: true });
+      cancelWaiter = (error) => finish(reject, error || createAbortError());
+    });
+    promise.cancel = cancelWaiter;
+    return promise;
+  }
 
   /**
    * Called by content.js when the user clicks Download.
    *
    * @param {Map<Element, string>} selectedItems  row → GitHub URL
    * @param {object} callbacks
-   * @param {(current:number, total:number, label:string) => void} callbacks.onProgress
-   * @param {() => void} callbacks.onDone
+   * @param {(progress:object) => void} callbacks.onProgress
+   * @param {(result:object) => void} callbacks.onDone
    * @param {(err: Error) => void} callbacks.onError
+   * @param {() => void} callbacks.onCancel
    */
-  async function start(selectedItems, callbacks = {}) {
-    const { onProgress, onDone, onError } = callbacks;
-
+  function start(selectedItems, callbacks = {}) {
+    const { onProgress, onDone, onError, onCancel } = callbacks;
     const abortCtrl = new AbortController();
     const { signal } = abortCtrl;
+    const taskId = `gzp_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    let currentPhase = 'scan';
+    let currentPath = '';
+    let downloadId = null;
+    let progressState = {
+      taskId,
+      phase: currentPhase,
+      phaseProgress: null,
+      completedFiles: 0,
+      totalFiles: null,
+      completedBytes: 0,
+      totalBytes: null,
+      totalBytesKnown: false,
+      ignoredCount: 0,
+      currentPath: '',
+      zipSizeBytes: null,
+    };
+
+    const emitProgress = (progress) => {
+      currentPhase = progress.phase || currentPhase;
+      if (progress.currentPath) currentPath = progress.currentPath;
+      progressState = {
+        ...progressState,
+        phase: currentPhase,
+        ...progress,
+      };
+      onProgress && onProgress({ ...progressState });
+    };
+
+    const run = async () => {
 
     // ① Read all settings from storage
     let settings;
+    let saveCompletion = null;
     try {
       settings = await getSettings();
     } catch {
@@ -355,49 +898,71 @@
 
     const compiledIgnoreRules = compileIgnoreRules(ignoreLabels || [], ignoreCustomVars || []);
 
-    // ② Parse all selected URLs
-    const parsed = [];
-    for (const [, href] of selectedItems) {
-      const info = parseGitHubUrl(href);
-      if (info) parsed.push(info);
-    }
-
-    if (parsed.length === 0) {
-      onError && onError(new Error(t('downloader.no_valid_items')));
-      return abortCtrl;
-    }
-
-    const { owner, repo, branch } = parsed[0];
-    const zipRoot = `${repo}-${branch}`;
-
     try {
-      // ③ Collect all files to download (traverse dirs recursively)
-      onProgress && onProgress(0, 0, t('downloader.scanning'));
+      // ② Parse all selected URLs and resolve the longest matching Git ref.
+      const parsed = [];
+      const refCache = new Map();
+      for (const [, href] of selectedItems) {
+        const info = await resolveGitHubUrl(href, signal, githubToken, tokenAccessMode, refCache);
+        if (info) parsed.push(info);
+      }
 
-      const fileList = []; // { path: string, fetch: fn }
-      let totalIgnored = 0;
-      let totalIgnoredFiles = [];
+      if (parsed.length === 0) {
+        throw new Error(t('downloader.no_valid_items'));
+      }
 
+      const { owner, repo, branch } = parsed[0];
+      const safeBranchPath = sanitizeRefForPath(branch);
+      const zipRoot = `${repo}-${safeBranchPath}`;
+
+      // ③ Scan and validate the complete selection before fetching file contents
+      emitProgress({ phase: 'scan' });
+
+      const scanState = createScanState((state) => {
+        const knownTotalBytes = state.files.reduce(
+          (sum, item) => sum + (Number.isFinite(item.sizeBytes) ? item.sizeBytes : 0),
+          0
+        );
+        emitProgress({
+          phase: 'scan',
+          totalFiles: state.files.length,
+          totalBytes: knownTotalBytes,
+          totalBytesKnown: state.files.every(item => Number.isFinite(item.sizeBytes)),
+          ignoredCount: state.ignoredCount,
+        });
+      });
+      const groups = new Map();
       for (const item of parsed) {
-        if (isIgnored(item.path, item.type, compiledIgnoreRules)) {
-          totalIgnored++;
-          totalIgnoredFiles.push(item.path);
+        const normalizedItem = { ...item, path: normalizePath(item.path) };
+        if (isIgnored(normalizedItem.path, normalizedItem.type, compiledIgnoreRules)) {
+          recordIgnored(scanState, normalizedItem.owner, normalizedItem.repo, normalizedItem.branch, normalizedItem.path);
           continue;
         }
 
-        if (item.type === 'file') {
-          fileList.push({
-            path: item.path,
-            sizeBytes: null,
-            fetch: () => fetchFile(item.owner, item.repo, item.branch, item.path, signal, githubToken, tokenAccessMode),
+        const groupKey = `${normalizedItem.owner}/${normalizedItem.repo}@${normalizedItem.branch}`;
+        if (!groups.has(groupKey)) {
+          groups.set(groupKey, {
+            owner: normalizedItem.owner,
+            repo: normalizedItem.repo,
+            branch: normalizedItem.branch,
+            items: [],
           });
-        } else {
-          const stats = { ignoredCount: 0, ignoredFiles: [] };
-          await collectFiles(item.owner, item.repo, item.branch, item.path, fileList, signal, 0, compiledIgnoreRules, stats, githubToken, tokenAccessMode);
-          totalIgnored += stats.ignoredCount;
-          totalIgnoredFiles.push(...stats.ignoredFiles);
         }
+        groups.get(groupKey).items.push(normalizedItem);
       }
+
+      for (const group of groups.values()) {
+        if (scanState.limitExceeded) break;
+        await scanGroup(group, scanState, compiledIgnoreRules, signal, githubToken, tokenAccessMode);
+      }
+
+      if (scanState.limitExceeded) {
+        throw new Error(t('downloader.too_many_files', { limit: MAX_FILE_COUNT }));
+      }
+
+      const fileList = scanState.files;
+      const totalIgnored = scanState.ignoredCount;
+      const totalIgnoredFiles = scanState.ignoredFiles;
 
       if (fileList.length === 0) {
         if (totalIgnored > 0) {
@@ -408,32 +973,99 @@
       }
 
       const total = fileList.length;
-      onProgress && onProgress(0, total, t('downloader.files_progress', { completed: 0, total }));
+      let totalBytes = fileList.reduce(
+        (sum, item) => sum + (Number.isFinite(item.sizeBytes) ? item.sizeBytes : 0),
+        0
+      );
+      let unknownSizeCount = fileList.filter(item => !Number.isFinite(item.sizeBytes)).length;
+      emitProgress({
+        phase: 'download',
+        totalFiles: total,
+        totalBytes,
+        totalBytesKnown: unknownSizeCount === 0,
+        ignoredCount: totalIgnored,
+      });
 
       // ── ZIP mode (default) ────────────────────────────────────────────
       const zip = new JSZip();
       let completed = 0;
+      let completedBytes = 0;
 
       const tasks = fileList.map(item => async () => {
+        if (signal.aborted) throw createAbortError();
         if (Number.isFinite(item.sizeBytes) && item.sizeBytes > MAX_GITHUB_FILE_SIZE) {
-          throw new Error(t('downloader.file_too_large', { path: item.path }));
+          const error = new Error(t('downloader.file_too_large', { path: item.path }));
+          error.code = 'FILE_TOO_LARGE';
+          error.path = item.path;
+          error.retryable = false;
+          throw error;
         }
+        emitProgress({
+          phase: 'download',
+          completedFiles: completed,
+          totalFiles: total,
+          completedBytes,
+          totalBytes,
+          totalBytesKnown: unknownSizeCount === 0,
+          ignoredCount: totalIgnored,
+          currentPath: item.path,
+        });
         const bytes = await item.fetch();
+        if (signal.aborted) throw createAbortError();
+        if (!Number.isFinite(item.sizeBytes)) {
+          totalBytes += bytes.length;
+          unknownSizeCount--;
+        }
         item.sizeBytes = bytes.length;
         zip.file(`${zipRoot}/${item.path}`, bytes);
         completed++;
-        onProgress && onProgress(completed, total, t('downloader.files_progress', { completed, total }));
+        completedBytes += bytes.length;
+        emitProgress({
+          phase: 'download',
+          phaseProgress: totalBytes > 0 && unknownSizeCount === 0 ? completedBytes / totalBytes : completed / total,
+          completedFiles: completed,
+          totalFiles: total,
+          completedBytes,
+          totalBytes,
+          totalBytesKnown: unknownSizeCount === 0,
+          ignoredCount: totalIgnored,
+          currentPath: item.path,
+        });
       });
 
       await withConcurrency(CONCURRENCY_LIMIT, tasks);
 
-      onProgress && onProgress(total, total, t('downloader.packing_zip'));
+      emitProgress({
+        phase: 'compress',
+        phaseProgress: 0,
+        completedFiles: total,
+        totalFiles: total,
+        completedBytes,
+        totalBytes: completedBytes,
+        totalBytesKnown: true,
+        ignoredCount: totalIgnored,
+      });
 
       const base64 = await zip.generateAsync({
         type: 'base64',
         compression: 'DEFLATE',
         compressionOptions: { level: 6 },
+      }, (metadata) => {
+        if (signal.aborted) throw createAbortError();
+        emitProgress({
+          phase: 'compress',
+          phaseProgress: Number.isFinite(metadata.percent) ? metadata.percent / 100 : null,
+          completedFiles: total,
+          totalFiles: total,
+          completedBytes,
+          totalBytes: completedBytes,
+          totalBytesKnown: true,
+          ignoredCount: totalIgnored,
+          currentPath: metadata.currentFile || '',
+        });
       });
+      if (signal.aborted) throw createAbortError();
+      const zipSizeBytes = getBase64ByteLength(base64);
 
       const template = (namingCustom && namingCustom.trim() !== '') ? namingCustom.trim() : namingPreset;
       const now = new Date();
@@ -447,7 +1079,7 @@
       let zipName = template
         .replace(/{owner}/g, owner)
         .replace(/{repo}/g, repo)
-        .replace(/{branch}/g, branch)
+        .replace(/{branch}/g, safeBranchPath)
         .replace(/{path}/g, pathName)
         .replace(/{date}/g, date)
         .replace(/{datetime}/g, datetime)
@@ -455,10 +1087,6 @@
 
       if (!zipName.toLowerCase().endsWith('.zip')) {
         zipName += '.zip';
-      }
-
-      if (notifySound) {
-        playDing();
       }
 
       // Create history record with download details
@@ -477,16 +1105,34 @@
         })),
         fileCount: fileList.length,
         ignoredCount: totalIgnored,
-        ignoredFiles: totalIgnoredFiles
+        ignoredFiles: totalIgnoredFiles,
+        sourceSizeBytes: completedBytes,
+        zipSizeBytes,
       };
+
+      saveCompletion = waitForSaveCompletion(taskId, signal, emitProgress, () => downloadId);
+      saveCompletion.catch(() => {});
+      emitProgress({
+        phase: 'save',
+        phaseProgress: null,
+        completedFiles: total,
+        totalFiles: total,
+        completedBytes: 0,
+        totalBytes: zipSizeBytes,
+        totalBytesKnown: true,
+        ignoredCount: totalIgnored,
+        zipSizeBytes,
+      });
 
       await new Promise((resolve, reject) => {
         chrome.runtime.sendMessage(
           {
             type: 'GZP_DOWNLOAD_FILE',
+            taskId,
             filename: zipName,
             base64,
             mimeType: 'application/zip',
+            zipSizeBytes,
             notifyShow,
             notifyOpen,
             historyRecord: historyRecord
@@ -498,21 +1144,62 @@
             if (!resp || !resp.ok) {
               return reject(new Error((resp && resp.error) || 'Download failed in background'));
             }
-            resolve(resp.downloadId);
+            downloadId = resp.downloadId;
+            if (signal.aborted) {
+              chrome.runtime.sendMessage({ type: 'GZP_CANCEL_DOWNLOAD', taskId, downloadId }, () => {
+                void chrome.runtime.lastError;
+              });
+              return reject(createAbortError());
+            }
+            resolve(downloadId);
           }
         );
       });
 
-      onDone && onDone();
+      await saveCompletion;
+
+      if (notifySound) playDing();
+
+      const result = {
+        taskId,
+        downloadId,
+        filename: zipName,
+        fileCount: total,
+        ignoredCount: totalIgnored,
+        sourceSizeBytes: completedBytes,
+        zipSizeBytes,
+      };
+      onDone && onDone(result);
+      return result;
 
     } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.error('[GitZip Pro] Download error:', err);
-        onError && onError(err);
+      const error = enrichDownloadError(err, currentPhase);
+      if (saveCompletion && typeof saveCompletion.cancel === 'function') {
+        saveCompletion.cancel(error);
       }
+      if (!error.path && currentPath) error.path = currentPath;
+      if (error.name === 'AbortError') {
+        onCancel && onCancel();
+        return { taskId, downloadId, cancelled: true };
+      }
+      console.error('[GitZip Pro] Download error:', error);
+      onError && onError(error);
+      return { taskId, downloadId, error };
     }
 
-    return abortCtrl;
+    };
+
+    const promise = run();
+    return {
+      taskId,
+      promise,
+      cancel() {
+        if (!signal.aborted) abortCtrl.abort();
+      },
+      get downloadId() {
+        return downloadId;
+      },
+    };
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -661,6 +1348,6 @@
 
   // ─── Export ───────────────────────────────────────────────────────────────
 
-  global.GZPDownloader = { start, parseGitHubUrl };
+  global.GZPDownloader = { start, parseGitHubUrl, resolveGitHubUrl };
 
 })(window);

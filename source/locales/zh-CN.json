@@ -259,8 +259,42 @@
   "download_btn": {
     "idle": "下载",
     "loading": "下载中…",
+    "cancelling": "正在取消…",
     "done": "完成！",
-    "error": "错误"
+    "error": "错误",
+    "cancelled": "已取消"
+  },
+
+  "download_progress": {
+    "title": "GitZip Pro",
+    "phase_scan": "扫描",
+    "phase_download": "下载",
+    "phase_compress": "压缩",
+    "phase_save": "保存",
+    "files": "个文件",
+    "at_least": "至少 ",
+    "source_size": "源文件大小",
+    "zip_size": "ZIP 大小",
+    "unknown_size": "未知大小",
+    "cancel": "取消",
+    "retry": "重试",
+    "close": "关闭",
+    "expand": "展开下载结果",
+    "collapse": "收起下载面板",
+    "clear_result": "清除结果",
+    "download_again": "再次下载",
+    "copy_details": "复制详情",
+    "last_download": "上次下载",
+    "completed": "已完成",
+    "failed": "下载失败",
+    "cancelled": "已取消",
+    "result_filename": "保存文件",
+    "result_file_count": "文件数量",
+    "error_phase": "阶段",
+    "error_code": "错误码",
+    "error_file": "文件",
+    "error_request": "请求",
+    "error_reason": "原因"
   },
 
   "context_menu": {
@@ -306,11 +340,14 @@
     "scanning": "正在扫描…",
     "files_progress": "{completed} / {total} 个文件",
     "packing_zip": "正在打包 ZIP…",
+    "cancelled": "下载已取消。",
+    "save_interrupted": "浏览器保存 ZIP 时中断。",
     "no_files_found": "未找到文件。",
     "all_skipped": "所选项目全部被忽略规则跳过（已排除 {count} 项）。如果这不是您的本意，请检查忽略设置。",
     "no_valid_items": "未选择有效的 GitHub 项目。",
     "file_too_large": "{path} 超过 GitHub API 的 100 MB 下载限制。",
     "file_content_unavailable": "GitHub 未提供可下载的文件内容：{path}",
-    "file_size_mismatch": "{path} 下载字节数不一致：预期 {expected} 字节，实际 {actual} 字节。"
+    "file_size_mismatch": "{path} 下载字节数不一致：预期 {expected} 字节，实际 {actual} 字节。",
+    "too_many_files": "所选内容超过 {limit} 个文件，已取消下载。请缩小选择范围后重试。"
   }
 }

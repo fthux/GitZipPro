@@ -5,7 +5,7 @@
  * (e.g. chrome.downloads) which are unavailable in content script context.
  *
  * Message protocol:
- *   Request:  { type: 'GZP_DOWNLOAD_FILE', filename: string, base64: string, mimeType?: string }
+ *   Request:  { type: 'GZP_DOWNLOAD_FILE', taskId: string, filename: string, base64: string, mimeType?: string }
  *   Response: { ok: true, downloadId: number } | { ok: false, error: string }
  */
 
@@ -20,6 +20,34 @@ const MENU_IDS = {
 };
 
 const activeDownloads = new Map();
+
+function sendDownloadStatus(download, status, details = {}) {
+  if (!download || download.tabId == null || !download.taskId) return;
+  try {
+    chrome.tabs.sendMessage(download.tabId, {
+      type: 'GZP_DOWNLOAD_STATUS',
+      taskId: download.taskId,
+      downloadId: download.downloadId,
+      status,
+      zipSizeBytes: download.zipSizeBytes,
+      ...details,
+    }, () => {
+      void chrome.runtime.lastError;
+    });
+  } catch (error) {
+    console.warn('[GitZip Pro] Failed to report download status', error);
+  }
+}
+
+function findActiveDownload(taskId, downloadId) {
+  if (downloadId != null && activeDownloads.has(downloadId)) {
+    return [downloadId, activeDownloads.get(downloadId)];
+  }
+  for (const entry of activeDownloads.entries()) {
+    if (entry[1].taskId === taskId) return entry;
+  }
+  return null;
+}
 
 // Context menu state
 let selectedItemHref = null;
@@ -151,10 +179,10 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 
 // Update context menu when receiving right-click info from content script
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Handle download file messages
   if (message.type === 'GZP_DOWNLOAD_FILE') {
-    const { filename, base64, mimeType = 'application/octet-stream', notifyShow, notifyOpen, historyRecord } = message;
+    const { taskId, filename, base64, mimeType = 'application/octet-stream', zipSizeBytes, notifyShow, notifyOpen, historyRecord } = message;
 
     (async () => {
       try {
@@ -167,10 +195,23 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           if (chrome.runtime.lastError) {
             sendResponse({ ok: false, error: chrome.runtime.lastError.message });
           } else {
-            if (notifyShow || notifyOpen) {
-              // Store filename and history record along with notification preferences
-              activeDownloads.set(downloadId, { notifyShow, notifyOpen, filename, historyRecord });
-            }
+            // Track every download so history persistence is independent of completion side effects.
+            const download = {
+              taskId,
+              downloadId,
+              tabId: sender && sender.tab ? sender.tab.id : null,
+              zipSizeBytes: Number.isFinite(zipSizeBytes) ? zipSizeBytes : null,
+              notifyShow,
+              notifyOpen,
+              filename,
+              historyRecord,
+            };
+            activeDownloads.set(downloadId, download);
+            sendDownloadStatus(download, 'started', {
+              bytesReceived: 0,
+              totalBytes: download.zipSizeBytes,
+              progress: 0,
+            });
             sendResponse({ ok: true, downloadId });
           }
         });
@@ -179,6 +220,26 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       }
     })();
 
+    return true;
+  }
+
+  if (message.type === 'GZP_CANCEL_DOWNLOAD') {
+    const entry = findActiveDownload(message.taskId, message.downloadId);
+    if (!entry) {
+      sendResponse({ ok: false, error: 'Download task not found' });
+      return false;
+    }
+
+    const [downloadId, download] = entry;
+    chrome.downloads.cancel(downloadId, () => {
+      if (chrome.runtime.lastError) {
+        sendResponse({ ok: false, error: chrome.runtime.lastError.message });
+        return;
+      }
+      activeDownloads.delete(downloadId);
+      sendDownloadStatus(download, 'cancelled');
+      sendResponse({ ok: true });
+    });
     return true;
   }
 
@@ -254,9 +315,30 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 chrome.downloads.onChanged.addListener((delta) => {
   if (delta.id && activeDownloads.has(delta.id)) {
+    const trackedDownload = activeDownloads.get(delta.id);
+    const bytesReceived = delta.bytesReceived && Number.isFinite(delta.bytesReceived.current)
+      ? delta.bytesReceived.current
+      : null;
+    const totalBytes = delta.totalBytes && Number.isFinite(delta.totalBytes.current)
+      ? delta.totalBytes.current
+      : trackedDownload.zipSizeBytes;
+
+    if (bytesReceived !== null) {
+      sendDownloadStatus(trackedDownload, 'progress', {
+        bytesReceived,
+        totalBytes,
+        progress: Number.isFinite(totalBytes) && totalBytes > 0 ? bytesReceived / totalBytes : null,
+      });
+    }
+
     if (delta.state && delta.state.current === 'complete') {
-      const prefs = activeDownloads.get(delta.id);
+      const prefs = trackedDownload;
       activeDownloads.delete(delta.id);
+      sendDownloadStatus(prefs, 'complete', {
+        bytesReceived: prefs.zipSizeBytes,
+        totalBytes: prefs.zipSizeBytes,
+        progress: 1,
+      });
 
       if (prefs.notifyShow) {
         try {
@@ -324,7 +406,13 @@ chrome.downloads.onChanged.addListener((delta) => {
         }
       })();
     } else if (delta.state && delta.state.current === 'interrupted') {
+      const prefs = trackedDownload;
       activeDownloads.delete(delta.id);
+      const code = delta.error && delta.error.current ? delta.error.current : 'SAVE_INTERRUPTED';
+      sendDownloadStatus(prefs, 'interrupted', {
+        code,
+        message: t('downloader.save_interrupted'),
+      });
     }
   }
 });

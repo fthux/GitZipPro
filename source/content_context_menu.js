@@ -59,8 +59,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     
     // Start download
     window.GZPDownloader.start(selectedItems, {
-      onProgress: (current, total, label) => {
-        console.log(`Downloading: ${label}`);
+      onProgress: (progress) => {
+        console.log(`Downloading: ${progress.phase}`, progress);
       },
       onDone: () => {
         console.log('Context menu download completed');
