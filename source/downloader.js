@@ -4,7 +4,7 @@
  * Handles:
  *  1. Parsing GitHub file/folder URLs into { owner, repo, branch, path, type }
  *  2. Fetching file contents via GitHub API directly
- *  3. Recursively traversing directories
+ *  3. Scanning repository trees before downloading file contents
  *  4. Building a JSZip archive preserving the original tree structure
  *  5. Triggering the browser download
  *
@@ -13,9 +13,9 @@
  * Requires jszip.min.js to be loaded before this script.
  *
  * GitHub API endpoints used:
- *   GET https://api.github.com/repos/{owner}/{repo}/contents/{path}?ref={branch}
- *   → File:  { type:"file", name, path, content:<base64>, encoding:"base64" }
- *   → Dir:   [ { type:"file"|"dir", name, path, ... }, ... ]
+ *   GET /repos/{owner}/{repo}/git/trees/{tree_sha}[?recursive=1]
+ *   GET /repos/{owner}/{repo}/git/blobs/{sha}
+ *   GET /repos/{owner}/{repo}/contents/{path}?ref={branch} (compatibility fallback)
  */
 
 (function (global) {
@@ -45,6 +45,7 @@
       case 'downloader.file_too_large': return `${vars ? vars.path : 'File'} exceeds GitHub's 100 MB API download limit.`;
       case 'downloader.file_content_unavailable': return `GitHub did not provide downloadable content for: ${vars ? vars.path : 'unknown file'}`;
       case 'downloader.file_size_mismatch': return `Downloaded size mismatch for ${vars ? vars.path : 'file'}: expected ${vars ? vars.expected : '?'} bytes, received ${vars ? vars.actual : '?'} bytes.`;
+      case 'downloader.too_many_files': return `The selection contains more than ${vars ? vars.limit : MAX_FILE_COUNT} files. Download cancelled. Please select a smaller folder.`;
       default: return key;
     }
   }
@@ -202,6 +203,16 @@
     return bytes;
   }
 
+  async function fetchBlob(owner, repo, sha, path, expectedSize, signal, githubToken = '', tokenAccessMode = 'anonymous') {
+    if (Number.isFinite(expectedSize) && expectedSize > MAX_GITHUB_FILE_SIZE) {
+      throw new Error(t('downloader.file_too_large', { path }));
+    }
+
+    const blobPath = `/repos/${owner}/${repo}/git/blobs/${encodeURIComponent(sha)}`;
+    const bytes = await githubFetchBinary(blobPath, signal, githubToken, tokenAccessMode);
+    return validateFileSize(path, bytes, expectedSize);
+  }
+
   /**
    * Fetches a single file from GitHub API and returns its binary content.
    * Small files use the Contents API's base64 content. Larger files fall back
@@ -291,39 +302,286 @@
     return data;
   }
 
-  // ─── Recursive traversal ──────────────────────────────────────────────────
+  // ─── Repository scanning ──────────────────────────────────────────────────
 
-  /**
-   * Recursively collects all files under a directory.
-   * Populates `fileList` with { path: string, fetch: () => Promise<Uint8Array> }.
-   * Tracks ignored files in stats.ignoredCount and stats.ignoredFiles.
-   */
-  async function collectFiles(owner, repo, branch, dirPath, fileList, signal, depth = 0, ignoreRules = [], stats = { ignoredCount: 0, ignoredFiles: [] }, githubToken = '', tokenAccessMode = 'anonymous') {
+  function createScanState() {
+    return {
+      files: [],
+      fileKeys: new Set(),
+      ignoredCount: 0,
+      ignoredFiles: [],
+      ignoredKeys: new Set(),
+      limitExceeded: false,
+    };
+  }
+
+  function scopedPathKey(owner, repo, branch, path) {
+    return `${owner}/${repo}@${branch}:${path}`;
+  }
+
+  function recordIgnored(state, owner, repo, branch, path) {
+    const key = scopedPathKey(owner, repo, branch, path);
+    if (state.ignoredKeys.has(key)) return;
+    state.ignoredKeys.add(key);
+    state.ignoredCount++;
+    state.ignoredFiles.push(path);
+  }
+
+  function addFileCandidate(state, candidate) {
+    if (state.limitExceeded) return false;
+
+    const normalizedPath = normalizePath(candidate.path);
+    const key = scopedPathKey(candidate.owner, candidate.repo, candidate.branch, normalizedPath);
+    if (state.fileKeys.has(key)) return true;
+
+    if (state.files.length >= MAX_FILE_COUNT) {
+      state.limitExceeded = true;
+      return false;
+    }
+
+    state.fileKeys.add(key);
+    state.files.push({ ...candidate, path: normalizedPath });
+    return true;
+  }
+
+  function createTreeFileCandidate(group, entry, path, signal, githubToken, tokenAccessMode) {
+    const sizeBytes = Number.isFinite(entry.size) ? entry.size : null;
+    const isSymlink = entry.mode === '120000';
+
+    return {
+      owner: group.owner,
+      repo: group.repo,
+      branch: group.branch,
+      path,
+      sizeBytes,
+      fetch: isSymlink
+        ? () => fetchFile(group.owner, group.repo, group.branch, path, signal, githubToken, tokenAccessMode)
+        : () => fetchBlob(group.owner, group.repo, entry.sha, path, sizeBytes, signal, githubToken, tokenAccessMode),
+    };
+  }
+
+  function createContentsFileCandidate(group, path, sizeBytes, signal, githubToken, tokenAccessMode) {
+    return {
+      owner: group.owner,
+      repo: group.repo,
+      branch: group.branch,
+      path,
+      sizeBytes: Number.isFinite(sizeBytes) ? sizeBytes : null,
+      fetch: () => fetchFile(group.owner, group.repo, group.branch, path, signal, githubToken, tokenAccessMode),
+    };
+  }
+
+  function isPathSelected(path, entryType, selectedItems) {
+    return selectedItems.some(item => {
+      if (item.type === 'file') return entryType === 'blob' && path === item.path;
+      if (!item.path) return true;
+      return path === item.path || path.startsWith(`${item.path}/`);
+    });
+  }
+
+  async function getGitTree(group, treeish, recursive, signal, githubToken, tokenAccessMode, cache = null) {
+    const cacheKey = recursive ? null : treeish;
+    if (cacheKey && cache && cache.has(cacheKey)) return cache.get(cacheKey);
+
+    const query = recursive ? '?recursive=1' : '';
+    const apiPath = `/repos/${group.owner}/${group.repo}/git/trees/${encodeURIComponent(treeish)}${query}`;
+    const data = await githubFetch(apiPath, signal, githubToken, tokenAccessMode);
+    if (!data || !Array.isArray(data.tree)) {
+      throw new Error(`Expected Git tree for: ${treeish}`);
+    }
+
+    if (cacheKey && cache) cache.set(cacheKey, data);
+    return data;
+  }
+
+  function collectFromRecursiveTree(group, tree, state, ignoreRules, signal, githubToken, tokenAccessMode) {
+    const relevantEntries = tree.filter(entry =>
+      entry && typeof entry.path === 'string' && isPathSelected(entry.path, entry.type, group.items)
+    );
+
+    const ignoredDirPrefixes = [];
+    const relevantDirs = relevantEntries
+      .filter(entry => entry.type === 'tree')
+      .sort((a, b) => a.path.split('/').length - b.path.split('/').length);
+
+    for (const entry of relevantDirs) {
+      if (ignoredDirPrefixes.some(prefix => entry.path.startsWith(prefix))) continue;
+      if (isIgnored(entry.path, 'dir', ignoreRules)) {
+        recordIgnored(state, group.owner, group.repo, group.branch, entry.path);
+        ignoredDirPrefixes.push(`${entry.path}/`);
+      }
+    }
+
+    const matchedSelectedFiles = new Set();
+    for (const entry of relevantEntries) {
+      if (state.limitExceeded) break;
+      if (entry.type !== 'blob') continue;
+
+      const path = entry.path;
+      if (ignoredDirPrefixes.some(prefix => path.startsWith(prefix))) continue;
+      if (isIgnored(path, 'file', ignoreRules)) {
+        recordIgnored(state, group.owner, group.repo, group.branch, path);
+        continue;
+      }
+
+      if (group.items.some(item => item.type === 'file' && item.path === path)) {
+        matchedSelectedFiles.add(path);
+      }
+      addFileCandidate(
+        state,
+        createTreeFileCandidate(group, entry, path, signal, githubToken, tokenAccessMode)
+      );
+    }
+
+    for (const item of group.items) {
+      if (state.limitExceeded) break;
+      if (item.type !== 'file' || matchedSelectedFiles.has(item.path)) continue;
+      addFileCandidate(
+        state,
+        createContentsFileCandidate(group, item.path, null, signal, githubToken, tokenAccessMode)
+      );
+    }
+  }
+
+  async function resolveDirectoryTreeish(group, dirPath, treeCache, signal, githubToken, tokenAccessMode) {
+    let treeish = group.branch;
+    if (!dirPath) return treeish;
+
+    for (const segment of dirPath.split('/').filter(Boolean)) {
+      const data = await getGitTree(group, treeish, false, signal, githubToken, tokenAccessMode, treeCache);
+      if (data.truncated === true) throw new Error(`Non-recursive Git tree was truncated: ${dirPath}`);
+      const next = data.tree.find(entry => entry.type === 'tree' && entry.path === segment);
+      if (!next || !next.sha) return null;
+      treeish = next.sha;
+    }
+
+    return treeish;
+  }
+
+  async function collectTreeWalk(group, treeish, basePath, state, ignoreRules, treeCache, signal, githubToken, tokenAccessMode, depth = 0) {
+    if (depth > 20) throw new Error(`Max depth exceeded at: ${basePath}`);
+    if (state.limitExceeded) return;
+
+    const data = await getGitTree(group, treeish, false, signal, githubToken, tokenAccessMode, treeCache);
+    if (data.truncated === true) throw new Error(`Non-recursive Git tree was truncated: ${basePath || group.branch}`);
+
+    for (const entry of data.tree) {
+      if (state.limitExceeded) break;
+      if (!entry || typeof entry.path !== 'string') continue;
+
+      const path = basePath ? `${basePath}/${entry.path}` : entry.path;
+      if (entry.type === 'tree') {
+        if (isIgnored(path, 'dir', ignoreRules)) {
+          recordIgnored(state, group.owner, group.repo, group.branch, path);
+          continue;
+        }
+        await collectTreeWalk(group, entry.sha, path, state, ignoreRules, treeCache, signal, githubToken, tokenAccessMode, depth + 1);
+      } else if (entry.type === 'blob') {
+        if (isIgnored(path, 'file', ignoreRules)) {
+          recordIgnored(state, group.owner, group.repo, group.branch, path);
+          continue;
+        }
+        addFileCandidate(
+          state,
+          createTreeFileCandidate(group, entry, path, signal, githubToken, tokenAccessMode)
+        );
+      }
+    }
+  }
+
+  async function collectFileFromTreeWalk(group, item, state, ignoreRules, treeCache, signal, githubToken, tokenAccessMode) {
+    const parts = item.path.split('/').filter(Boolean);
+    const filename = parts.pop();
+    const parentPath = parts.join('/');
+    const treeish = await resolveDirectoryTreeish(group, parentPath, treeCache, signal, githubToken, tokenAccessMode);
+    if (!treeish) return false;
+
+    const data = await getGitTree(group, treeish, false, signal, githubToken, tokenAccessMode, treeCache);
+    if (data.truncated === true) throw new Error(`Non-recursive Git tree was truncated: ${parentPath}`);
+    const entry = data.tree.find(candidate => candidate.type === 'blob' && candidate.path === filename);
+    if (!entry) return false;
+
+    if (isIgnored(item.path, 'file', ignoreRules)) {
+      recordIgnored(state, group.owner, group.repo, group.branch, item.path);
+      return true;
+    }
+
+    addFileCandidate(
+      state,
+      createTreeFileCandidate(group, entry, item.path, signal, githubToken, tokenAccessMode)
+    );
+    return true;
+  }
+
+  async function collectGroupWithTreeWalk(group, state, ignoreRules, signal, githubToken, tokenAccessMode) {
+    const treeCache = new Map();
+
+    for (const item of group.items) {
+      if (state.limitExceeded) break;
+      if (item.type === 'file') {
+        const found = await collectFileFromTreeWalk(group, item, state, ignoreRules, treeCache, signal, githubToken, tokenAccessMode);
+        if (!found) throw new Error(`Git tree path not found: ${item.path}`);
+        continue;
+      }
+
+      const treeish = await resolveDirectoryTreeish(group, item.path, treeCache, signal, githubToken, tokenAccessMode);
+      if (!treeish) throw new Error(`Git tree path not found: ${item.path}`);
+      await collectTreeWalk(group, treeish, item.path, state, ignoreRules, treeCache, signal, githubToken, tokenAccessMode);
+    }
+  }
+
+  async function collectContentsDirectory(group, dirPath, state, ignoreRules, signal, githubToken, tokenAccessMode, depth = 0) {
     if (depth > 20) throw new Error(`Max depth exceeded at: ${dirPath}`);
-    if (fileList.length >= MAX_FILE_COUNT) return;
+    if (state.limitExceeded) return;
 
-    const entries = await listDir(owner, repo, branch, dirPath, signal, githubToken, tokenAccessMode);
-
+    const entries = await listDir(group.owner, group.repo, group.branch, dirPath, signal, githubToken, tokenAccessMode);
     for (const entry of entries) {
-      if (fileList.length >= MAX_FILE_COUNT) break;
+      if (state.limitExceeded) break;
 
-      if (isIgnored(entry.path, entry.type, ignoreRules)) {
-        stats.ignoredCount++;
-        stats.ignoredFiles.push(entry.path);
+      const ignoreType = entry.type === 'dir' ? 'dir' : 'file';
+      if (isIgnored(entry.path, ignoreType, ignoreRules)) {
+        recordIgnored(state, group.owner, group.repo, group.branch, entry.path);
         continue;
       }
 
       if (entry.type === 'file' || entry.type === 'symlink') {
-        const entryPath = entry.path;
-        fileList.push({
-          path: entryPath,
-          sizeBytes: Number.isFinite(entry.size) ? entry.size : null,
-          fetch: () => fetchFile(owner, repo, branch, entryPath, signal, githubToken, tokenAccessMode),
-        });
+        addFileCandidate(
+          state,
+          createContentsFileCandidate(group, entry.path, entry.size, signal, githubToken, tokenAccessMode)
+        );
       } else if (entry.type === 'dir') {
-        // Recurse synchronously to keep depth-first ordering
-        await collectFiles(owner, repo, branch, entry.path, fileList, signal, depth + 1, ignoreRules, stats, githubToken, tokenAccessMode);
+        await collectContentsDirectory(group, entry.path, state, ignoreRules, signal, githubToken, tokenAccessMode, depth + 1);
       }
+    }
+  }
+
+  async function collectGroupWithContents(group, state, ignoreRules, signal, githubToken, tokenAccessMode) {
+    for (const item of group.items) {
+      if (state.limitExceeded) break;
+      if (item.type === 'file') {
+        addFileCandidate(
+          state,
+          createContentsFileCandidate(group, item.path, null, signal, githubToken, tokenAccessMode)
+        );
+      } else {
+        await collectContentsDirectory(group, item.path, state, ignoreRules, signal, githubToken, tokenAccessMode);
+      }
+    }
+  }
+
+  async function scanGroup(group, state, ignoreRules, signal, githubToken, tokenAccessMode) {
+    try {
+      const recursiveTree = await getGitTree(group, group.branch, true, signal, githubToken, tokenAccessMode);
+      if (recursiveTree.truncated === true) {
+        await collectGroupWithTreeWalk(group, state, ignoreRules, signal, githubToken, tokenAccessMode);
+      } else {
+        collectFromRecursiveTree(group, recursiveTree.tree, state, ignoreRules, signal, githubToken, tokenAccessMode);
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') throw err;
+      if (state.limitExceeded) return;
+      console.warn('[GitZip Pro] Git Trees API scan failed; falling back to Contents API:', err);
+      await collectGroupWithContents(group, state, ignoreRules, signal, githubToken, tokenAccessMode);
     }
   }
 
@@ -371,33 +629,42 @@
     const zipRoot = `${repo}-${branch}`;
 
     try {
-      // ③ Collect all files to download (traverse dirs recursively)
+      // ③ Scan and validate the complete selection before fetching file contents
       onProgress && onProgress(0, 0, t('downloader.scanning'));
 
-      const fileList = []; // { path: string, fetch: fn }
-      let totalIgnored = 0;
-      let totalIgnoredFiles = [];
-
+      const scanState = createScanState();
+      const groups = new Map();
       for (const item of parsed) {
-        if (isIgnored(item.path, item.type, compiledIgnoreRules)) {
-          totalIgnored++;
-          totalIgnoredFiles.push(item.path);
+        const normalizedItem = { ...item, path: normalizePath(item.path) };
+        if (isIgnored(normalizedItem.path, normalizedItem.type, compiledIgnoreRules)) {
+          recordIgnored(scanState, normalizedItem.owner, normalizedItem.repo, normalizedItem.branch, normalizedItem.path);
           continue;
         }
 
-        if (item.type === 'file') {
-          fileList.push({
-            path: item.path,
-            sizeBytes: null,
-            fetch: () => fetchFile(item.owner, item.repo, item.branch, item.path, signal, githubToken, tokenAccessMode),
+        const groupKey = `${normalizedItem.owner}/${normalizedItem.repo}@${normalizedItem.branch}`;
+        if (!groups.has(groupKey)) {
+          groups.set(groupKey, {
+            owner: normalizedItem.owner,
+            repo: normalizedItem.repo,
+            branch: normalizedItem.branch,
+            items: [],
           });
-        } else {
-          const stats = { ignoredCount: 0, ignoredFiles: [] };
-          await collectFiles(item.owner, item.repo, item.branch, item.path, fileList, signal, 0, compiledIgnoreRules, stats, githubToken, tokenAccessMode);
-          totalIgnored += stats.ignoredCount;
-          totalIgnoredFiles.push(...stats.ignoredFiles);
         }
+        groups.get(groupKey).items.push(normalizedItem);
       }
+
+      for (const group of groups.values()) {
+        if (scanState.limitExceeded) break;
+        await scanGroup(group, scanState, compiledIgnoreRules, signal, githubToken, tokenAccessMode);
+      }
+
+      if (scanState.limitExceeded) {
+        throw new Error(t('downloader.too_many_files', { limit: MAX_FILE_COUNT }));
+      }
+
+      const fileList = scanState.files;
+      const totalIgnored = scanState.ignoredCount;
+      const totalIgnoredFiles = scanState.ignoredFiles;
 
       if (fileList.length === 0) {
         if (totalIgnored > 0) {

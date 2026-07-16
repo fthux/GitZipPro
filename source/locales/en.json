@@ -311,6 +311,7 @@
     "no_valid_items": "No valid GitHub items selected.",
     "file_too_large": "{path} exceeds GitHub's 100 MB API download limit.",
     "file_content_unavailable": "GitHub did not provide downloadable content for: {path}",
-    "file_size_mismatch": "Downloaded size mismatch for {path}: expected {expected} bytes, received {actual} bytes."
+    "file_size_mismatch": "Downloaded size mismatch for {path}: expected {expected} bytes, received {actual} bytes.",
+    "too_many_files": "The selection contains more than {limit} files. Download cancelled. Please select a smaller folder."
   }
 }
