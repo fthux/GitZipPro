@@ -167,10 +167,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           if (chrome.runtime.lastError) {
             sendResponse({ ok: false, error: chrome.runtime.lastError.message });
           } else {
-            if (notifyShow || notifyOpen) {
-              // Store filename and history record along with notification preferences
-              activeDownloads.set(downloadId, { notifyShow, notifyOpen, filename, historyRecord });
-            }
+            // Track every download so history persistence is independent of completion side effects.
+            activeDownloads.set(downloadId, { notifyShow, notifyOpen, filename, historyRecord });
             sendResponse({ ok: true, downloadId });
           }
         });
