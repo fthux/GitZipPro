@@ -129,139 +129,156 @@
 }
 
 /* ─── Download Button ──────────────────────────────────────────────── */
-#gzp-download-btn {
+#gzp-download-control {
   position: fixed;
   z-index: 9999;
-
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-
-  /* Modern Solid Primary Color */
-  background-color: var(--gzp-primary-color);
-  color: #ffffff;
-  border: 1px solid rgba(27, 31, 36, 0.15);
-  border-radius: 9999px; /* Pill Shape */
-  cursor: pointer;
-
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1;
-  white-space: nowrap;
-
-  /* Sleek, subtle modern floating shadow */
+  display: inline-flex;
+  align-items: stretch;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
+  border-radius: 9999px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0, 0, 0, 0.2);
-
   transition: transform 0.2s cubic-bezier(0.3, 0, 0.4, 1), box-shadow 0.2s cubic-bezier(0.3, 0, 0.4, 1), opacity 0.2s ease, background-color 0.2s ease;
   transform: translateY(0);
-  opacity: 0.5;
+  opacity: 0.94;
   user-select: none;
 }
 
 /* Position classes */
-#gzp-download-btn.gzp-pos-bottom-right {
+#gzp-download-control.gzp-pos-bottom-right {
   bottom: 32px;
   right: 32px;
 }
 
-#gzp-download-btn.gzp-pos-top-left {
+#gzp-download-control.gzp-pos-top-left {
   top: 32px;
   left: 32px;
 }
 
-#gzp-download-btn.gzp-pos-top-right {
+#gzp-download-control.gzp-pos-top-right {
   top: 32px;
   right: 32px;
 }
 
-#gzp-download-btn.gzp-pos-bottom-left {
+#gzp-download-control.gzp-pos-bottom-left {
   bottom: 32px;
   left: 32px;
 }
 
-#gzp-download-btn.gzp-pos-top-center {
+#gzp-download-control.gzp-pos-top-center {
   top: 32px;
   left: 50%;
   transform: translateX(-50%);
 }
 
-#gzp-download-btn.gzp-pos-bottom-center {
+#gzp-download-control.gzp-pos-bottom-center {
   bottom: 32px;
   left: 50%;
   transform: translateX(-50%);
 }
 
-#gzp-download-btn.gzp-pos-left-center {
+#gzp-download-control.gzp-pos-left-center {
   top: 50%;
   left: 32px;
   transform: translateY(-50%);
 }
 
-#gzp-download-btn.gzp-pos-right-center {
+#gzp-download-control.gzp-pos-right-center {
   top: 50%;
   right: 32px;
   transform: translateY(-50%);
 }
 
-#gzp-download-btn:hover {
-  background-color: var(--gzp-primary-hover);
+#gzp-download-control:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2), 0 0 1px rgba(0, 0, 0, 0.2);
   opacity: 1;
 }
 
-#gzp-download-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-}
-
 /* Center positions need special handling for hover/active transforms */
-#gzp-download-btn.gzp-pos-top-center:hover,
-#gzp-download-btn.gzp-pos-bottom-center:hover {
+#gzp-download-control.gzp-pos-top-center:hover,
+#gzp-download-control.gzp-pos-bottom-center:hover {
   transform: translateX(-50%) translateY(-2px);
-  opacity: 1;
 }
 
-#gzp-download-btn.gzp-pos-top-center:active,
-#gzp-download-btn.gzp-pos-bottom-center:active {
-  transform: translateX(-50%) translateY(0);
-}
-
-#gzp-download-btn.gzp-pos-left-center:hover,
-#gzp-download-btn.gzp-pos-right-center:hover {
+#gzp-download-control.gzp-pos-left-center:hover,
+#gzp-download-control.gzp-pos-right-center:hover {
   transform: translateY(-52%);
-  opacity: 1;
 }
 
-#gzp-download-btn.gzp-pos-left-center:active,
-#gzp-download-btn.gzp-pos-right-center:active {
-  transform: translateY(-50%);
-}
-
-/* Hidden state */
-#gzp-download-btn.gzp-download-btn--hidden {
+#gzp-download-control.gzp-download-control--hidden {
   opacity: 0;
   pointer-events: none;
 }
 
 /* Hidden state with position-specific transforms */
-#gzp-download-btn.gzp-download-btn--hidden.gzp-pos-bottom-right,
-#gzp-download-btn.gzp-download-btn--hidden.gzp-pos-top-right,
-#gzp-download-btn.gzp-download-btn--hidden.gzp-pos-bottom-left,
-#gzp-download-btn.gzp-download-btn--hidden.gzp-pos-top-left {
+#gzp-download-control.gzp-download-control--hidden.gzp-pos-bottom-right,
+#gzp-download-control.gzp-download-control--hidden.gzp-pos-top-right,
+#gzp-download-control.gzp-download-control--hidden.gzp-pos-bottom-left,
+#gzp-download-control.gzp-download-control--hidden.gzp-pos-top-left {
   transform: translateY(12px);
 }
 
-#gzp-download-btn.gzp-download-btn--hidden.gzp-pos-top-center,
-#gzp-download-btn.gzp-download-btn--hidden.gzp-pos-bottom-center {
+#gzp-download-control.gzp-download-control--hidden.gzp-pos-top-center,
+#gzp-download-control.gzp-download-control--hidden.gzp-pos-bottom-center {
   transform: translateX(-50%) translateY(12px);
 }
 
-#gzp-download-btn.gzp-download-btn--hidden.gzp-pos-left-center,
-#gzp-download-btn.gzp-download-btn--hidden.gzp-pos-right-center {
+#gzp-download-control.gzp-download-control--hidden.gzp-pos-left-center,
+#gzp-download-control.gzp-download-control--hidden.gzp-pos-right-center {
   transform: translateY(-50%) translateX(12px);
+}
+
+#gzp-download-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 42px;
+  max-width: 100%;
+  padding: 12px 20px;
+  box-sizing: border-box;
+  color: #ffffff;
+  background-color: var(--gzp-primary-color);
+  border: 1px solid rgba(27, 31, 36, 0.15);
+  border-radius: 9999px;
+  cursor: pointer;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+  appearance: none;
+  transition: background-color 0.16s ease;
+}
+
+#gzp-download-btn:hover:not(:disabled) {
+  background-color: var(--gzp-primary-hover);
+}
+
+#gzp-download-btn:disabled {
+  color: #ffffff;
+  cursor: default;
+  opacity: 1;
+}
+
+#gzp-download-btn:focus-visible,
+#gzp-download-result-toggle:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid #ffffff;
+  outline-offset: -3px;
+  box-shadow: inset 0 0 0 4px rgba(9, 105, 218, 0.72);
+}
+
+#gzp-download-control.gzp-download-control--has-toggle #gzp-download-btn:not(.gzp-download-btn--hidden) {
+  border-right: 0;
+  border-radius: 9999px 0 0 9999px;
+}
+
+#gzp-download-btn.gzp-download-btn--hidden {
+  display: none;
 }
 
 /* Icon */
@@ -274,7 +291,10 @@
 
 /* Label */
 .gzp-btn-label {
+  min-width: 0;
+  overflow: hidden;
   font-size: 14px;
+  text-overflow: ellipsis;
 }
 
 /* Count badge */
@@ -296,19 +316,14 @@
 /* ─── Button state: loading ────────────────────────────────────────── */
 #gzp-download-btn[data-state="loading"] {
   background-color: var(--gzp-primary-color);
-  box-shadow: 0 4px 12px rgba(var(--gzp-primary-rgb), 0.3);
-  cursor: pointer;
-  transform: none !important;
-}
-
-#gzp-download-btn[data-state="loading"]:hover {
-  background-color: #085cc0;
+  cursor: default;
 }
 
 /* Spinner */
 .gzp-spinner {
   width: 16px;
   height: 16px;
+  box-sizing: border-box;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: #ffffff;
   border-radius: 50%;
@@ -332,120 +347,80 @@
   font-variant-numeric: tabular-nums;
 }
 
-.gzp-btn-toggle-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  background: rgba(0, 0, 0, 0.16);
-  border-radius: 50%;
-  font-size: 14px;
-  line-height: 1;
-}
-
 /* ─── Last download result toggle ──────────────────────────────────── */
 #gzp-download-result-toggle {
-  position: fixed;
-  z-index: 9999;
-  display: flex;
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 38px;
   align-items: center;
-  gap: 7px;
-  min-height: 38px;
-  padding: 9px 12px;
+  width: 38px;
+  min-height: 42px;
+  padding: 0;
+  box-sizing: border-box;
   color: #ffffff;
+  background: rgba(var(--gzp-primary-rgb), 0.88);
   border: 1px solid rgba(27, 31, 36, 0.15);
-  border-radius: 9999px;
+  border-left-color: rgba(255, 255, 255, 0.24);
+  border-radius: 0 9999px 9999px 0;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-  font-size: 12px;
-  font-weight: 600;
   line-height: 1;
   letter-spacing: 0;
-  white-space: nowrap;
-  opacity: 0.94;
-  transition: opacity 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+  appearance: none;
+  transition: background-color 0.16s ease;
 }
 
 #gzp-download-result-toggle:hover {
-  opacity: 1;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
-}
-
-#gzp-download-result-toggle[data-state="done"] {
-  background: #1f883d;
-}
-
-#gzp-download-result-toggle[data-state="error"] {
-  background: #cf222e;
-}
-
-#gzp-download-result-toggle[data-state="cancelled"] {
-  background: #57606a;
+  background: var(--gzp-primary-hover);
 }
 
 #gzp-download-result-toggle.gzp-result-toggle--hidden {
-  opacity: 0;
-  pointer-events: none;
+  display: none;
 }
 
-#gzp-download-result-toggle.gzp-pos-bottom-right {
-  right: 32px;
-  bottom: 86px;
+#gzp-download-btn.gzp-download-btn--hidden + #gzp-download-result-toggle {
+  border-left-color: rgba(27, 31, 36, 0.15);
+  border-radius: 9999px;
 }
 
-#gzp-download-result-toggle.gzp-pos-top-right {
-  top: 86px;
-  right: 32px;
-}
-
-#gzp-download-result-toggle.gzp-pos-bottom-left {
-  bottom: 86px;
-  left: 32px;
-}
-
-#gzp-download-result-toggle.gzp-pos-top-left {
-  top: 86px;
-  left: 32px;
-}
-
-#gzp-download-result-toggle.gzp-pos-top-center {
-  top: 86px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-#gzp-download-result-toggle.gzp-pos-bottom-center {
-  bottom: 86px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-#gzp-download-result-toggle.gzp-pos-left-center {
-  top: calc(50% + 58px);
-  left: 32px;
-  transform: translateY(-50%);
-}
-
-#gzp-download-result-toggle.gzp-pos-right-center {
-  top: calc(50% + 58px);
-  right: 32px;
-  transform: translateY(-50%);
-}
-
-.gzp-result-status-icon {
-  display: inline-grid;
-  place-items: center;
+.gzp-chevron-icon {
   width: 17px;
   height: 17px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  transition: transform 0.16s ease;
+}
+
+.gzp-chevron-icon--expanded {
+  transform: rotate(180deg);
+}
+
+.gzp-result-status-dot {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 7px;
+  height: 7px;
+  background: #8c959f;
+  border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 50%;
-  font-size: 11px;
-  font-weight: 700;
+  box-shadow: 0 0 0 1px rgba(27, 31, 36, 0.12);
+}
+
+#gzp-download-result-toggle[data-state="done"] .gzp-result-status-dot {
+  background: #2da44e;
+}
+
+#gzp-download-result-toggle[data-state="error"] .gzp-result-status-dot {
+  background: #f85149;
+}
+
+#gzp-download-result-toggle[data-state="cancelled"] .gzp-result-status-dot {
+  background: #8c959f;
 }
 
 #gzp-download-result-toggle[data-gzp-theme="dark"] {
   border-color: rgba(255, 255, 255, 0.14);
+  border-left-color: rgba(255, 255, 255, 0.24);
 }
 
 /* ─── Download progress panel ──────────────────────────────────────── */
@@ -518,20 +493,6 @@
   transform: translateY(-50%);
 }
 
-#gzp-download-panel.gzp-download-panel--with-result-toggle.gzp-pos-bottom-right,
-#gzp-download-panel.gzp-download-panel--with-result-toggle.gzp-pos-bottom-left,
-#gzp-download-panel.gzp-download-panel--with-result-toggle.gzp-pos-bottom-center {
-  bottom: 136px;
-  max-height: calc(100vh - 162px);
-}
-
-#gzp-download-panel.gzp-download-panel--with-result-toggle.gzp-pos-top-right,
-#gzp-download-panel.gzp-download-panel--with-result-toggle.gzp-pos-top-left,
-#gzp-download-panel.gzp-download-panel--with-result-toggle.gzp-pos-top-center {
-  top: 136px;
-  max-height: calc(100vh - 162px);
-}
-
 .gzp-panel-header {
   display: flex;
   align-items: flex-start;
@@ -580,6 +541,11 @@
   color: #1f2328;
   background: #f3f4f6;
   border-color: #d0d7de;
+}
+
+.gzp-panel-toggle .gzp-chevron-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .gzp-stage-list {
@@ -801,19 +767,15 @@
 }
 
 @media (max-width: 520px) {
-  #gzp-download-btn.gzp-pos-bottom-right,
-  #gzp-download-btn.gzp-pos-top-right,
-  #gzp-download-result-toggle.gzp-pos-bottom-right,
-  #gzp-download-result-toggle.gzp-pos-top-right,
+  #gzp-download-control.gzp-pos-bottom-right,
+  #gzp-download-control.gzp-pos-top-right,
   #gzp-download-panel.gzp-pos-bottom-right,
   #gzp-download-panel.gzp-pos-top-right {
     right: 16px;
   }
 
-  #gzp-download-btn.gzp-pos-bottom-left,
-  #gzp-download-btn.gzp-pos-top-left,
-  #gzp-download-result-toggle.gzp-pos-bottom-left,
-  #gzp-download-result-toggle.gzp-pos-top-left,
+  #gzp-download-control.gzp-pos-bottom-left,
+  #gzp-download-control.gzp-pos-top-left,
   #gzp-download-panel.gzp-pos-bottom-left,
   #gzp-download-panel.gzp-pos-top-left {
     left: 16px;

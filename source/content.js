@@ -29,6 +29,7 @@
   const fileSizeCache = new Map();
   const fileSizeRefCache = new Map();
 
+  let downloadControl = null;
   let downloadBtn = null;
   let resultToggleBtn = null;
   let downloadPanel = null;
@@ -654,7 +655,7 @@
   function applyDownloadTheme(theme) {
     extensionTheme = theme || DEFAULTS.THEME;
     const resolvedTheme = resolveDownloadTheme(extensionTheme);
-    [downloadBtn, resultToggleBtn, downloadPanel].filter(Boolean).forEach(element => {
+    [downloadControl, downloadBtn, resultToggleBtn, downloadPanel].filter(Boolean).forEach(element => {
       element.dataset.gzpTheme = resolvedTheme;
     });
   }
@@ -733,6 +734,15 @@
     return getPhaseLabel(lastProgress.phase);
   }
 
+  function getChevronIconHTML(expanded) {
+    return `
+      <svg class="gzp-chevron-icon${expanded ? ' gzp-chevron-icon--expanded' : ''}" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+           stroke-linejoin="round" aria-hidden="true">
+        <path d="m6 9 6 6 6-6"/>
+      </svg>`;
+  }
+
   function getBtnHTML(state) {
     switch (state) {
       case BTN_STATES.IDLE:
@@ -750,48 +760,58 @@
         return `
           <span class="gzp-spinner"></span>
           <span class="gzp-btn-label">${isCancelling ? t('download_btn.cancelling') : t('download_btn.loading')}</span>
-          <span class="gzp-btn-progress">${escapeHTML(getBtnProgressText())}</span>
-          <span class="gzp-btn-toggle-icon" aria-hidden="true">${panelCollapsed ? '+' : '&minus;'}</span>`;
+          <span class="gzp-btn-progress">${escapeHTML(getBtnProgressText())}</span>`;
       default:
         return '';
     }
   }
 
   function getResultToggleHTML() {
-    let icon = '';
-    let label = '';
-    if (panelState === BTN_STATES.DONE) {
-      icon = '<span class="gzp-result-status-icon">&#10003;</span>';
-      label = t('download_progress.last_download');
-    } else if (panelState === BTN_STATES.ERROR) {
-      icon = '<span class="gzp-result-status-icon">!</span>';
-      label = t('download_progress.failed');
-    } else if (panelState === BTN_STATES.CANCELLED) {
-      icon = '<span class="gzp-result-status-icon">&#8211;</span>';
-      label = t('download_progress.cancelled');
-    }
-    return `${icon}<span class="gzp-result-toggle-label">${escapeHTML(label)}</span><span class="gzp-btn-toggle-icon" aria-hidden="true">${panelCollapsed ? '+' : '&minus;'}</span>`;
+    const hasTerminalStatus = [BTN_STATES.DONE, BTN_STATES.ERROR, BTN_STATES.CANCELLED].includes(panelState);
+    const statusDot = hasTerminalStatus ? '<span class="gzp-result-status-dot" aria-hidden="true"></span>' : '';
+    return `${statusDot}${getChevronIconHTML(!panelCollapsed)}`;
+  }
+
+  function syncDownloadControlState() {
+    if (!downloadControl || !downloadBtn || !resultToggleBtn) return;
+    const downloadHidden = downloadBtn.classList.contains('gzp-download-btn--hidden');
+    const toggleHidden = resultToggleBtn.classList.contains('gzp-result-toggle--hidden');
+    downloadControl.classList.toggle('gzp-download-control--has-toggle', !toggleHidden);
+    downloadControl.classList.toggle('gzp-download-control--hidden', downloadHidden && toggleHidden);
   }
 
   function renderResultToggle() {
     if (!resultToggleBtn) return;
-    const hasResult = [BTN_STATES.DONE, BTN_STATES.ERROR, BTN_STATES.CANCELLED].includes(panelState);
-    resultToggleBtn.classList.toggle('gzp-result-toggle--hidden', !hasResult);
-    if (!hasResult) return;
+    const hasDetails = panelState !== BTN_STATES.IDLE;
+    resultToggleBtn.classList.toggle('gzp-result-toggle--hidden', !hasDetails);
+    if (!hasDetails) {
+      syncDownloadControlState();
+      return;
+    }
     resultToggleBtn.dataset.state = panelState;
     resultToggleBtn.innerHTML = getResultToggleHTML();
-    resultToggleBtn.title = t(panelCollapsed ? 'download_progress.expand' : 'download_progress.collapse');
+    const actionLabel = t(panelCollapsed ? 'download_progress.expand' : 'download_progress.collapse');
+    const stateLabel = panelState === BTN_STATES.DONE
+      ? t('download_progress.last_download')
+      : panelState === BTN_STATES.ERROR
+        ? t('download_progress.failed')
+        : panelState === BTN_STATES.CANCELLED
+          ? t('download_progress.cancelled')
+          : '';
+    const accessibleLabel = stateLabel ? `${stateLabel}: ${actionLabel}` : actionLabel;
+    resultToggleBtn.title = accessibleLabel;
+    resultToggleBtn.setAttribute('aria-label', accessibleLabel);
     resultToggleBtn.setAttribute('aria-expanded', String(!panelCollapsed));
+    syncDownloadControlState();
   }
 
   function setBtnState(state) {
     if (!downloadBtn) return;
     downloadBtn.innerHTML = getBtnHTML(state);
     downloadBtn.dataset.state = state;
-    downloadBtn.disabled = false;
-    downloadBtn.title = state === BTN_STATES.LOADING
-      ? t(panelCollapsed ? 'download_progress.expand' : 'download_progress.collapse')
-      : '';
+    downloadBtn.disabled = state === BTN_STATES.LOADING;
+    downloadBtn.setAttribute('aria-busy', String(state === BTN_STATES.LOADING));
+    downloadBtn.title = '';
   }
 
   function resetBtnToIdle() {
@@ -869,7 +889,6 @@
     }
 
     downloadPanel.classList.remove('gzp-download-panel--hidden');
-    downloadPanel.classList.toggle('gzp-download-panel--with-result-toggle', [BTN_STATES.DONE, BTN_STATES.ERROR, BTN_STATES.CANCELLED].includes(buttonState));
     const progressPercent = lastProgress && Number.isFinite(lastProgress.phaseProgress)
       ? Math.max(0, Math.min(100, Math.round(lastProgress.phaseProgress * 100)))
       : null;
@@ -924,7 +943,7 @@
           <strong>${escapeHTML(t('download_progress.title'))}</strong>
           <span>${escapeHTML(terminalStatus)}</span>
         </div>
-        <button type="button" class="gzp-panel-toggle" title="${escapeHTML(t('download_progress.collapse'))}" aria-label="${escapeHTML(t('download_progress.collapse'))}">&minus;</button>
+        <button type="button" class="gzp-panel-toggle" title="${escapeHTML(t('download_progress.collapse'))}" aria-label="${escapeHTML(t('download_progress.collapse'))}">${getChevronIconHTML(true)}</button>
       </div>
       <div class="gzp-stage-list">${stages}</div>
       <div class="gzp-progress-track ${progressPercent === null && buttonState === BTN_STATES.LOADING ? 'gzp-progress-track--indeterminate' : ''}">
@@ -1029,13 +1048,18 @@
   }
 
   function ensureDownloadButton() {
-    if (downloadBtn && document.body.contains(downloadBtn)) {
+    if (downloadControl && downloadBtn && document.body.contains(downloadControl)) {
       // Ensure button has correct position class
       updateButtonPosition();
       return downloadBtn;
     }
 
+    const control = document.createElement('div');
+    control.id = 'gzp-download-control';
+    control.className = 'gzp-download-control gzp-download-control--hidden';
+
     const btn = document.createElement('button');
+    btn.type = 'button';
     btn.id = 'gzp-download-btn';
     btn.className = 'gzp-download-btn gzp-download-btn--hidden';
     btn.dataset.state = BTN_STATES.IDLE;
@@ -1043,10 +1067,7 @@
 
     btn.addEventListener('click', () => {
       const state = btn.dataset.state || BTN_STATES.IDLE;
-      if (state !== BTN_STATES.IDLE) {
-        setPanelCollapsed(!panelCollapsed);
-        return;
-      }
+      if (state !== BTN_STATES.IDLE) return;
 
       if (!window.GZPDownloader) {
         alert('GitZip Pro: downloader not loaded. Please reload the page.');
@@ -1056,18 +1077,21 @@
       startDownload(selectedItems);
     });
 
-    document.body.appendChild(btn);
     const resultButton = document.createElement('button');
+    resultButton.type = 'button';
     resultButton.id = 'gzp-download-result-toggle';
     resultButton.className = 'gzp-download-result-toggle gzp-result-toggle--hidden';
     resultButton.setAttribute('aria-controls', 'gzp-download-panel');
     resultButton.addEventListener('click', () => setPanelCollapsed(!panelCollapsed));
-    document.body.appendChild(resultButton);
+    control.appendChild(btn);
+    control.appendChild(resultButton);
+    document.body.appendChild(control);
     const panel = document.createElement('section');
     panel.id = 'gzp-download-panel';
     panel.className = 'gzp-download-panel gzp-download-panel--hidden';
     panel.setAttribute('aria-live', 'polite');
     document.body.appendChild(panel);
+    downloadControl = control;
     downloadBtn = btn;
     resultToggleBtn = resultButton;
     downloadPanel = panel;
@@ -1077,10 +1101,10 @@
   }
 
   function updateButtonPosition() {
-    if (!downloadBtn) return;
+    if (!downloadControl) return;
 
     // Remove existing position classes
-    const positionedElements = [downloadBtn, resultToggleBtn, downloadPanel].filter(Boolean);
+    const positionedElements = [downloadControl, downloadPanel].filter(Boolean);
     positionedElements.forEach(element => element.classList.remove(
       'gzp-pos-bottom-right',
       'gzp-pos-top-left',
@@ -1109,6 +1133,7 @@
     } else if (btn.dataset.state === BTN_STATES.IDLE) {
       btn.classList.add('gzp-download-btn--hidden');
     }
+    syncDownloadControlState();
   }
 
   // ─── 清除所有选中状态（页面跳转时调用）────────────────────────────────
