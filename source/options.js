@@ -330,20 +330,21 @@ chrome.storage.local.get(
     notifySound.checked = res[STORAGE.NOTIFY_SOUND] !== false;
     notifyOpen.checked = res[STORAGE.NOTIFY_OPEN] === true;
 
-    // Auto Ignore
-    if (res[STORAGE.IGNORE_LABELS]) {
-      activeLabels = new Set(res[STORAGE.IGNORE_LABELS]);
-    } else {
-      activeLabels = new Set(PRESET_COMBOS.full_repo);
-    }
-
-    if (res[STORAGE.IGNORE_CUSTOM_VARS]) {
-      customRules = res[STORAGE.IGNORE_CUSTOM_VARS];
-    }
-
-    renderIgnoreTags();
-    updatePresetButtons();
-    renderCustomRules();
+    // Auto-Ignore Files is disabled. Keep the stored settings and implementation
+    // intact so the feature can be restored without losing existing user choices.
+    // if (res[STORAGE.IGNORE_LABELS]) {
+    //   activeLabels = new Set(res[STORAGE.IGNORE_LABELS]);
+    // } else {
+    //   activeLabels = new Set(PRESET_COMBOS.full_repo);
+    // }
+    //
+    // if (res[STORAGE.IGNORE_CUSTOM_VARS]) {
+    //   customRules = res[STORAGE.IGNORE_CUSTOM_VARS];
+    // }
+    //
+    // renderIgnoreTags();
+    // updatePresetButtons();
+    // renderCustomRules();
 
     // Token settings
     loadTokenSettings();
@@ -431,19 +432,20 @@ function updatePresetButtons() {
   });
 }
 
-document.querySelectorAll('.gzp-preset-chk').forEach(chk => {
-  chk.addEventListener('change', () => {
-    if (chk.checked) {
-      const presetId = chk.value;
-      activeLabels = new Set(PRESET_COMBOS[presetId]);
-    } else {
-      activeLabels = new Set();
-    }
-    renderIgnoreTags();
-    updatePresetButtons();
-    saveIgnoreSettings();
-  });
-});
+// Auto-Ignore Files is disabled; keep the original preset interaction for restoration.
+// document.querySelectorAll('.gzp-preset-chk').forEach(chk => {
+//   chk.addEventListener('change', () => {
+//     if (chk.checked) {
+//       const presetId = chk.value;
+//       activeLabels = new Set(PRESET_COMBOS[presetId]);
+//     } else {
+//       activeLabels = new Set();
+//     }
+//     renderIgnoreTags();
+//     updatePresetButtons();
+//     saveIgnoreSettings();
+//   });
+// });
 
 const customRuleInput = document.getElementById('customRuleInput');
 const addCustomRuleBtn = document.getElementById('addCustomRuleBtn');
@@ -473,19 +475,20 @@ function renderCustomRules() {
   });
 }
 
-addCustomRuleBtn.addEventListener('click', () => {
-  const val = customRuleInput.value.trim();
-  if (val && !customRules.includes(val)) {
-    customRules.push(val);
-    customRuleInput.value = '';
-    renderCustomRules();
-    saveIgnoreSettings();
-  }
-});
-
-customRuleInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') addCustomRuleBtn.click();
-});
+// Auto-Ignore Files is disabled; keep the original custom-rule interaction for restoration.
+// addCustomRuleBtn.addEventListener('click', () => {
+//   const val = customRuleInput.value.trim();
+//   if (val && !customRules.includes(val)) {
+//     customRules.push(val);
+//     customRuleInput.value = '';
+//     renderCustomRules();
+//     saveIgnoreSettings();
+//   }
+// });
+//
+// customRuleInput.addEventListener('keypress', (e) => {
+//   if (e.key === 'Enter') addCustomRuleBtn.click();
+// });
 
 // ─── Token Management ─────────────────────────────────────────────────────────
 

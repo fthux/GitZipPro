@@ -62,6 +62,8 @@
     "naming_custom_placeholder": "Or type custom format...",
     "naming_custom_label": "Custom ZIP naming format",
     "auto_ignore": "Auto-Ignore Files",
+    "auto_ignore_removed_title": "Auto-Ignore Files has been removed",
+    "auto_ignore_removed_desc": "To prevent automatic rules from excluding files you need, downloads now include every file and folder selected on GitHub.",
     "quick_presets": "Quick Presets",
     "quick_presets_desc": "Instantly load predefined filter combinations for different scenarios.",
     "preset_full_repo": "Full Repository",

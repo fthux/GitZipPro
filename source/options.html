@@ -1301,6 +1301,17 @@ input[type="checkbox"] {
 
         <h2 class="section-title" data-i18n="download.auto_ignore">Auto-Ignore Files</h2>
         <div class="card">
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-title" data-i18n="download.auto_ignore_removed_title">Auto-Ignore Files has been removed</div>
+              <div class="setting-desc" data-i18n="download.auto_ignore_removed_desc">To prevent automatic rules from excluding files you need, downloads now include every file and folder selected on GitHub.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Auto-Ignore Files controls are retained for possible restoration, but hidden while the feature is disabled. -->
+        <h2 class="section-title" data-i18n="download.auto_ignore" aria-hidden="true" hidden>Auto-Ignore Files</h2>
+        <div class="card" aria-hidden="true" hidden>
           <!-- Presets Group -->
           <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 12px;">
             <div class="setting-info" style="margin-bottom: 4px;">
