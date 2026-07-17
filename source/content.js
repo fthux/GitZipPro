@@ -379,7 +379,6 @@
     const wrapper = document.createElement('span');
     wrapper.className = 'gzp-cb-wrapper';
     wrapper.setAttribute('data-gzp-cb-wrapper', 'true');
-    // 内联样式确保可见
     wrapper.style.display = 'inline-flex';
     wrapper.style.alignItems = 'center';
     wrapper.style.justifyContent = 'center';
@@ -387,8 +386,6 @@
     wrapper.style.height = '20px';
     wrapper.style.marginRight = '8px';
     wrapper.style.flexShrink = '0';
-    wrapper.style.opacity = '1';
-    wrapper.style.visibility = 'visible';
 
     const cb = document.createElement('input');
     cb.type = 'checkbox';
@@ -483,10 +480,6 @@
       targetCell.style.position = 'relative';
     }
 
-    // Ensure the wrapper is visible by default
-    wrapper.style.opacity = '1';
-    wrapper.style.visibility = 'visible';
-
     targetCell.insertBefore(wrapper, targetCell.firstChild);
 
     // 显示文件大小（仅当设置开启时）
@@ -513,9 +506,6 @@
     if (cb.checked) {
       wrapper.classList.add('gzp-cb-wrapper--visible');
     }
-
-    // Ensure the wrapper is visible by default
-    wrapper.classList.add('gzp-cb-wrapper--visible');
 
     // 添加双击选择功能
     let lastClickTime = 0;
