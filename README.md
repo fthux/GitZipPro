@@ -8,6 +8,8 @@ English | [简体中文](./README.zh-CN.md)
 
 GitZip Pro is a Chrome extension inspired by **GitZip for GitHub**, with additional UX and workflow enhancements for downloading selected GitHub files and folders as ZIP archives.
 
+[Visit the official website](https://gitzippro.fthux.com) to see how GitZip Pro works, explore its features, and install it for your browser.
+
 [![GitHub top language](https://img.shields.io/github/languages/top/fthux/GitZipPro?logo=github)](https://github.com/fthux/GitZipPro/commits/master/)
 [![GitHub License](https://img.shields.io/github/license/fthux/GitZipPro?logo=github)](LICENSE)
 [![Security](https://sonarcloud.io/api/project_badges/measure?project=fthux_GitZipPro&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=fthux_GitZipPro)
@@ -26,9 +28,7 @@ GitZip Pro is a Chrome extension inspired by **GitZip for GitHub**, with additio
 
 ## Install
 
-- [Chrome Browser](https://chromewebstore.google.com/detail/gitzip-pro/lpjpkopdlnpgcifigibaelbbkmigjjnp)
-
-- [Brave Browser](https://chromewebstore.google.com/detail/gitzip-pro/lpjpkopdlnpgcifigibaelbbkmigjjnp)
+- [Chrome / Brave Browser](https://chromewebstore.google.com/detail/gitzip-pro/lpjpkopdlnpgcifigibaelbbkmigjjnp)
 
 - [Edge Browser](https://microsoftedge.microsoft.com/addons/detail/gitzip-pro/nhhmnccepdfgnekfhhchnbagljpifikg)
 
@@ -51,23 +51,6 @@ GitZip Pro is a Chrome extension inspired by **GitZip for GitHub**, with additio
 - Built-in retry logic for rate-limit/network-related GitHub API failures.
 - Optional file-size display beside repository file rows.
 - Select rows by double-click (configurable).
-
-### Auto-Ignore Rules
-
-- Built-in ignore rule groups for:
-  - Git/version-control artifacts
-  - System files
-  - Dependencies
-  - Build outputs
-  - Logs/temp files
-  - Images
-  - Videos
-  - Archives
-  - Documentation
-  - Config files
-- Preset ignore combinations: `Full Repository`, `Code Only`, `Documentation Only`, `Design Assets`, `Minimal`.
-- Custom wildcard ignore rules (user-defined patterns).
-- Download result includes ignored-file statistics in history records.
 
 ### Naming, Notifications, and Download Output
 
@@ -100,19 +83,16 @@ GitZip Pro is a Chrome extension inspired by **GitZip for GitHub**, with additio
 ### Download Statistics & Tracking
 
 - Comprehensive download statistics collection:
-  - Count of files selected, downloaded, and ignored
-  - Detailed tracking of ignored file paths
+  - Count of files selected and downloaded
   - Statistics stored with each download history record
 - Real-time statistics display during downloads
 - Historical statistics accessible through download history:
-  - View ignored files list for each download
   - Quick reference for download results with filtering breakdown
-- Statistics help users understand the impact of ignore rules on their downloads
 
 ### History, About, and Utility Pages
 
 - Download history page with grouped date view.
-- Expandable record details (repo, branch, path, file list, ignored files).
+- Expandable record details (repo, branch, path, and file list).
 - Multi-select delete and clear-all history operations.
 - About page with version display and update check trigger.
 - Quick links for issue reporting, rating, and GitHub repository starring.
@@ -132,14 +112,15 @@ GitZip Pro is a Chrome extension inspired by **GitZip for GitHub**, with additio
 
 ![Options Download](./screenshots/3.jpg)
 
-
 ### Options - History
 
 ![Options History](./screenshots/4.jpg)
 
 ### Options - Token & Rate Limit
 
-![Options Token](./screenshots/2.jpg)
+![Options Token](./screenshots/2-1.jpg)
+
+![Options Token](./screenshots/2-2.jpg)
 
 ### Options - Stats
 
