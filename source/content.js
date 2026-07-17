@@ -38,6 +38,7 @@
   let buttonPosition = DEFAULTS.BUTTON_POSITION;
 
   // Context menu state
+  let hoveredContextItem = null;
   let lastRightClickedRow = null;
   let lastRightClickedHref = null;
 
@@ -554,44 +555,69 @@
 
   // ─── Context Menu Functions ──────────────────────────────────────────────
 
-  function setupRowContextMenu(row) {
-    row.addEventListener('contextmenu', (e) => {
-      // 获取该行的 href
-      const href = getPathFromRow(row);
-      if (!href) return;
+  function getContextMenuItem(row) {
+    const href = getPathFromRow(row);
+    if (!href) return null;
 
-      // 存储点击的项目用于上下文菜单
+    const link = row.querySelector('a[href*="/tree/"], a[href*="/blob/"]');
+    const itemName = link ? link.textContent.trim() : href.split('/').pop();
+    const itemType = href.includes('/blob/')
+      ? 'file'
+      : href.includes('/tree/')
+        ? 'folder'
+        : 'unknown';
+
+    return { row, href, itemName, itemType };
+  }
+
+  function updateContextMenuItem(item) {
+    chrome.runtime.sendMessage({
+      type: 'GZP_UPDATE_CONTEXT_MENU',
+      enabled: Boolean(item),
+      href: item ? item.href : null,
+      itemName: item ? item.itemName : null,
+      itemType: item ? item.itemType : null
+    }, () => {
+      void chrome.runtime.lastError;
+    });
+  }
+
+  function clearContextMenuSelection() {
+    hoveredContextItem = null;
+    lastRightClickedRow = null;
+    lastRightClickedHref = null;
+    updateContextMenuItem(null);
+  }
+
+  function prepareContextMenuItem(row, lockItem = false) {
+    const item = getContextMenuItem(row);
+    if (!item) return false;
+
+    hoveredContextItem = item;
+    if (lockItem) {
       lastRightClickedRow = row;
-      lastRightClickedHref = href;
+      lastRightClickedHref = item.href;
+    }
+    updateContextMenuItem(item);
+    return true;
+  }
 
-      // 获取项目的显示名称
-      const link = row.querySelector('a[href*="/tree/"], a[href*="/blob/"]');
-      const itemName = link ? link.textContent.trim() : href.split('/').pop();
+  function getContextMenuRow(event) {
+    const target = event.target instanceof Element ? event.target : null;
+    return target ? target.closest('.gzp-row-initialized.gzp-row') : null;
+  }
 
-      // 检测是文件还是文件夹
-      let itemType = 'unknown';
-      if (href.includes('/blob/')) {
-        itemType = 'file';
-      } else if (href.includes('/tree/')) {
-        itemType = 'folder';
-      } else {
-        // 如果是仓库根目录（没有tree/blob），则视为文件夹
-        const parts = href.split('/').filter(Boolean);
-        if (parts.length >= 2 && parts[0] === 'github.com') {
-          // https://github.com/owner/repo 格式
-          itemType = 'folder';
-        }
-      }
+  function setupRowContextMenu(row) {
+    row.addEventListener('mouseenter', () => {
+      prepareContextMenuItem(row);
+    });
 
-      // 发送消息给 background script 更新上下文菜单
-      chrome.runtime.sendMessage({
-        type: 'GZP_UPDATE_CONTEXT_MENU',
-        href: href,
-        itemName: itemName,
-        itemType: itemType
-      });
+    row.addEventListener('mouseleave', () => {
+      if (!hoveredContextItem || hoveredContextItem.row !== row) return;
 
-      // 不要阻止默认行为 - 让浏览器显示上下文菜单
+      // Opening a native context menu can trigger mouseleave. Keep the menu
+      // title intact until the next explicit right-click target is known.
+      hoveredContextItem = null;
     });
   }
 
@@ -1143,6 +1169,7 @@
     isNavigating = true;
 
     console.log('[GitZip Pro] Clearing all selections');
+    clearContextMenuSelection();
 
     // 清除所有行的选中样式
     const selectedRows = document.querySelectorAll('.gzp-row--selected');
@@ -1517,14 +1544,46 @@
     // 添加上下文菜单消息监听器
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.type === 'GZP_DOWNLOAD_CONTEXT_ITEM') {
-        // 下载上下文菜单中选中的项目
-        const href = message.href;
-        handleContextMenuDownload(href);
+        const hasCurrentItem = lastRightClickedRow &&
+          document.contains(lastRightClickedRow) &&
+          lastRightClickedHref;
+
+        if (!hasCurrentItem) {
+          sendResponse({ ok: false, error: 'Context menu item is no longer available' });
+          return false;
+        }
+
+        handleContextMenuDownload(lastRightClickedHref);
         sendResponse({ ok: true });
         return true;
       }
       return false;
     });
+
+    // Right-button pointerdown runs before contextmenu, giving the background
+    // worker the earliest possible chance to preload the next row's title.
+    document.addEventListener('pointerdown', (event) => {
+      const isRightClick = event.button === 2 || (event.button === 0 && event.ctrlKey);
+      if (!isRightClick) return;
+
+      const row = getContextMenuRow(event);
+      if (row) {
+        prepareContextMenuItem(row, true);
+      } else {
+        clearContextMenuSelection();
+      }
+    }, true);
+
+    // Keyboard-triggered menus have no pointerdown, so contextmenu repeats the
+    // preparation as a fallback and also clears stale state outside file rows.
+    document.addEventListener('contextmenu', (event) => {
+      const row = getContextMenuRow(event);
+      if (row) {
+        prepareContextMenuItem(row, true);
+      } else {
+        clearContextMenuSelection();
+      }
+    }, true);
 
     logDebug('Initialization complete');
   }

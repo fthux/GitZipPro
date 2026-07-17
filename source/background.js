@@ -49,9 +49,6 @@ function findActiveDownload(taskId, downloadId) {
   return null;
 }
 
-// Context menu state
-let selectedItemHref = null;
-
 // Default locale for background notifications (loaded asynchronously)
 let backgroundTranslations = {};
 let backgroundLocale = 'en';
@@ -61,9 +58,9 @@ async function initBackgroundI18n() {
   const locale = await GZP_I18N.init();
   backgroundLocale = locale;
   backgroundTranslations = await GZP_I18N.loadLocale(locale);
-  ensureContextMenus();
+  await ensureContextMenus();
 }
-initBackgroundI18n();
+let backgroundI18nReady = initBackgroundI18n();
 
 // Listen for locale changes from options page
 chrome.storage.onChanged.addListener((changes) => {
@@ -71,9 +68,9 @@ chrome.storage.onChanged.addListener((changes) => {
   if (changes[localeKey]) {
     const newLocale = changes[localeKey].newValue;
     backgroundLocale = newLocale;
-    GZP_I18N.loadLocale(newLocale).then(translations => {
+    backgroundI18nReady = GZP_I18N.loadLocale(newLocale).then(translations => {
       backgroundTranslations = translations;
-      ensureContextMenus();
+      return ensureContextMenus();
     });
   }
 });
@@ -100,25 +97,30 @@ function t(key, vars) {
 
 /** Ensure context menus exist with current translations. Create if missing, update if present. */
 function ensureContextMenus() {
-  try {
-    // Try to update first (menus already exist from a previous session)
-    chrome.contextMenus.update(MENU_IDS.ROOT, { title: t('context_menu.root') }, () => {
-      if (chrome.runtime.lastError) {
-        // Menu doesn't exist yet — create them now with translations loaded
-        createContextMenus();
-        return;
-      }
-      // Update the remaining menus
-      chrome.contextMenus.update(MENU_IDS.CHECKED, { title: t('context_menu.checked_items') });
-      chrome.contextMenus.update(MENU_IDS.SELECTED, { title: t('context_menu.selected_item', { name: '(none)' }) });
-    });
-  } catch (e) {
-    // Fallback: create them
-    createContextMenus();
-  }
+  return new Promise((resolve) => {
+    try {
+      // Try to update first (menus already exist from a previous session)
+      chrome.contextMenus.update(MENU_IDS.ROOT, { title: t('context_menu.root') }, () => {
+        if (chrome.runtime.lastError) {
+          // Menu doesn't exist yet — create it before accepting hover updates.
+          createContextMenus(resolve);
+          return;
+        }
+
+        chrome.contextMenus.update(MENU_IDS.CHECKED, { title: t('context_menu.checked_items') }, () => {
+          void chrome.runtime.lastError;
+          // The selected item is preloaded by the content script on mouseenter.
+          // Preserve it when the service worker wakes up.
+          resolve();
+        });
+      });
+    } catch (e) {
+      createContextMenus(resolve);
+    }
+  });
 }
 
-function createContextMenus() {
+function createContextMenus(onComplete = () => {}) {
   chrome.contextMenus.create({
     id: MENU_IDS.ROOT,
     title: t('context_menu.root'),
@@ -141,25 +143,17 @@ function createContextMenus() {
     id: MENU_IDS.SELECTED,
     parentId: MENU_IDS.ROOT,
     title: t('context_menu.selected_item', { name: '(none)' }),
-    contexts: ['page', 'link', 'selection']
+    contexts: ['page', 'link', 'selection'],
+    enabled: false
+  }, () => {
+    void chrome.runtime.lastError;
+    onComplete();
   });
 }
 
 // Create context menu on installation
 chrome.runtime.onInstalled.addListener((details) => {
-  // Menus are created by ensureContextMenus() once translations load.
-  // On install/update, we also need to wait for translations to be ready.
-  // Since initBackgroundI18n() runs asynchronously on worker start,
-  // and contextMenus.create can be called multiple times safely,
-  // we just need to ensure context menus are created. ensureContextMenus()
-  // will handle both creation and updating after translations are ready.
-
-  // If translations are already loaded (unlikely at this point), create now
-  if (backgroundTranslations && Object.keys(backgroundTranslations).length > 0) {
-    createContextMenus();
-  }
-  // Otherwise, ensureContextMenus() called from initBackgroundI18n()
-  // will handle creation once translations are ready.
+  // initBackgroundI18n() creates or updates the menus after translations load.
 
   // Check if this is a fresh install (not an update)
   if (details.reason === 'install') {
@@ -245,26 +239,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // Handle context menu update messages
   if (message.type === 'GZP_UPDATE_CONTEXT_MENU') {
-    const { href, itemName, itemType } = message;
-    selectedItemHref = href;
+    backgroundI18nReady.then(() => {
+      const { enabled, href, itemName, itemType } = message;
+      const menuEnabled = enabled !== false && Boolean(href);
+      const displayName = itemName || (href ? href.split('/').pop() : 'unknown');
+      let menuTitle = t('context_menu.selected_item', { name: '(none)' });
 
-    // Update the context menu title based on item type
-    const displayName = itemName || (href ? href.split('/').pop() : 'unknown');
-    let menuTitle;
-    if (itemType === 'file') {
-      menuTitle = t('context_menu.selected_file', { name: displayName });
-    } else if (itemType === 'folder') {
-      menuTitle = t('context_menu.selected_folder', { name: displayName });
-    } else {
-      // Fallback for unknown type
-      menuTitle = t('context_menu.selected_item', { name: displayName });
-    }
+      if (menuEnabled && itemType === 'file') {
+        menuTitle = t('context_menu.selected_file', { name: displayName });
+      } else if (menuEnabled && itemType === 'folder') {
+        menuTitle = t('context_menu.selected_folder', { name: displayName });
+      } else if (menuEnabled) {
+        menuTitle = t('context_menu.selected_item', { name: displayName });
+      }
 
-    chrome.contextMenus.update(MENU_IDS.SELECTED, {
-      title: menuTitle
+      chrome.contextMenus.update(MENU_IDS.SELECTED, {
+        title: menuTitle,
+        enabled: menuEnabled
+      }, () => {
+        const error = chrome.runtime.lastError;
+        sendResponse(error ? { ok: false, error: error.message } : { ok: true });
+      });
+    }).catch((error) => {
+      sendResponse({ ok: false, error: error.message });
     });
-
-    sendResponse({ ok: true });
     return true;
   }
 
@@ -304,11 +302,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Handle context menu click
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === MENU_IDS.SELECTED && selectedItemHref) {
-    // Send message to content script to download the selected item
+  if (info.menuItemId === MENU_IDS.SELECTED && tab && tab.id != null) {
+    // The content script owns the right-clicked item for this specific tab.
     chrome.tabs.sendMessage(tab.id, {
-      type: 'GZP_DOWNLOAD_CONTEXT_ITEM',
-      href: selectedItemHref
+      type: 'GZP_DOWNLOAD_CONTEXT_ITEM'
+    }, () => {
+      void chrome.runtime.lastError;
     });
   }
 });
