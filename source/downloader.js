@@ -896,7 +896,10 @@
     }
     const { namingPreset, namingCustom, notifyShow, notifySound, notifyOpen, ignoreLabels, ignoreCustomVars, githubToken, tokenAccessMode } = settings;
 
-    const compiledIgnoreRules = compileIgnoreRules(ignoreLabels || [], ignoreCustomVars || []);
+    // Auto-Ignore Files is disabled. Keep the original compilation call for easy
+    // restoration, but ignore both new and previously stored rules for all downloads.
+    // const compiledIgnoreRules = compileIgnoreRules(ignoreLabels || [], ignoreCustomVars || []);
+    const compiledIgnoreRules = [];
 
     try {
       // ② Parse all selected URLs and resolve the longest matching Git ref.
