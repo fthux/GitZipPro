@@ -1,74 +1,60 @@
-GitZip Pro - GitHub Selective Download
+GitZip Pro is an open-source browser extension for selectively downloading files and folders from GitHub repositories.
 
----
+Official website:
+https://gitzippro.fthux.com
 
-SHORT DESCRIPTION:
-Download selected files & folders from GitHub as ZIP archives directly in your browser. No cloning, no git commands - just select and download.
+GitZip Pro was inspired by GitZip for GitHub and is built with respect for its original idea: making it easy to download only the parts of a GitHub repository you need.
 
----
+Building on that foundation, GitZip Pro provides a more complete “Pro” experience with private repository support, local ZIP creation, download history and statistics, smart ignore rules, file-size display, configurable naming, interface customization, and additional workflow improvements.
 
-FULL DESCRIPTION:
+SELECT ONLY WHAT YOU NEED
 
-✅ Download only what you need from GitHub repositories
+GitZip Pro adds selection checkboxes directly to GitHub repository pages. Select one or more files and folders, then download them as a ZIP archive while preserving the original directory structure.
 
-Stop cloning entire repositories or downloading full ZIP files when you only need specific files or folders. GitZip Pro adds seamless download functionality directly into GitHub's interface, making selective downloads simple and fast.
+You can also download a single file or folder from the right-click context menu, without cloning or downloading the entire repository.
 
+PRO FEATURES
 
-✨ KEY FEATURES
+• Select multiple files and folders directly on GitHub
+• Download selected content as a ZIP archive
+• Preserve the original repository directory structure
+• Download a single file or folder from the right-click context menu
+• Create ZIP archives locally in your browser
+• Access public repositories anonymously
+• Optionally connect GitHub for higher API limits and private repository access
+• Customize ZIP names with repository, branch, path, and date variables
+• Exclude unnecessary files with built-in presets or custom ignore rules
+• Optionally display file sizes on repository pages
+• View locally stored download history and statistics
+• Configure completion notifications and optional sounds
+• Customize the theme, accent color, and download button position
+• Automatically retry temporary network and GitHub API rate-limit errors
+• Follow GitHub page navigation without requiring a manual refresh
 
-🔘 Seamless GitHub Integration
-Adds intuitive checkboxes next to every file and folder on GitHub pages. Select exactly what you want with one click.
+PUBLIC AND PRIVATE REPOSITORIES
 
-📦 Client-Side ZIP Creation
-All files are packaged into ZIP archives directly in your browser. No data passes through third party servers - your privacy is protected.
+Public repositories can be downloaded anonymously without connecting a GitHub account.
 
-🧠 Smart Auto-Ignore System
-Automatically excludes unnecessary files: node_modules, .git, logs, build artifacts and more. Customize ignore rules to match your workflow.
+For higher GitHub API rate limits or private repository access, you can optionally connect your GitHub account or provide a compatible GitHub access token in the extension settings.
 
-📜 Complete Download History
-Track every download with full metadata: repository name, selected files, excluded items, timestamp and file size.
+PRIVACY
 
-⚙️ Highly Customizable
-  • Custom ZIP file naming patterns
-  • Notification preferences (with optional sound)
-  • Auto-open download folder
-  • Light / Dark / System theme support
-  • Custom ignore rules
+Repository files are fetched from the GitHub API and packaged into ZIP archives locally in your browser. GitZip Pro does not upload downloaded repository content to its own servers.
 
-⚡ Fast & Efficient
-Avoid wasting bandwidth and storage space on files you don't need. Downloads happen in parallel for maximum speed.
+Extension settings, access credentials, download history, and statistics are stored locally through Chrome extension storage. The GitZip Pro authorization service is contacted only when you explicitly choose to connect your GitHub account.
 
+HOW TO USE
 
-🎯 PERFECT FOR
+1. Open a supported GitHub repository page.
+2. Select the files and folders you need.
+3. Click the GitZip Pro download button.
+4. Wait for the ZIP archive to be created and saved.
 
-👨‍💻 Developers: Extract reusable components, utilities or examples from open source projects
-🎓 Students: Download specific code samples from tutorial repositories
-✍️ Technical Writers: Grab only documentation files from large codebases
-🎨 Designers: Download just the assets you need (images, fonts, stylesheets)
-🔬 Researchers: Collect specific file types across multiple repositories
+OPEN SOURCE
 
+GitZip Pro is open-source software. You can inspect the source code, report issues, and contribute to its development on GitHub:
 
-🔒 PRIVACY FIRST
+https://github.com/fthux/GitZipPro
 
-GitZip Pro runs entirely in your browser:
-✅ No account required
-✅ No tracking of your browsing activity
-✅ No data sent to external servers (except direct GitHub API requests)
-✅ Open source implementation
-
-
-📝 HOW IT WORKS
-
-1. Navigate to any GitHub repository
-2. Check the boxes next to files and folders you want
-3. Click the Download ZIP button that appears
-4. Your customized ZIP archive will be ready in seconds
-
-No registration, no configuration, no external tools. Just works.
-
-
-Note: This extension works exclusively with public GitHub repositories. For private repository support, personal access token configuration is available in settings.
-
-
-KEYWORDS:
-github, download, zip, selective download, folder download, file download, repository, git, developer tools, productivity, code download, github tools
+Learn more about GitZip Pro:
+https://gitzippro.fthux.com
