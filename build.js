@@ -12,7 +12,7 @@ const htmlMinifier = require('html-minifier');
 // 配置
 const SOURCE_DIR = 'source';
 const BUILD_ROOT_DIR = 'build';
-const IGNORE_FILES = ['README.md'];
+const IGNORE_FILES = ['README.md', '.DS_Store'];
 const STORE_CHANNEL_PLACEHOLDER = '__GZP_STORE_CHANNEL__';
 const VALID_STORE_CHANNELS = new Set(['chrome', 'firefox', 'edge']);
 const CHROME_LIKE_STORE_CHANNELS = new Set(['chrome', 'edge']);
