@@ -8,6 +8,65 @@
   const LOCALE_STORAGE_KEY = 'gzpLocale';
   const SUPPORTED_LOCALES = ['en', 'zh-CN'];
   const DEFAULT_LOCALE = 'en';
+  // build.js replaces the marker with the locale JSON at package build time.
+  // The empty object keeps the unbuilt source usable during development.
+  const BUNDLED_LOCALES = /*__GZP_BUNDLED_LOCALES__*/ {};
+
+  /**
+   * Firefox content scripts can expose WebExtension APIs through `browser`
+   * while Chromium exposes them through `chrome`. Keep resource loading
+   * independent of the namespace used by the current browser.
+   */
+  function getRuntime() {
+    // Prefer Firefox's native Promise-based namespace when available. The
+    // compatibility `chrome` namespace can invoke callbacks with an empty
+    // response before the real Promise settles.
+    const api = global.browser || global.chrome;
+    return api && api.runtime ? api.runtime : null;
+  }
+
+  function getExtensionUrl(path) {
+    const runtime = getRuntime();
+    return runtime && typeof runtime.getURL === 'function' ? runtime.getURL(path) : '';
+  }
+
+  function requestLocaleFromBackground(locale) {
+    const runtime = getRuntime();
+    // The background worker already has direct access to extension resources;
+    // avoid sending a message back to itself if its own fetch ever fails.
+    if (global.GZP_BACKGROUND_CONTEXT || typeof document === 'undefined' || !runtime || typeof runtime.sendMessage !== 'function') {
+      return Promise.resolve(null);
+    }
+
+    return new Promise((resolve) => {
+      const finish = (response) => {
+        resolve(response && response.ok && response.translations ? response.translations : null);
+      };
+
+      try {
+        const message = { type: 'GZP_GET_LOCALE', locale };
+        // Firefox's native `browser` namespace is Promise-based. The Chrome
+        // compatibility namespace is callback-based in content scripts.
+        const isFirefoxPromiseApi = global.browser && runtime === global.browser.runtime;
+        if (!isFirefoxPromiseApi) {
+          runtime.sendMessage(message, (response) => {
+            void (runtime.lastError && runtime.lastError.message);
+            finish(response);
+          });
+          return;
+        }
+
+        const result = runtime.sendMessage(message);
+        if (result && typeof result.then === 'function') {
+          result.then(finish, () => finish(null));
+        } else {
+          finish(null);
+        }
+      } catch (e) {
+        finish(null);
+      }
+    });
+  }
 
   /** Loaded translations cache */
   let translations = {};
@@ -31,6 +90,24 @@
     return DEFAULT_LOCALE;
   }
 
+  // The bundled locale data is also the last-resort source while storage or
+  // resource loading is still pending. This prevents UI callers from showing
+  // raw keys during Firefox content-script startup.
+  function getTranslationSource() {
+    if (translations && Object.keys(translations).length > 0) {
+      return translations;
+    }
+    const detected = detectBrowserLocale();
+    return BUNDLED_LOCALES[currentLocale]
+      || BUNDLED_LOCALES[detected]
+      || BUNDLED_LOCALES[DEFAULT_LOCALE]
+      || {};
+  }
+
+  function hasTranslations(value) {
+    return value && typeof value === 'object' && Object.keys(value).length > 0;
+  }
+
   /**
    * Load a locale file from storage or bundled JSON.
    * @param {string} locale - The locale code (e.g. 'en', 'zh-CN')
@@ -39,26 +116,45 @@
   async function loadLocale(locale) {
     const normalized = SUPPORTED_LOCALES.includes(locale) ? locale : DEFAULT_LOCALE;
 
+    // Prefer data bundled into the content script. This avoids Firefox's
+    // content-script restrictions on fetching moz-extension:// resources.
+    if (BUNDLED_LOCALES[normalized]) {
+      return BUNDLED_LOCALES[normalized];
+    }
+
     // Try to load from the locales folder
     try {
-      const response = await fetch(chrome.runtime.getURL(`locales/${normalized}.json`));
-      if (response.ok) {
-        return await response.json();
+      const url = getExtensionUrl(`locales/${normalized}.json`);
+      if (url) {
+        const response = await fetch(url);
+        if (response.ok) {
+          return await response.json();
+        }
       }
     } catch (e) {
       // fallback
     }
 
+    // Firefox may block content-script fetches for moz-extension resources.
+    const backgroundTranslations = await requestLocaleFromBackground(normalized);
+    if (backgroundTranslations) return backgroundTranslations;
+
     // If locale file not found, try English as fallback
     if (normalized !== 'en') {
       try {
-        const response = await fetch(chrome.runtime.getURL('locales/en.json'));
-        if (response.ok) {
-          return await response.json();
+        const url = getExtensionUrl('locales/en.json');
+        if (url) {
+          const response = await fetch(url);
+          if (response.ok) {
+            return await response.json();
+          }
         }
       } catch (e) {
         // fallback
       }
+
+      const englishTranslations = await requestLocaleFromBackground('en');
+      if (englishTranslations) return englishTranslations;
     }
 
     return {};
@@ -72,7 +168,7 @@
    */
   function t(key, vars) {
     const parts = key.split('.');
-    let value = translations;
+    let value = getTranslationSource();
     for (const part of parts) {
       if (value && typeof value === 'object' && part in value) {
         value = value[part];
@@ -168,8 +264,21 @@
    * @returns {Promise<string>} The resolved locale
    */
   async function initI18n() {
+    const api = global.browser || global.chrome;
+    const storageApi = api && api.storage ? api.storage.local : null;
+    let readLocale;
+    try {
+      readLocale = !storageApi
+        ? Promise.resolve({})
+        : global.browser && storageApi === global.browser.storage.local
+          ? storageApi.get([LOCALE_STORAGE_KEY])
+          : new Promise((resolve) => storageApi.get([LOCALE_STORAGE_KEY], resolve));
+    } catch (e) {
+      readLocale = Promise.resolve({});
+    }
+
     return new Promise((resolve) => {
-      chrome.storage.local.get([LOCALE_STORAGE_KEY], async (result) => {
+      Promise.resolve(readLocale).catch(() => ({})).then(async (result) => {
         let locale;
         if (result[LOCALE_STORAGE_KEY]) {
           locale = result[LOCALE_STORAGE_KEY];
@@ -177,7 +286,16 @@
           // First install: detect browser locale
           locale = detectBrowserLocale();
           // Save so it persists
-          chrome.storage.local.set({ [LOCALE_STORAGE_KEY]: locale });
+          if (storageApi && typeof storageApi.set === 'function') {
+            try {
+              const write = global.browser && storageApi === global.browser.storage.local
+                ? storageApi.set({ [LOCALE_STORAGE_KEY]: locale })
+                : new Promise((done) => storageApi.set({ [LOCALE_STORAGE_KEY]: locale }, done));
+              Promise.resolve(write).catch(() => {});
+            } catch (e) {
+              // Storage is optional for rendering translations.
+            }
+          }
         }
 
         // Normalize
@@ -186,7 +304,8 @@
         }
 
         currentLocale = locale;
-        translations = await loadLocale(locale);
+        const loaded = await loadLocale(locale);
+        translations = hasTranslations(loaded) ? loaded : getTranslationSource();
         resolve(locale);
       });
     });

@@ -737,6 +737,18 @@
     return error;
   }
 
+  /**
+   * JSZip 3.x detects typed arrays with `instanceof Uint8Array`. Firefox
+   * content scripts can receive a Uint8Array from another JS realm, making
+   * that check fail even though the bytes are valid. A plain Array is
+   * recognized across realms by JSZip and preserves the binary values.
+   */
+  function toZipInput(bytes) {
+    if (Array.isArray(bytes)) return bytes;
+    if (bytes && typeof bytes.length === 'number') return Array.prototype.slice.call(bytes);
+    return bytes;
+  }
+
   function getBase64ByteLength(base64) {
     const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
     return Math.max(0, Math.floor(base64.length * 3 / 4) - padding);
@@ -1020,7 +1032,7 @@
           unknownSizeCount--;
         }
         item.sizeBytes = bytes.length;
-        zip.file(`${zipRoot}/${item.path}`, bytes);
+        zip.file(`${zipRoot}/${item.path}`, toZipInput(bytes));
         completed++;
         completedBytes += bytes.length;
         emitProgress({

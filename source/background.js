@@ -9,8 +9,12 @@
  *   Response: { ok: true, downloadId: number } | { ok: false, error: string }
  */
 
-importScripts('constants.js');
-importScripts('i18n.js');
+// Service workers load dependencies explicitly; Firefox event pages receive
+// them from manifest.background.scripts instead.
+if (typeof importScripts === 'function') {
+  importScripts('constants.js', 'i18n.js');
+}
+globalThis.GZP_BACKGROUND_CONTEXT = true;
 const { STORAGE_KEYS } = globalThis.GZP_CONSTANTS;
 const MENU_IDS = {
   ROOT: 'gitzip-pro-download',
@@ -20,6 +24,30 @@ const MENU_IDS = {
 };
 
 const activeDownloads = new Map();
+
+function revokeDownloadUrl(download) {
+  if (!download || !download.downloadUrl || !download.downloadUrl.startsWith('blob:')) return;
+  try {
+    URL.revokeObjectURL(download.downloadUrl);
+  } catch (error) {
+    console.warn('[GitZip Pro] Failed to revoke download URL', error);
+  }
+  download.downloadUrl = null;
+}
+
+function createDownloadUrl(base64, mimeType) {
+  // Firefox rejects large data: URLs passed to downloads.download. A Blob URL
+  // is accepted by the Firefox event page and avoids URL-length/security limits.
+  if (typeof Blob === 'function' && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+  }
+  return `data:${mimeType};base64,${base64}`;
+}
 
 function sendDownloadStatus(download, status, details = {}) {
   if (!download || download.tabId == null || !download.taskId) return;
@@ -174,42 +202,86 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 // Update context menu when receiving right-click info from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Content scripts in Firefox may not be allowed to fetch moz-extension://
+  // resources directly. Load locale files from the extension context instead.
+  if (message.type === 'GZP_GET_LOCALE') {
+    const locale = message.locale === 'zh-CN' ? 'zh-CN' : 'en';
+    (async () => {
+      try {
+        const response = await fetch(chrome.runtime.getURL(`locales/${locale}.json`));
+        if (!response.ok) throw new Error(`Locale request failed: ${response.status}`);
+        sendResponse({ ok: true, translations: await response.json() });
+      } catch (error) {
+        sendResponse({ ok: false, error: error.message });
+      }
+    })();
+    return true;
+  }
+
   // Handle download file messages
   if (message.type === 'GZP_DOWNLOAD_FILE') {
     const { taskId, filename, base64, mimeType = 'application/octet-stream', zipSizeBytes, notifyShow, notifyOpen, historyRecord } = message;
 
+    let downloadUrl = null;
     (async () => {
       try {
         let safeFilename = filename;
         // chrome.downloads strictly forbids any path segment starting with a dot or tilde
         safeFilename = safeFilename.replace(/(^|\/)[.~]/g, '$1_');
 
-        const dataUrl = `data:${mimeType};base64,${base64}`;
-        chrome.downloads.download({ url: dataUrl, filename: safeFilename, saveAs: false }, (downloadId) => {
-          if (chrome.runtime.lastError) {
-            sendResponse({ ok: false, error: chrome.runtime.lastError.message });
-          } else {
-            // Track every download so history persistence is independent of completion side effects.
-            const download = {
-              taskId,
-              downloadId,
-              tabId: sender && sender.tab ? sender.tab.id : null,
-              zipSizeBytes: Number.isFinite(zipSizeBytes) ? zipSizeBytes : null,
-              notifyShow,
-              notifyOpen,
-              filename,
-              historyRecord,
-            };
-            activeDownloads.set(downloadId, download);
-            sendDownloadStatus(download, 'started', {
-              bytesReceived: 0,
-              totalBytes: download.zipSizeBytes,
-              progress: 0,
-            });
-            sendResponse({ ok: true, downloadId });
+        downloadUrl = createDownloadUrl(base64, mimeType);
+        const options = { url: downloadUrl, filename: safeFilename, saveAs: false };
+        let settled = false;
+        const onStarted = (downloadId, errorMessage = '') => {
+          if (settled) return;
+          settled = true;
+          if (errorMessage || downloadId == null) {
+            revokeDownloadUrl({ downloadUrl });
+            sendResponse({ ok: false, error: errorMessage || 'Download failed to start' });
+            return;
           }
-        });
+
+          // Track every download so history persistence is independent of completion side effects.
+          const download = {
+            taskId,
+            downloadId,
+            tabId: sender && sender.tab ? sender.tab.id : null,
+            zipSizeBytes: Number.isFinite(zipSizeBytes) ? zipSizeBytes : null,
+            downloadUrl,
+            notifyShow,
+            notifyOpen,
+            filename,
+            historyRecord,
+          };
+          activeDownloads.set(downloadId, download);
+          sendDownloadStatus(download, 'started', {
+            bytesReceived: 0,
+            totalBytes: download.zipSizeBytes,
+            progress: 0,
+          });
+          sendResponse({ ok: true, downloadId });
+        };
+
+        // Use Firefox's native Promise API when available; its `chrome`
+        // compatibility wrapper has different callback behavior by version.
+        const downloadsApi = globalThis.browser && globalThis.browser.downloads
+          ? globalThis.browser.downloads
+          : chrome.downloads;
+        if (downloadsApi === chrome.downloads && downloadsApi.download.length >= 2) {
+          downloadsApi.download(options, (downloadId) => {
+            const lastError = chrome.runtime.lastError;
+            onStarted(downloadId, lastError ? lastError.message : '');
+          });
+        } else {
+          const result = downloadsApi.download(options);
+          if (!result || typeof result.then !== 'function') {
+            onStarted(result, 'Download API did not return a download id');
+          } else {
+            result.then((downloadId) => onStarted(downloadId), (error) => onStarted(null, error && error.message ? error.message : String(error)));
+          }
+        }
       } catch (err) {
+        revokeDownloadUrl({ downloadUrl });
         sendResponse({ ok: false, error: err.message });
       }
     })();
@@ -231,6 +303,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
       activeDownloads.delete(downloadId);
+      revokeDownloadUrl(download);
       sendDownloadStatus(download, 'cancelled');
       sendResponse({ ok: true });
     });
@@ -333,6 +406,7 @@ chrome.downloads.onChanged.addListener((delta) => {
     if (delta.state && delta.state.current === 'complete') {
       const prefs = trackedDownload;
       activeDownloads.delete(delta.id);
+      revokeDownloadUrl(prefs);
       sendDownloadStatus(prefs, 'complete', {
         bytesReceived: prefs.zipSizeBytes,
         totalBytes: prefs.zipSizeBytes,
@@ -407,6 +481,7 @@ chrome.downloads.onChanged.addListener((delta) => {
     } else if (delta.state && delta.state.current === 'interrupted') {
       const prefs = trackedDownload;
       activeDownloads.delete(delta.id);
+      revokeDownloadUrl(prefs);
       const code = delta.error && delta.error.current ? delta.error.current : 'SAVE_INTERRUPTED';
       sendDownloadStatus(prefs, 'interrupted', {
         code,

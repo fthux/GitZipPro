@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "default_locale": "en",
   "description": "__MSG_extDescription__",
   "browser_specific_settings": {
@@ -22,8 +22,7 @@
     "identity"
   ],
   "background": {
-    "service_worker": "background.js",
-    "scripts": ["background.js"]
+    "scripts": ["constants.js", "i18n.js", "background.js"]
   },
   "host_permissions": [
     "https://github.com/*",

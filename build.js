@@ -107,6 +107,21 @@ async function processJavaScript(srcPath, destPath, relativePath) {
       console.log(`Injected store channel: ${STORE_CHANNEL}`);
     }
 
+    if (relativePath === 'i18n.js') {
+      const localeDir = path.join(SOURCE_DIR, 'locales');
+      const bundledLocales = {};
+      for (const locale of ['en', 'zh-CN']) {
+        const localePath = path.join(localeDir, `${locale}.json`);
+        bundledLocales[locale] = JSON.parse(fs.readFileSync(localePath, 'utf8'));
+      }
+      const marker = '/*__GZP_BUNDLED_LOCALES__*/ {}';
+      if (!code.includes(marker)) {
+        throw new Error(`Missing locale bundle marker in ${srcPath}`);
+      }
+      code = code.replace(marker, JSON.stringify(bundledLocales));
+      console.log('Bundled locale JSON into i18n.js');
+    }
+
     // 使用terser压缩
     const result = await Terser.minify(code, {
       compress: {
@@ -127,6 +142,9 @@ async function processJavaScript(srcPath, destPath, relativePath) {
 
     if (result.error) {
       console.error(`Error minifying ${srcPath}:`, result.error);
+      if (relativePath === 'i18n.js') {
+        throw result.error;
+      }
       // 如果压缩失败，直接复制
       fs.copyFileSync(srcPath, destPath);
       console.log(`Copied (fallback): ${path.relative(BUILD_DIR, destPath)}`);
@@ -136,6 +154,11 @@ async function processJavaScript(srcPath, destPath, relativePath) {
     }
   } catch (error) {
     console.error(`Error processing JavaScript ${srcPath}:`, error);
+    // A Firefox package without bundled i18n data can silently fall back to
+    // displaying raw translation keys. Do not emit such a package.
+    if (relativePath === 'i18n.js') {
+      throw error;
+    }
     // 出错时直接复制
     fs.copyFileSync(srcPath, destPath);
     console.log(`Copied (error fallback): ${path.relative(BUILD_DIR, destPath)}`);
@@ -203,7 +226,22 @@ function processJSON(srcPath, destPath) {
       CHROME_LIKE_STORE_CHANNELS.has(STORE_CHANNEL)
     ) {
       delete json.background.scripts;
+      json.background.service_worker = 'background.js';
       console.log(`Removed background.scripts for ${STORE_CHANNEL} MV3 package`);
+    }
+
+    // Firefox uses an event page for MV3 background scripts and did not
+    // reliably start that page when service_worker was also present before
+    // Firefox 121. Keep the Firefox package compatible with its declared
+    // minimum version by selecting the scripts implementation explicitly.
+    if (
+      path.basename(srcPath) === 'manifest.json' &&
+      json.manifest_version === 3 &&
+      json.background &&
+      STORE_CHANNEL === 'firefox'
+    ) {
+      delete json.background.service_worker;
+      console.log('Removed background.service_worker for Firefox MV3 package');
     }
 
     // 对于JSON文件，我们可以确保格式正确
