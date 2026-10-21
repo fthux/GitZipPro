@@ -20,7 +20,7 @@ GitZip Pro is a Chrome extension inspired by **GitZip for GitHub**, with additio
 
 [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=fthux_GitZipPro&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=fthux_GitZipPro)
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=fthux_GitZipPro&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=fthux_GitZipPro)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/fthux/GitZipPro)
+[![Ask DeepWiki](./deepwiki-badge.svg)](https://deepwiki.com/fthux/GitZipPro)
 
 <img src="screenshots/banner_2.jpg" alt="GitZip Pro" />
 
